@@ -24,6 +24,7 @@ mod uci {
             match command.trim() {
                 "uci" => uci(),
                 "isready" => println!("readyok"),
+                "ucinewgame" => continue,
                 "" => continue,
                 _ => println!("Unknown command"),
             }
