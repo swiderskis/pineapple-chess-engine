@@ -10,12 +10,21 @@ struct Input<'a> {
     arguments: Vec<&'a str>,
 }
 
+impl<'a> Input<'a> {
+    fn new(input_vec: Vec<&'a str>) -> Self {
+        Input {
+            command: input_vec[0],
+            arguments: input_vec[1..].to_vec(),
+        }
+    }
+}
+
 /// Takes a user input, and performs an action based on the command entered
 pub fn command() {
     loop {
-        let mut input = String::new();
+        let mut input_raw = String::new();
 
-        match io::stdin().read_line(&mut input) {
+        match io::stdin().read_line(&mut input_raw) {
             Ok(_) => {}
             Err(err) => {
                 println!("Error parsing command: {err}");
@@ -23,11 +32,8 @@ pub fn command() {
             }
         };
 
-        let input: Vec<&str> = input.split_whitespace().collect();
-        let input = Input {
-            command: input[0],
-            arguments: input[1..].to_vec(),
-        };
+        let input_vec: Vec<&str> = input_raw.split_whitespace().collect();
+        let input = Input::new(input_vec);
 
         match input.command.trim() {
             "uci" => uci(),
