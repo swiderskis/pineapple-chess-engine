@@ -5,11 +5,8 @@
 use crate::engine;
 use std::io;
 
-/// Holds the user input
 struct Input<'a> {
-    /// The command entered by the user
     command: &'a str,
-    /// Any arguments passed by the user
     arguments: Vec<&'a str>,
 }
 
@@ -44,7 +41,6 @@ pub fn command() {
     }
 }
 
-/// Prints engine information and returns `uciok` to connected GUI
 fn uci() {
     println!("id name Pineapple");
     println!("id author Sebastian S.");

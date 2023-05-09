@@ -1,6 +1,6 @@
-/// # Engine
-///
-/// A library that calculates the best move based on the current board position
+//! # Engine
+//!
+//! A library that calculates the best move based on the current board position
 
 /// Sets up the current board position, either from a given FEN string or the initial board position
 pub fn position() {
@@ -11,7 +11,6 @@ pub fn position() {
     bitboard.print_bitboard();
 }
 
-/// Holds the information about a bitboard
 struct Bitboard {
     bitboard: u64,
 }
@@ -44,41 +43,19 @@ impl Bitboard {
         println!("    Bitboard decimal value: {}", self.bitboard);
     }
 
-    /// Returns whether the bit on the given square is 1 or 0, as a boolean
     fn get_bit(&self, square: i32) -> bool {
         self.bitboard & (1 << square) != 0
     }
 
-    /// Sets the bit of the given square to 1
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let bitboard = Bitboard::new();
-    ///
-    /// bitboard.set_bit(BoardSquare::A2);
-    ///
-    /// assert_eq!(bitboard.bitboard, u64::pow(2, 48));
-    /// ```
     fn set_bit(&mut self, square: BoardSquare) {
         self.bitboard |= 1 << square as u64;
     }
 
-    /// Sets the bit of the given square to 0
-    ///
-    /// # Example
-    /// ```
-    /// let bitboard = Bitboard::new();
-    /// bitboard.set_bit(BoardSquare::E3);
-    /// bitboard.pop_bit(BoardSquare::E3);
-    ///
-    /// assert_eq!(bitboard.bitboard, 0);
     fn pop_bit(&mut self, square: BoardSquare) {
         self.bitboard &= !(1 << square as u64);
     }
 }
 
-/// Enumerates the board squares into values from 0 to 63
 enum BoardSquare {
     A8,
     B8,
