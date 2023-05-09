@@ -5,6 +5,11 @@ fn main() {
 mod uci {
     use std::io;
 
+    struct Input<'a> {
+        command: &'a str,
+        arguments: Vec<&'a str>,
+    }
+
     pub fn command() {
         loop {
             let mut input = String::new();
@@ -17,11 +22,13 @@ mod uci {
                 }
             };
 
-            let mut input: Vec<&str> = input.split_whitespace().collect();
-            let command = input[0];
-            let arguments = input.split_off(1);
+            let input: Vec<&str> = input.split_whitespace().collect();
+            let input = Input {
+                command: input[0],
+                arguments: input[1..].to_vec(),
+            };
 
-            match command.trim() {
+            match input.command.trim() {
                 "uci" => uci(),
                 "isready" => println!("readyok"),
                 "ucinewgame" => continue,
