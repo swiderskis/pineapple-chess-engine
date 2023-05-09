@@ -32,6 +32,7 @@ mod uci {
                 "uci" => uci(),
                 "isready" => println!("readyok"),
                 "ucinewgame" => continue,
+                "quit" => break,
                 "" => continue,
                 _ => println!("Unknown command"),
             }
