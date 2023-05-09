@@ -2,7 +2,6 @@
 //!
 //! A library that calculates the best move based on the current board position
 
-/// Sets up the current board position, either from a given FEN string or the initial board position
 pub fn position() {
     let mut bitboard = Bitboard::new();
 
@@ -16,12 +15,14 @@ struct Bitboard {
 }
 
 impl Bitboard {
-    /// Bitboard constructor
     fn new() -> Self {
         Bitboard { bitboard: 0 }
     }
 
-    /// Prints the current bitboard state
+    fn bitboard(&self) -> u64 {
+        self.bitboard
+    }
+
     fn print_bitboard(&self) {
         for rank in 0..8 {
             for file in 0..8 {
@@ -137,9 +138,9 @@ mod tests {
         bitboard2.set_bit(BoardSquare::G6);
         bitboard3.set_bit(BoardSquare::B4);
 
-        assert_eq!(bitboard1.bitboard, u64::pow(2, 55));
-        assert_eq!(bitboard2.bitboard, u64::pow(2, 22));
-        assert_eq!(bitboard3.bitboard, u64::pow(2, 33));
+        assert_eq!(bitboard1.bitboard(), u64::pow(2, 55));
+        assert_eq!(bitboard2.bitboard(), u64::pow(2, 22));
+        assert_eq!(bitboard3.bitboard(), u64::pow(2, 33));
     }
 
     #[test]
@@ -160,9 +161,9 @@ mod tests {
         bitboard3.set_bit(BoardSquare::B8);
         bitboard3.pop_bit(BoardSquare::C4);
 
-        assert_eq!(bitboard1.bitboard, u64::pow(2, 0));
-        assert_eq!(bitboard2.bitboard, u64::pow(2, 8));
-        assert_eq!(bitboard3.bitboard, u64::pow(2, 1));
+        assert_eq!(bitboard1.bitboard(), u64::pow(2, 0));
+        assert_eq!(bitboard2.bitboard(), u64::pow(2, 8));
+        assert_eq!(bitboard3.bitboard(), u64::pow(2, 1));
     }
 
     #[test]
@@ -176,7 +177,7 @@ mod tests {
 
         bitboard2.pop_bit(BoardSquare::G2);
 
-        assert_eq!(bitboard1.bitboard, 0);
-        assert_eq!(bitboard2.bitboard, 0);
+        assert_eq!(bitboard1.bitboard(), 0);
+        assert_eq!(bitboard2.bitboard(), 0);
     }
 }
