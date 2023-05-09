@@ -1,8 +1,9 @@
+use crate::engine;
 use std::io;
 
 struct Input<'a> {
     command: &'a str,
-    _arguments: Vec<&'a str>,
+    arguments: Vec<&'a str>,
 }
 
 pub fn command() {
@@ -20,13 +21,14 @@ pub fn command() {
         let input: Vec<&str> = input.split_whitespace().collect();
         let input = Input {
             command: input[0],
-            _arguments: input[1..].to_vec(),
+            arguments: input[1..].to_vec(),
         };
 
         match input.command.trim() {
             "uci" => uci(),
             "isready" => println!("readyok"),
             "ucinewgame" => continue,
+            "position" => engine::position(),
             "quit" => break,
             "" => continue,
             _ => println!("Unknown command"),
