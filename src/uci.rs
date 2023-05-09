@@ -1,11 +1,19 @@
+//! # UCI
+//!
+//! A library to handle inputs following the [UCI protocol](https://backscattering.de/chess/uci/).
+
 use crate::engine;
 use std::io;
 
+/// Holds the user input
 struct Input<'a> {
+    /// The command entered by the user
     command: &'a str,
+    /// Any arguments passed by the user
     arguments: Vec<&'a str>,
 }
 
+/// Takes a user input, and performs an action based on the command entered
 pub fn command() {
     loop {
         let mut input = String::new();
@@ -36,6 +44,7 @@ pub fn command() {
     }
 }
 
+/// Prints engine information and returns `uciok` to connected GUI
 fn uci() {
     println!("id name Pineapple");
     println!("id author Sebastian S.");
