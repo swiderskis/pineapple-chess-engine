@@ -2,37 +2,48 @@
 //!
 //! A library that calculates the best move based on the current board position
 
+use std::{
+    io::{Error, ErrorKind},
+    process,
+};
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
+
 pub fn position() {
-    let mut bitboard = Bitboard::new();
+    let attack_tables_white_pawn =
+        AttackTablesPawn::new(Piece::Pawn, Side::Black).unwrap_or_else(|err| {
+            eprintln!("{err}");
+            process::exit(1);
+        });
 
-    bitboard.set_bit(BoardSquare::H1);
-
-    bitboard.print_bitboard();
+    attack_tables_white_pawn
+        .attack_tables
+        .iter()
+        .for_each(|bitboard| bitboard.print());
 }
 
+#[derive(Clone, Copy)]
 struct Bitboard {
     bitboard: u64,
 }
 
 impl Bitboard {
-    fn new() -> Self {
-        Bitboard { bitboard: 0 }
+    fn new(bitboard: u64) -> Self {
+        Bitboard { bitboard }
     }
 
-    fn print_bitboard(&self) {
-        for rank in 0..8 {
-            for file in 0..8 {
-                let square = rank * 8 + file;
-
-                if file == 0 {
-                    print!("{}   ", 8 - rank);
-                }
-
-                print!("{} ", if self.get_bit(square) { 1 } else { 0 });
+    fn print(&self) {
+        BoardSquare::iter().for_each(|square| {
+            if (square as u64) % 8 == 0 {
+                print!("{}   ", (64 - square as u64) / 8);
             }
 
-            println!("");
-        }
+            print!("{} ", if self.get_bit(square) { 1 } else { 0 });
+
+            if (square as u64) % 8 == 7 {
+                println!("");
+            }
+        });
 
         println!("");
         println!("    a b c d e f g h");
@@ -40,8 +51,8 @@ impl Bitboard {
         println!("    Bitboard decimal value: {}", self.bitboard);
     }
 
-    fn get_bit(&self, square: i32) -> bool {
-        self.bitboard & (1 << square) != 0
+    fn get_bit(&self, square: BoardSquare) -> bool {
+        self.bitboard & (1 << square as u64) != 0
     }
 
     fn set_bit(&mut self, square: BoardSquare) {
@@ -53,6 +64,85 @@ impl Bitboard {
     }
 }
 
+struct AttackTablesPawn {
+    side: Side,
+    attack_tables: [Bitboard; 64],
+}
+
+struct AttackTablesPiece {
+    piece: Piece,
+    attack_tables: [Bitboard; 64],
+}
+
+trait AttackTables {
+    fn new(piece: Piece, side: Side) -> Result<Self, Error>
+    where
+        Self: Sized;
+
+    fn generate_attack_tables(piece: Piece, side: Side) -> [Bitboard; 64];
+}
+
+impl AttackTables for AttackTablesPawn {
+    fn new(_piece: Piece, side: Side) -> Result<AttackTablesPawn, Error> {
+        if matches!(side, Side::Either) {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Attempted to instantiate pawn attack table with side == Side::Either",
+            ));
+        }
+
+        Ok(AttackTablesPawn {
+            side,
+            attack_tables: Self::generate_attack_tables(_piece, side),
+        })
+    }
+
+    fn generate_attack_tables(_piece: Piece, side: Side) -> [Bitboard; 64] {
+        // Bitboards with all values initialised to 1, except for the file indicated
+        // Used to prevent incorrect attack table generation for pawns on a & h files
+        let file_a_zeroed = Bitboard::new(18374403900871474942);
+        let file_h_zeroed = Bitboard::new(9187201950435737471);
+
+        let mut attack_tables: [Bitboard; 64] = [Bitboard::new(0); 64];
+
+        BoardSquare::iter().for_each(|square| {
+            let mut bitboard = Bitboard::new(0);
+            let mut attack_table = Bitboard::new(0);
+
+            bitboard.set_bit(square);
+
+            if matches!(side, Side::White) {
+                attack_table.bitboard |= (bitboard.bitboard >> 7) & file_a_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard >> 9) & file_h_zeroed.bitboard;
+            } else {
+                attack_table.bitboard |= (bitboard.bitboard << 7) & file_h_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 9) & file_a_zeroed.bitboard;
+            }
+
+            attack_tables[square as usize] = attack_table;
+        });
+
+        attack_tables
+    }
+}
+
+enum Piece {
+    Pawn,
+    Knight,
+    Bishop,
+    Rook,
+    Queen,
+    King,
+}
+
+#[derive(Clone, Copy)]
+enum Side {
+    White,
+    Black,
+    Either,
+}
+
+#[derive(Clone, Copy, EnumIter)]
 enum BoardSquare {
     A8,
     B8,
@@ -126,9 +216,9 @@ mod tests {
 
     #[test]
     fn set_bit() {
-        let mut bitboard1 = Bitboard::new();
-        let mut bitboard2 = Bitboard::new();
-        let mut bitboard3 = Bitboard::new();
+        let mut bitboard1 = Bitboard::new(0);
+        let mut bitboard2 = Bitboard::new(0);
+        let mut bitboard3 = Bitboard::new(0);
 
         bitboard1.set_bit(BoardSquare::H2);
         bitboard2.set_bit(BoardSquare::G6);
@@ -141,9 +231,9 @@ mod tests {
 
     #[test]
     fn pop_bit() {
-        let mut bitboard1 = Bitboard::new();
-        let mut bitboard2 = Bitboard::new();
-        let mut bitboard3 = Bitboard::new();
+        let mut bitboard1 = Bitboard::new(0);
+        let mut bitboard2 = Bitboard::new(0);
+        let mut bitboard3 = Bitboard::new(0);
 
         bitboard1.set_bit(BoardSquare::G5);
         bitboard1.set_bit(BoardSquare::A8);
@@ -164,8 +254,8 @@ mod tests {
 
     #[test]
     fn pop_unset_bit() {
-        let mut bitboard1 = Bitboard::new();
-        let mut bitboard2 = Bitboard::new();
+        let mut bitboard1 = Bitboard::new(0);
+        let mut bitboard2 = Bitboard::new(0);
 
         bitboard1.set_bit(BoardSquare::F1);
         bitboard1.pop_bit(BoardSquare::F1);
