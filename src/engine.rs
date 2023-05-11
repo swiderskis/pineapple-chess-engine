@@ -11,12 +11,22 @@ use strum_macros::EnumIter;
 
 pub fn position() {
     let attack_tables_white_pawn =
+        AttackTablesPawn::new(Piece::Pawn, Side::White).unwrap_or_else(|err| {
+            eprintln!("{err}");
+            process::exit(1);
+        });
+    let attack_tables_black_pawn =
         AttackTablesPawn::new(Piece::Pawn, Side::Black).unwrap_or_else(|err| {
             eprintln!("{err}");
             process::exit(1);
         });
+    let attack_tables_knight =
+        AttackTablesPiece::new(Piece::Knight, Side::Either).unwrap_or_else(|err| {
+            eprintln!("{err}");
+            process::exit(1);
+        });
 
-    attack_tables_white_pawn
+    attack_tables_knight
         .attack_tables
         .iter()
         .for_each(|bitboard| bitboard.print());
@@ -83,7 +93,7 @@ trait AttackTables {
 }
 
 impl AttackTables for AttackTablesPawn {
-    fn new(_piece: Piece, side: Side) -> Result<AttackTablesPawn, Error> {
+    fn new(_piece: Piece, side: Side) -> Result<Self, Error> {
         if matches!(side, Side::Either) {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -91,7 +101,7 @@ impl AttackTables for AttackTablesPawn {
             ));
         }
 
-        Ok(AttackTablesPawn {
+        Ok(Self {
             side,
             attack_tables: Self::generate_attack_tables(_piece, side),
         })
@@ -126,6 +136,66 @@ impl AttackTables for AttackTablesPawn {
     }
 }
 
+impl AttackTables for AttackTablesPiece {
+    fn new(piece: Piece, _side: Side) -> Result<Self, Error> {
+        if matches!(piece, Piece::Pawn) {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Attempted to instantiate piece attack table with piece == Piece::Pawn",
+            ));
+        }
+
+        Ok(Self {
+            piece,
+            attack_tables: Self::generate_attack_tables(piece, _side),
+        })
+    }
+
+    fn generate_attack_tables(piece: Piece, _side: Side) -> [Bitboard; 64] {
+        let mut attack_tables: [Bitboard; 64] = [Bitboard::new(0); 64];
+
+        match piece {
+            Piece::Knight => attack_tables = generate_attack_tables_knight(),
+            Piece::Pawn => {}
+            _ => {}
+        }
+
+        return attack_tables;
+
+        fn generate_attack_tables_knight() -> [Bitboard; 64] {
+            // Bitboards with all values initialised to 1, except for the file(s) indicated
+            // Used to prevent incorrect attack table generation for knights on a, b, g, and h files
+            let file_a_zeroed = Bitboard::new(18374403900871474942);
+            let file_h_zeroed = Bitboard::new(9187201950435737471);
+            let file_ab_zeroed = Bitboard::new(18229723555195321596);
+            let file_gh_zeroed = Bitboard::new(4557430888798830399);
+
+            let mut attack_tables: [Bitboard; 64] = [Bitboard::new(0); 64];
+
+            BoardSquare::iter().for_each(|square| {
+                let mut bitboard = Bitboard::new(0);
+                let mut attack_table = Bitboard::new(0);
+
+                bitboard.set_bit(square);
+
+                attack_table.bitboard |= (bitboard.bitboard >> 6) & file_ab_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard >> 10) & file_gh_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard >> 15) & file_a_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard >> 17) & file_h_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 6) & file_gh_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 10) & file_ab_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 15) & file_h_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 17) & file_a_zeroed.bitboard;
+
+                attack_tables[square as usize].bitboard = attack_table.bitboard;
+            });
+
+            attack_tables
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 enum Piece {
     Pawn,
     Knight,
