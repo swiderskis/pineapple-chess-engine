@@ -183,4 +183,64 @@ mod tests {
             desired_a5_attack_table
         );
     }
+
+    #[test]
+    fn attack_tables_knight() {
+        let attack_tables = AttackTables::new(Piece::Knight, Side::Either);
+
+        let desired_g5_attack_table = u64::pow(2, 13)
+            + u64::pow(2, 15)
+            + u64::pow(2, 20)
+            + u64::pow(2, 36)
+            + u64::pow(2, 45)
+            + u64::pow(2, 47);
+        let desired_e2_attack_table = u64::pow(2, 35)
+            + u64::pow(2, 37)
+            + u64::pow(2, 42)
+            + u64::pow(2, 46)
+            + u64::pow(2, 58)
+            + u64::pow(2, 62);
+        let desired_f4_attack_table = u64::pow(2, 20)
+            + u64::pow(2, 22)
+            + u64::pow(2, 27)
+            + u64::pow(2, 31)
+            + u64::pow(2, 43)
+            + u64::pow(2, 47)
+            + u64::pow(2, 52)
+            + u64::pow(2, 54);
+        let desired_b4_attack_table = u64::pow(2, 16)
+            + u64::pow(2, 18)
+            + u64::pow(2, 27)
+            + u64::pow(2, 43)
+            + u64::pow(2, 48)
+            + u64::pow(2, 50);
+        let desired_a4_attack_table =
+            u64::pow(2, 17) + u64::pow(2, 26) + u64::pow(2, 42) + u64::pow(2, 49);
+        let desired_h8_attack_table = u64::pow(2, 13) + u64::pow(2, 22);
+
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::G5).bitboard,
+            desired_g5_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::E2).bitboard,
+            desired_e2_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::F4).bitboard,
+            desired_f4_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::B4).bitboard,
+            desired_b4_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::A4).bitboard,
+            desired_a4_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::H8).bitboard,
+            desired_h8_attack_table
+        );
+    }
 }
