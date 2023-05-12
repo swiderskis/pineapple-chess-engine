@@ -30,13 +30,13 @@ impl AttackTables {
         match piece {
             Piece::Pawn | Piece::Knight | Piece::King => {
                 BoardSquare::iter().for_each(|square| {
-                    attack_tables[square.enumeration()].bitboard =
+                    attack_tables[square.enumeration()] =
                         Self::generate_leaper_attack_table(piece, side, square);
                 });
             }
             _ => {
                 BoardSquare::iter().for_each(|square| {
-                    attack_tables[square.enumeration()].bitboard =
+                    attack_tables[square.enumeration()] =
                         Self::generate_slider_attack_table(piece, square);
                 });
             }
@@ -45,7 +45,7 @@ impl AttackTables {
         attack_tables
     }
 
-    fn generate_leaper_attack_table(piece: Piece, side: Side, square: BoardSquare) -> u64 {
+    fn generate_leaper_attack_table(piece: Piece, side: Side, square: BoardSquare) -> Bitboard {
         // Bitboards with all values initialised to 1, except for the file(s) indicated
         // Used to prevent incorrect attack table generation for pieces on / near edge files
         let file_a_zeroed = Bitboard::new(18374403900871474942);
@@ -91,10 +91,10 @@ impl AttackTables {
             _ => {}
         }
 
-        attack_table.bitboard
+        attack_table
     }
 
-    fn generate_slider_attack_table(piece: Piece, square: BoardSquare) -> u64 {
+    fn generate_slider_attack_table(piece: Piece, square: BoardSquare) -> Bitboard {
         let mut attack_table = Bitboard::new(0);
 
         let target_rank = (square.enumeration()) / 8;
@@ -132,7 +132,7 @@ impl AttackTables {
             }
         }
 
-        attack_table.bitboard
+        attack_table
     }
 }
 
