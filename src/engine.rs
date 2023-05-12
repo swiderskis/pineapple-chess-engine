@@ -9,8 +9,9 @@ pub fn position() {
     let attack_tables_white_pawn = AttackTables::new(Piece::Pawn, Side::White);
     let attack_tables_black_pawn = AttackTables::new(Piece::Pawn, Side::Black);
     let attack_tables_knight = AttackTables::new(Piece::Knight, Side::Either);
+    let attack_tables_king = AttackTables::new(Piece::King, Side::Either);
 
-    attack_tables_knight
+    attack_tables_king
         .attack_tables
         .iter()
         .for_each(|bitboard| bitboard.print());
@@ -75,8 +76,7 @@ impl AttackTables {
 
     fn generate_attack_tables(piece: Piece, side: Side) -> [Bitboard; 64] {
         // Bitboards with all values initialised to 1, except for the file(s) indicated
-        // Used to prevent incorrect attack table generation for pawns on a & h files,
-        // and knights on a, b, g, & h files
+        // Used to prevent incorrect attack table generation for pieces on / near edge files
         let file_a_zeroed = Bitboard::new(18374403900871474942);
         let file_h_zeroed = Bitboard::new(9187201950435737471);
         let file_ab_zeroed = Bitboard::new(18229723555195321596);
@@ -109,6 +109,16 @@ impl AttackTables {
                     attack_table.bitboard |= (bitboard.bitboard << 10) & file_ab_zeroed.bitboard;
                     attack_table.bitboard |= (bitboard.bitboard << 15) & file_h_zeroed.bitboard;
                     attack_table.bitboard |= (bitboard.bitboard << 17) & file_a_zeroed.bitboard;
+                }
+                Piece::King => {
+                    attack_table.bitboard |= (bitboard.bitboard >> 1) & file_h_zeroed.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard >> 7) & file_a_zeroed.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard >> 8);
+                    attack_table.bitboard |= (bitboard.bitboard >> 9) & file_h_zeroed.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 1) & file_a_zeroed.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 7) & file_h_zeroed.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 8);
+                    attack_table.bitboard |= (bitboard.bitboard << 9) & file_a_zeroed.bitboard;
                 }
                 _ => {}
             }
