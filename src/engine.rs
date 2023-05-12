@@ -32,13 +32,13 @@ impl Bitboard {
 
     fn print(&self) {
         BoardSquare::iter().for_each(|square| {
-            if (square as u64) % 8 == 0 {
-                print!("{}   ", (64 - square as u64) / 8);
+            if (square.enumeration()) % 8 == 0 {
+                print!("{}   ", (64 - square.enumeration()) / 8);
             }
 
             print!("{} ", if self.get_bit(square) { 1 } else { 0 });
 
-            if (square as u64) % 8 == 7 {
+            if (square.enumeration()) % 8 == 7 {
                 println!("");
             }
         });
@@ -50,15 +50,15 @@ impl Bitboard {
     }
 
     fn get_bit(&self, square: BoardSquare) -> bool {
-        self.bitboard & (1 << square as u64) != 0
+        self.bitboard & (1 << square.enumeration()) != 0
     }
 
     fn set_bit(&mut self, square: BoardSquare) {
-        self.bitboard |= 1 << square as u64;
+        self.bitboard |= 1 << square.enumeration();
     }
 
     fn pop_bit(&mut self, square: BoardSquare) {
-        self.bitboard &= !(1 << square as u64);
+        self.bitboard &= !(1 << square.enumeration());
     }
 }
 
@@ -126,7 +126,7 @@ impl AttackTables {
                 _ => attack_table.bitboard = Self::generate_slider_attack_table(piece, square),
             }
 
-            attack_tables[square as usize].bitboard = attack_table.bitboard;
+            attack_tables[square.enumeration()].bitboard = attack_table.bitboard;
         });
 
         attack_tables
@@ -135,8 +135,8 @@ impl AttackTables {
     fn generate_slider_attack_table(piece: Piece, square: BoardSquare) -> u64 {
         let mut attack_table = Bitboard::new(0);
 
-        let target_rank = (square as usize) / 8;
-        let target_file = (square as usize) % 8;
+        let target_rank = (square.enumeration()) / 8;
+        let target_file = (square.enumeration()) % 8;
 
         // Cardinal occupancy
         if matches!(piece, Piece::Rook) || matches!(piece, Piece::Queen) {
@@ -257,6 +257,12 @@ enum BoardSquare {
     F1,
     G1,
     H1,
+}
+
+impl BoardSquare {
+    fn enumeration(self) -> usize {
+        self as usize
+    }
 }
 
 #[cfg(test)]
