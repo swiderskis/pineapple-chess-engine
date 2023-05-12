@@ -9,9 +9,12 @@ pub fn position() {
     let attack_tables_white_pawn = AttackTables::new(Piece::Pawn, Side::White);
     let attack_tables_black_pawn = AttackTables::new(Piece::Pawn, Side::Black);
     let attack_tables_knight = AttackTables::new(Piece::Knight, Side::Either);
+    let attack_tables_bishop = AttackTables::new(Piece::Bishop, Side::Either);
+    let attack_tables_rook = AttackTables::new(Piece::Rook, Side::Either);
+    let attack_tables_queen = AttackTables::new(Piece::Queen, Side::Either);
     let attack_tables_king = AttackTables::new(Piece::King, Side::Either);
 
-    attack_tables_king
+    attack_tables_rook
         .attack_tables
         .iter()
         .for_each(|bitboard| bitboard.print());
@@ -113,20 +116,61 @@ impl AttackTables {
                 Piece::King => {
                     attack_table.bitboard |= (bitboard.bitboard >> 1) & file_h_zeroed.bitboard;
                     attack_table.bitboard |= (bitboard.bitboard >> 7) & file_a_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 8);
+                    attack_table.bitboard |= bitboard.bitboard >> 8;
                     attack_table.bitboard |= (bitboard.bitboard >> 9) & file_h_zeroed.bitboard;
                     attack_table.bitboard |= (bitboard.bitboard << 1) & file_a_zeroed.bitboard;
                     attack_table.bitboard |= (bitboard.bitboard << 7) & file_h_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 8);
+                    attack_table.bitboard |= bitboard.bitboard << 8;
                     attack_table.bitboard |= (bitboard.bitboard << 9) & file_a_zeroed.bitboard;
                 }
-                _ => {}
+                _ => attack_table.bitboard = Self::generate_slider_attack_table(piece, square),
             }
 
             attack_tables[square as usize].bitboard = attack_table.bitboard;
         });
 
         attack_tables
+    }
+
+    fn generate_slider_attack_table(piece: Piece, square: BoardSquare) -> u64 {
+        let mut attack_table = Bitboard::new(0);
+
+        let target_rank = (square as usize) / 8;
+        let target_file = (square as usize) % 8;
+
+        // Cardinal occupancy
+        if matches!(piece, Piece::Rook) || matches!(piece, Piece::Queen) {
+            for rank in (target_rank + 1)..7 {
+                attack_table.bitboard |= 1 << rank * 8 + target_file;
+            }
+            for rank in 1..target_rank {
+                attack_table.bitboard |= 1 << rank * 8 + target_file;
+            }
+            for file in (target_file + 1)..7 {
+                attack_table.bitboard |= 1 << target_rank * 8 + file;
+            }
+            for file in 1..target_file {
+                attack_table.bitboard |= 1 << target_rank * 8 + file;
+            }
+        }
+
+        // Diagonal occupancy
+        if matches!(piece, Piece::Bishop) || matches!(piece, Piece::Queen) {
+            for (rank, file) in ((target_rank + 1)..7).zip((target_file + 1)..7) {
+                attack_table.bitboard |= 1 << (rank * 8 + file);
+            }
+            for (rank, file) in ((1..target_rank).rev()).zip((target_file + 1)..7) {
+                attack_table.bitboard |= 1 << (rank * 8 + file);
+            }
+            for (rank, file) in ((target_rank + 1)..7).zip((1..target_file).rev()) {
+                attack_table.bitboard |= 1 << (rank * 8 + file);
+            }
+            for (rank, file) in ((1..target_rank).rev()).zip((1..target_file).rev()) {
+                attack_table.bitboard |= 1 << (rank * 8 + file);
+            }
+        }
+
+        attack_table.bitboard
     }
 }
 
