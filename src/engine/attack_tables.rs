@@ -248,4 +248,39 @@ mod tests {
             desired_h8_attack_table
         );
     }
+
+    #[test]
+    fn attack_tables_king() {
+        let attack_tables = AttackTables::new(Piece::King, Side::Either);
+
+        let desired_b2_attack_table = u64::pow(2, BoardSquare::A3 as u32)
+            + u64::pow(2, BoardSquare::B3 as u32)
+            + u64::pow(2, BoardSquare::C3 as u32)
+            + u64::pow(2, BoardSquare::A2 as u32)
+            + u64::pow(2, BoardSquare::C2 as u32)
+            + u64::pow(2, BoardSquare::A1 as u32)
+            + u64::pow(2, BoardSquare::B1 as u32)
+            + u64::pow(2, BoardSquare::C1 as u32);
+        let desired_a1_attack_table = u64::pow(2, BoardSquare::A2 as u32)
+            + u64::pow(2, BoardSquare::B2 as u32)
+            + u64::pow(2, BoardSquare::B1 as u32);
+        let desired_h4_attack_table = u64::pow(2, BoardSquare::G5 as u32)
+            + u64::pow(2, BoardSquare::H5 as u32)
+            + u64::pow(2, BoardSquare::G4 as u32)
+            + u64::pow(2, BoardSquare::G3 as u32)
+            + u64::pow(2, BoardSquare::H3 as u32);
+
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::B2).bitboard,
+            desired_b2_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::A1).bitboard,
+            desired_a1_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::H4).bitboard,
+            desired_h4_attack_table
+        );
+    }
 }
