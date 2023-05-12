@@ -16,8 +16,12 @@ impl AttackTables {
         }
     }
 
-    pub fn attack_tables(self) -> [Bitboard; 64] {
+    pub fn attack_tables(&self) -> [Bitboard; 64] {
         self.attack_tables
+    }
+
+    pub fn attack_table(&self, square: BoardSquare) -> Bitboard {
+        self.attack_tables[square.enumeration()]
     }
 
     fn generate_attack_tables(piece: Piece, side: Side) -> [Bitboard; 64] {
@@ -129,5 +133,54 @@ impl AttackTables {
         }
 
         attack_table.bitboard
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn attack_tables_white_pawn() {
+        let attack_tables = AttackTables::new(Piece::Pawn, Side::White);
+
+        let desired_h3_attack_table = u64::pow(2, 38);
+        let desired_f5_attack_table = u64::pow(2, 20) + u64::pow(2, 22);
+        let desired_a4_attack_table = u64::pow(2, 25);
+
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::H3).bitboard,
+            desired_h3_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::F5).bitboard,
+            desired_f5_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::A4).bitboard,
+            desired_a4_attack_table
+        );
+    }
+
+    #[test]
+    fn attack_tables_black_pawn() {
+        let attack_tables = AttackTables::new(Piece::Pawn, Side::Black);
+
+        let desired_b4_attack_table = u64::pow(2, 40) + u64::pow(2, 42);
+        let desired_h4_attack_table = u64::pow(2, 46);
+        let desired_a5_attack_table = u64::pow(2, 33);
+
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::B4).bitboard,
+            desired_b4_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::H4).bitboard,
+            desired_h4_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(BoardSquare::A5).bitboard,
+            desired_a5_attack_table
+        );
     }
 }

@@ -12,11 +12,6 @@ pub fn position() {
     let attack_tables_rook = AttackTables::new(Piece::Rook, Side::Either);
     let attack_tables_queen = AttackTables::new(Piece::Queen, Side::Either);
     let attack_tables_king = AttackTables::new(Piece::King, Side::Either);
-
-    attack_tables_rook
-        .attack_tables()
-        .iter()
-        .for_each(|bitboard| bitboard.print());
 }
 
 #[derive(Clone, Copy)]
