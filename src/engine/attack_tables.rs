@@ -21,6 +21,27 @@ impl AttackTables {
     }
 
     fn generate_attack_tables(piece: Piece, side: Side) -> [Bitboard; 64] {
+        let mut attack_tables: [Bitboard; 64] = [Bitboard::new(0); 64];
+
+        match piece {
+            Piece::Pawn | Piece::Knight | Piece::King => {
+                BoardSquare::iter().for_each(|square| {
+                    attack_tables[square.enumeration()].bitboard =
+                        Self::generate_leaper_attack_table(piece, side, square);
+                });
+            }
+            _ => {
+                BoardSquare::iter().for_each(|square| {
+                    attack_tables[square.enumeration()].bitboard =
+                        Self::generate_slider_attack_table(piece, square);
+                });
+            }
+        }
+
+        attack_tables
+    }
+
+    fn generate_leaper_attack_table(piece: Piece, side: Side, square: BoardSquare) -> u64 {
         // Bitboards with all values initialised to 1, except for the file(s) indicated
         // Used to prevent incorrect attack table generation for pieces on / near edge files
         let file_a_zeroed = Bitboard::new(18374403900871474942);
@@ -28,51 +49,45 @@ impl AttackTables {
         let file_ab_zeroed = Bitboard::new(18229723555195321596);
         let file_gh_zeroed = Bitboard::new(4557430888798830399);
 
-        let mut attack_tables: [Bitboard; 64] = [Bitboard::new(0); 64];
+        let mut bitboard = Bitboard::new(0);
+        let mut attack_table = Bitboard::new(0);
 
-        BoardSquare::iter().for_each(|square| {
-            let mut bitboard = Bitboard::new(0);
-            let mut attack_table = Bitboard::new(0);
+        bitboard.set_bit(square);
 
-            bitboard.set_bit(square);
-
-            match piece {
-                Piece::Pawn => {
-                    if matches!(side, Side::White) {
-                        attack_table.bitboard |= (bitboard.bitboard >> 7) & file_a_zeroed.bitboard;
-                        attack_table.bitboard |= (bitboard.bitboard >> 9) & file_h_zeroed.bitboard;
-                    } else {
-                        attack_table.bitboard |= (bitboard.bitboard << 7) & file_h_zeroed.bitboard;
-                        attack_table.bitboard |= (bitboard.bitboard << 9) & file_a_zeroed.bitboard;
-                    }
-                }
-                Piece::Knight => {
-                    attack_table.bitboard |= (bitboard.bitboard >> 6) & file_ab_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 10) & file_gh_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 15) & file_a_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 17) & file_h_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 6) & file_gh_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 10) & file_ab_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 15) & file_h_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 17) & file_a_zeroed.bitboard;
-                }
-                Piece::King => {
-                    attack_table.bitboard |= (bitboard.bitboard >> 1) & file_h_zeroed.bitboard;
+        match piece {
+            Piece::Pawn => {
+                if matches!(side, Side::White) {
                     attack_table.bitboard |= (bitboard.bitboard >> 7) & file_a_zeroed.bitboard;
-                    attack_table.bitboard |= bitboard.bitboard >> 8;
                     attack_table.bitboard |= (bitboard.bitboard >> 9) & file_h_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 1) & file_a_zeroed.bitboard;
+                } else {
                     attack_table.bitboard |= (bitboard.bitboard << 7) & file_h_zeroed.bitboard;
-                    attack_table.bitboard |= bitboard.bitboard << 8;
                     attack_table.bitboard |= (bitboard.bitboard << 9) & file_a_zeroed.bitboard;
                 }
-                _ => attack_table.bitboard = Self::generate_slider_attack_table(piece, square),
             }
+            Piece::Knight => {
+                attack_table.bitboard |= (bitboard.bitboard >> 6) & file_ab_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard >> 10) & file_gh_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard >> 15) & file_a_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard >> 17) & file_h_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 6) & file_gh_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 10) & file_ab_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 15) & file_h_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 17) & file_a_zeroed.bitboard;
+            }
+            Piece::King => {
+                attack_table.bitboard |= (bitboard.bitboard >> 1) & file_h_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard >> 7) & file_a_zeroed.bitboard;
+                attack_table.bitboard |= bitboard.bitboard >> 8;
+                attack_table.bitboard |= (bitboard.bitboard >> 9) & file_h_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 1) & file_a_zeroed.bitboard;
+                attack_table.bitboard |= (bitboard.bitboard << 7) & file_h_zeroed.bitboard;
+                attack_table.bitboard |= bitboard.bitboard << 8;
+                attack_table.bitboard |= (bitboard.bitboard << 9) & file_a_zeroed.bitboard;
+            }
+            _ => {}
+        }
 
-            attack_tables[square.enumeration()].bitboard = attack_table.bitboard;
-        });
-
-        attack_tables
+        attack_table.bitboard
     }
 
     fn generate_slider_attack_table(piece: Piece, square: BoardSquare) -> u64 {
