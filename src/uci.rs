@@ -1,6 +1,6 @@
 //! # UCI
 //!
-//! A library to handle inputs following the [UCI protocol](https://backscattering.de/chess/uci/).
+//! A module to handle the inputs from a [Chess GUI](https://www.chessprogramming.org/GUI).
 
 use crate::engine;
 use std::io;
@@ -19,7 +19,8 @@ impl<'a> Input<'a> {
     }
 }
 
-/// Takes a user input, and performs an action based on the command entered
+/// Takes a [UCI protocol](https://backscattering.de/chess/uci/) command as an input,
+/// and performs an action based on the given command.
 pub fn command() {
     loop {
         let mut input_raw = String::new();

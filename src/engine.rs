@@ -1,7 +1,3 @@
-//! # Engine
-//!
-//! A library that calculates the best move based on the current board position
-
 mod attack_tables;
 
 use attack_tables::AttackTables;
