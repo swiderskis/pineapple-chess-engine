@@ -33,6 +33,18 @@ impl Bitboard {
         Bitboard { bitboard }
     }
 
+    fn get_bit(&self, square: BoardSquare) -> bool {
+        self.bitboard & (1 << square.enumeration()) != 0
+    }
+
+    fn set_bit(&mut self, square: BoardSquare) {
+        self.bitboard |= 1 << square.enumeration();
+    }
+
+    fn pop_bit(&mut self, square: BoardSquare) {
+        self.bitboard &= !(1 << square.enumeration());
+    }
+
     fn count_bits(&self) -> i32 {
         let mut population = 0;
         let mut copy = self.clone();
@@ -63,18 +75,6 @@ impl Bitboard {
         println!("    a b c d e f g h");
         println!("");
         println!("    Bitboard decimal value: {}", self.bitboard);
-    }
-
-    fn get_bit(&self, square: BoardSquare) -> bool {
-        self.bitboard & (1 << square.enumeration()) != 0
-    }
-
-    fn set_bit(&mut self, square: BoardSquare) {
-        self.bitboard |= 1 << square.enumeration();
-    }
-
-    fn pop_bit(&mut self, square: BoardSquare) {
-        self.bitboard &= !(1 << square.enumeration());
     }
 }
 
