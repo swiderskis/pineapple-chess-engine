@@ -1,8 +1,10 @@
 mod attack_tables;
 
 use attack_tables::AttackTables;
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
-use strum_macros::EnumIter;
+use strum_macros::{Display, EnumIter};
 
 pub fn position() {
     let attack_tables_white_pawn = AttackTables::new(Piece::Pawn, Side::White);
@@ -21,6 +23,8 @@ pub fn position() {
     board.set_bit(BoardSquare::G4);
     board.print();
     println!("{:?}", board.get_ls1b_index());
+
+    println!("{}", BoardSquare::D7.to_lowercase_string());
 }
 
 #[derive(Clone, Copy)]
@@ -99,7 +103,7 @@ pub enum Side {
     Either,
 }
 
-#[derive(Clone, Copy, EnumIter)]
+#[derive(Clone, Copy, Display, EnumIter, FromPrimitive)]
 enum BoardSquare {
     A8,
     B8,
@@ -178,6 +182,14 @@ impl BoardSquare {
 
     fn file(self) -> usize {
         self.enumeration() % 8
+    }
+
+    fn index_to_coordinate(index: u32) -> Option<Self> {
+        Self::from_u32(index)
+    }
+
+    fn to_lowercase_string(self) -> String {
+        self.to_string().to_lowercase()
     }
 }
 
