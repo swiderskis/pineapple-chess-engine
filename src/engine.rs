@@ -19,8 +19,8 @@ pub fn position() {
     board.set_bit(BoardSquare::D1);
     board.set_bit(BoardSquare::B4);
     board.set_bit(BoardSquare::G4);
-    println!("{}", board.count_bits());
     board.print();
+    println!("{:?}", board.get_ls1b_index());
 }
 
 #[derive(Clone, Copy)]
@@ -47,6 +47,19 @@ impl Bitboard {
 
     fn count_bits(&self) -> u32 {
         self.bitboard.count_ones()
+    }
+
+    // ls1b = least significant 1st bit
+    fn get_ls1b_index(&self) -> Option<u32> {
+        if self.is_empty() {
+            return None;
+        }
+
+        Some(self.bitboard.trailing_zeros())
+    }
+
+    fn is_empty(&self) -> bool {
+        self.bitboard == 0
     }
 
     fn print(&self) {
