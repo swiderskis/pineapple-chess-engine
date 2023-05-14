@@ -45,17 +45,8 @@ impl Bitboard {
         self.bitboard &= !(1 << square.enumeration());
     }
 
-    fn count_bits(&self) -> i32 {
-        let mut population = 0;
-        let mut copy = self.clone();
-
-        while copy.bitboard != 0 {
-            population += 1;
-
-            copy.bitboard &= copy.bitboard - 1;
-        }
-
-        population
+    fn count_bits(&self) -> u32 {
+        self.bitboard.count_ones()
     }
 
     fn print(&self) {
