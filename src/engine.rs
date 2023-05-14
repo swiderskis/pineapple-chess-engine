@@ -22,9 +22,9 @@ pub fn position() {
     board.set_bit(BoardSquare::B4);
     board.set_bit(BoardSquare::G4);
     board.print();
-    println!("{:?}", board.get_ls1b_index());
 
-    println!("{}", BoardSquare::D7.to_lowercase_string());
+    let square = BoardSquare::index_to_square(44);
+    println!("{square}");
 }
 
 #[derive(Clone, Copy)]
@@ -184,8 +184,13 @@ impl BoardSquare {
         self.enumeration() % 8
     }
 
-    fn index_to_coordinate(index: u32) -> Option<Self> {
-        Self::from_u32(index)
+    fn index_to_square(index: u32) -> Self {
+        let square_option = Self::from_u32(index);
+
+        match square_option {
+            None => panic!("Attempted to convert invalid index into board square"),
+            Some(square) => return square,
+        }
     }
 
     fn to_lowercase_string(self) -> String {
