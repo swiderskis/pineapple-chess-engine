@@ -32,7 +32,7 @@ impl Bitboard {
 
             print!("{} ", if self.get_bit(square) { 1 } else { 0 });
 
-            if (square.enumeration()) % 8 == 7 {
+            if square.file() == 7 {
                 println!("");
             }
         });
@@ -144,6 +144,14 @@ enum BoardSquare {
 impl BoardSquare {
     fn enumeration(self) -> usize {
         self as usize
+    }
+
+    fn rank(self) -> usize {
+        self.enumeration() / 8
+    }
+
+    fn file(self) -> usize {
+        self.enumeration() % 8
     }
 }
 

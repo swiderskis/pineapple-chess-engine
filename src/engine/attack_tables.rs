@@ -34,7 +34,7 @@ impl AttackTables {
                         Self::generate_leaper_attack_table(piece, side, square);
                 });
             }
-            _ => {
+            Piece::Bishop | Piece::Rook | Piece::Queen => {
                 BoardSquare::iter().for_each(|square| {
                     attack_tables[square.enumeration()] =
                         Self::generate_slider_attack_table(piece, square);
@@ -97,38 +97,127 @@ impl AttackTables {
     fn generate_slider_attack_table(piece: Piece, square: BoardSquare) -> Bitboard {
         let mut attack_table = Bitboard::new(0);
 
-        let target_rank = (square.enumeration()) / 8;
-        let target_file = (square.enumeration()) % 8;
+        let piece_rank = square.rank();
+        let piece_file = square.file();
 
         // Cardinal occupancy
         if matches!(piece, Piece::Rook) || matches!(piece, Piece::Queen) {
-            for rank in (target_rank + 1)..7 {
-                attack_table.bitboard |= 1 << rank * 8 + target_file;
+            for rank in (piece_rank + 1)..7 {
+                attack_table.bitboard |= 1 << rank * 8 + piece_file;
             }
-            for rank in 1..target_rank {
-                attack_table.bitboard |= 1 << rank * 8 + target_file;
+
+            for rank in (1..piece_rank).rev() {
+                attack_table.bitboard |= 1 << rank * 8 + piece_file;
             }
-            for file in (target_file + 1)..7 {
-                attack_table.bitboard |= 1 << target_rank * 8 + file;
+
+            for file in (piece_file + 1)..7 {
+                attack_table.bitboard |= 1 << piece_rank * 8 + file;
             }
-            for file in 1..target_file {
-                attack_table.bitboard |= 1 << target_rank * 8 + file;
+
+            for file in (1..piece_file).rev() {
+                attack_table.bitboard |= 1 << piece_rank * 8 + file;
             }
         }
 
         // Diagonal occupancy
         if matches!(piece, Piece::Bishop) || matches!(piece, Piece::Queen) {
-            for (rank, file) in ((target_rank + 1)..7).zip((target_file + 1)..7) {
+            for (rank, file) in ((piece_rank + 1)..7).zip((piece_file + 1)..7) {
                 attack_table.bitboard |= 1 << (rank * 8 + file);
             }
-            for (rank, file) in ((1..target_rank).rev()).zip((target_file + 1)..7) {
+
+            for (rank, file) in ((1..piece_rank).rev()).zip((piece_file + 1)..7) {
                 attack_table.bitboard |= 1 << (rank * 8 + file);
             }
-            for (rank, file) in ((target_rank + 1)..7).zip((1..target_file).rev()) {
+
+            for (rank, file) in ((piece_rank + 1)..7).zip((1..piece_file).rev()) {
                 attack_table.bitboard |= 1 << (rank * 8 + file);
             }
-            for (rank, file) in ((1..target_rank).rev()).zip((1..target_file).rev()) {
+
+            for (rank, file) in ((1..piece_rank).rev()).zip((1..piece_file).rev()) {
                 attack_table.bitboard |= 1 << (rank * 8 + file);
+            }
+        }
+
+        attack_table
+    }
+
+    fn generate_current_slider_attack_table(
+        piece: Piece,
+        square: BoardSquare,
+        board: Bitboard,
+    ) -> Bitboard {
+        let mut attack_table = Bitboard::new(0);
+
+        let piece_rank = square.rank();
+        let piece_file = square.file();
+
+        // Cardinal occupancy
+        if matches!(piece, Piece::Rook) || matches!(piece, Piece::Queen) {
+            for rank in (piece_rank + 1)..8 {
+                attack_table.bitboard |= 1 << rank * 8 + piece_file;
+
+                if (1 << rank * 8 + piece_file) & board.bitboard != 0 {
+                    break;
+                }
+            }
+
+            for rank in (0..piece_rank).rev() {
+                attack_table.bitboard |= 1 << rank * 8 + piece_file;
+
+                if (1 << rank * 8 + piece_file) & board.bitboard != 0 {
+                    break;
+                }
+            }
+
+            for file in (piece_file + 1)..8 {
+                attack_table.bitboard |= 1 << piece_rank * 8 + file;
+
+                if (1 << piece_rank * 8 + file) & board.bitboard != 0 {
+                    break;
+                }
+            }
+
+            for file in (0..piece_file).rev() {
+                attack_table.bitboard |= 1 << piece_rank * 8 + file;
+
+                if (1 << piece_rank * 8 + file) & board.bitboard != 0 {
+                    break;
+                }
+            }
+        }
+
+        // Diagonal occupancy
+        if matches!(piece, Piece::Bishop) || matches!(piece, Piece::Queen) {
+            for (rank, file) in ((piece_rank + 1)..8).zip((piece_file + 1)..8) {
+                attack_table.bitboard |= 1 << (rank * 8 + file);
+
+                if (1 << (rank * 8 + file)) & board.bitboard != 0 {
+                    break;
+                }
+            }
+
+            for (rank, file) in ((0..piece_rank).rev()).zip((piece_file + 1)..8) {
+                attack_table.bitboard |= 1 << (rank * 8 + file);
+
+                if (1 << (rank * 8 + file)) & board.bitboard != 0 {
+                    break;
+                }
+            }
+
+            for (rank, file) in ((piece_rank + 1)..8).zip((0..piece_file).rev()) {
+                attack_table.bitboard |= 1 << (rank * 8 + file);
+
+                if (1 << (rank * 8 + file)) & board.bitboard != 0 {
+                    break;
+                }
+            }
+
+            for (rank, file) in ((0..piece_rank).rev()).zip((0..piece_file).rev()) {
+                attack_table.bitboard |= 1 << (rank * 8 + file);
+
+                if (1 << (rank * 8 + file)) & board.bitboard != 0 {
+                    break;
+                }
             }
         }
 
