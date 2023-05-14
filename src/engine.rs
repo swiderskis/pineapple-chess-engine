@@ -12,6 +12,15 @@ pub fn position() {
     let attack_tables_rook = AttackTables::new(Piece::Rook, Side::Either);
     let attack_tables_queen = AttackTables::new(Piece::Queen, Side::Either);
     let attack_tables_king = AttackTables::new(Piece::King, Side::Either);
+
+    let mut board = Bitboard::new(0);
+    board.set_bit(BoardSquare::D7);
+    board.set_bit(BoardSquare::D2);
+    board.set_bit(BoardSquare::D1);
+    board.set_bit(BoardSquare::B4);
+    board.set_bit(BoardSquare::G4);
+    println!("{}", board.count_bits());
+    board.print();
 }
 
 #[derive(Clone, Copy)]
@@ -22,6 +31,19 @@ pub struct Bitboard {
 impl Bitboard {
     fn new(bitboard: u64) -> Self {
         Bitboard { bitboard }
+    }
+
+    fn count_bits(&self) -> i32 {
+        let mut population = 0;
+        let mut copy = self.clone();
+
+        while copy.bitboard != 0 {
+            population += 1;
+
+            copy.bitboard &= copy.bitboard - 1;
+        }
+
+        population
     }
 
     fn print(&self) {
