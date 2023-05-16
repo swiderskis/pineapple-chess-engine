@@ -68,7 +68,7 @@ impl Bitboard {
 
     fn print(&self) {
         BoardSquare::iter().for_each(|square| {
-            if (square.enumeration()) % 8 == 0 {
+            if square.file() == 0 {
                 print!("{}   ", (64 - square.enumeration()) / 8);
             }
 
@@ -104,7 +104,7 @@ pub enum Side {
 }
 
 #[derive(Clone, Copy, Display, EnumIter, FromPrimitive)]
-enum BoardSquare {
+pub enum BoardSquare {
     A8,
     B8,
     C8,
@@ -172,6 +172,15 @@ enum BoardSquare {
 }
 
 impl BoardSquare {
+    fn new_from_index(index: u32) -> Self {
+        let square_option = Self::from_u32(index);
+
+        match square_option {
+            None => panic!("Attempted to convert invalid index into board square"),
+            Some(square) => square,
+        }
+    }
+
     fn enumeration(self) -> usize {
         self as usize
     }
@@ -182,15 +191,6 @@ impl BoardSquare {
 
     fn file(self) -> usize {
         self.enumeration() % 8
-    }
-
-    fn index_to_square(index: u32) -> Self {
-        let square_option = Self::from_u32(index);
-
-        match square_option {
-            None => panic!("Attempted to convert invalid index into board square"),
-            Some(square) => return square,
-        }
     }
 
     fn to_lowercase_string(self) -> String {
