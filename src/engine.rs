@@ -212,9 +212,18 @@ mod tests {
         bitboard2.set_bit(BoardSquare::G6);
         bitboard3.set_bit(BoardSquare::B4);
 
-        assert_eq!(bitboard1.bitboard, u64::pow(2, 55));
-        assert_eq!(bitboard2.bitboard, u64::pow(2, 22));
-        assert_eq!(bitboard3.bitboard, u64::pow(2, 33));
+        assert_eq!(
+            bitboard1.bitboard,
+            u64::pow(2, BoardSquare::H2.enumeration() as u32)
+        );
+        assert_eq!(
+            bitboard2.bitboard,
+            u64::pow(2, BoardSquare::G6.enumeration() as u32)
+        );
+        assert_eq!(
+            bitboard3.bitboard,
+            u64::pow(2, BoardSquare::B4.enumeration() as u32)
+        );
     }
 
     #[test]
@@ -235,9 +244,18 @@ mod tests {
         bitboard3.set_bit(BoardSquare::B8);
         bitboard3.pop_bit(BoardSquare::C4);
 
-        assert_eq!(bitboard1.bitboard, u64::pow(2, 0));
-        assert_eq!(bitboard2.bitboard, u64::pow(2, 8));
-        assert_eq!(bitboard3.bitboard, u64::pow(2, 1));
+        assert_eq!(
+            bitboard1.bitboard,
+            u64::pow(2, BoardSquare::A8.enumeration() as u32)
+        );
+        assert_eq!(
+            bitboard2.bitboard,
+            u64::pow(2, BoardSquare::A7.enumeration() as u32)
+        );
+        assert_eq!(
+            bitboard3.bitboard,
+            u64::pow(2, BoardSquare::B8.enumeration() as u32)
+        );
     }
 
     #[test]
