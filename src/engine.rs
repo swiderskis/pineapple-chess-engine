@@ -1,5 +1,6 @@
 mod attack_tables;
 
+use self::attack_tables::magic_numbers;
 use attack_tables::AttackTables;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -15,16 +16,33 @@ pub fn position() {
     let attack_tables_queen = AttackTables::new(Piece::Queen, Side::Either);
     let attack_tables_king = AttackTables::new(Piece::King, Side::Either);
 
-    let mut board = Bitboard::new(0);
-    board.set_bit(BoardSquare::D7);
-    board.set_bit(BoardSquare::D2);
-    board.set_bit(BoardSquare::D1);
-    board.set_bit(BoardSquare::B4);
-    board.set_bit(BoardSquare::G4);
-    board.print();
+    let mut random_state: u32 = 1804289383;
 
-    let square = BoardSquare::index_to_square(44);
-    println!("{square}");
+    BoardSquare::iter().for_each(|square| {
+        println!(
+            "0x{:x}",
+            magic_numbers::generate_magic_number(
+                &mut random_state,
+                attack_tables_rook.attack_table(square),
+                Piece::Rook,
+                square,
+            )
+        );
+    });
+
+    println!("---");
+
+    BoardSquare::iter().for_each(|square| {
+        println!(
+            "0x{:x}",
+            magic_numbers::generate_magic_number(
+                &mut random_state,
+                attack_tables_bishop.attack_table(square),
+                Piece::Bishop,
+                square,
+            )
+        );
+    });
 }
 
 #[derive(Clone, Copy)]
