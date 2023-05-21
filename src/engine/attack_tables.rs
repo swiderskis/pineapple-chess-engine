@@ -20,7 +20,7 @@ impl AttackTables {
         self.attack_tables
     }
 
-    pub fn attack_table(&self, square: BoardSquare) -> Bitboard {
+    pub fn attack_table(&self, square: &BoardSquare) -> Bitboard {
         self.attack_tables[square.enumeration()]
     }
 
@@ -31,13 +31,13 @@ impl AttackTables {
             Piece::Pawn | Piece::Knight | Piece::King => {
                 BoardSquare::iter().for_each(|square| {
                     attack_tables[square.enumeration()] =
-                        Self::generate_leaper_attack_table(piece, side, square);
+                        Self::generate_leaper_attack_table(&piece, &side, &square);
                 });
             }
             Piece::Bishop | Piece::Rook | Piece::Queen => {
                 BoardSquare::iter().for_each(|square| {
                     attack_tables[square.enumeration()] =
-                        Self::generate_slider_attack_table(piece, square);
+                        Self::generate_slider_attack_table(&piece, &square);
                 });
             }
         }
@@ -45,7 +45,7 @@ impl AttackTables {
         attack_tables
     }
 
-    fn generate_leaper_attack_table(piece: Piece, side: Side, square: BoardSquare) -> Bitboard {
+    fn generate_leaper_attack_table(piece: &Piece, side: &Side, square: &BoardSquare) -> Bitboard {
         // Bitboards with all values initialised to 1, except for the file(s) indicated
         // Used to prevent incorrect attack table generation for pieces on / near edge files
         let file_a_zeroed = Bitboard::new(18374403900871474942);
@@ -94,7 +94,7 @@ impl AttackTables {
         attack_table
     }
 
-    fn generate_slider_attack_table(piece: Piece, square: BoardSquare) -> Bitboard {
+    fn generate_slider_attack_table(piece: &Piece, square: &BoardSquare) -> Bitboard {
         let mut attack_table = Bitboard::new(0);
 
         let piece_rank = square.rank();
@@ -142,9 +142,9 @@ impl AttackTables {
     }
 
     fn generate_current_slider_attack_table(
-        piece: Piece,
-        square: BoardSquare,
-        board: Bitboard,
+        piece: &Piece,
+        square: &BoardSquare,
+        board: &Bitboard,
     ) -> Bitboard {
         let mut attack_table = Bitboard::new(0);
 
@@ -256,8 +256,11 @@ impl AttackTables {
 
         for i in 0..occupancy_indices {
             occupancies[i] = Self::set_occupancy(i, attack_table);
-            attacks[i] =
-                AttackTables::generate_current_slider_attack_table(piece, square, occupancies[i]);
+            attacks[i] = AttackTables::generate_current_slider_attack_table(
+                &piece,
+                &square,
+                &occupancies[i],
+            );
         }
 
         'outer: loop {
@@ -317,7 +320,7 @@ impl AttackTables {
                 occupancy.bitboard |= 1 << ls1b_square.enumeration();
             }
 
-            attack_table_clone.pop_bit(ls1b_square);
+            attack_table_clone.pop_bit(&ls1b_square);
             count += 1;
         }
 
@@ -368,15 +371,15 @@ mod tests {
         let desired_a4_attack_table = u64::pow(2, BoardSquare::B5 as u32);
 
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::H3).bitboard,
+            attack_tables.attack_table(&BoardSquare::H3).bitboard,
             desired_h3_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::F5).bitboard,
+            attack_tables.attack_table(&BoardSquare::F5).bitboard,
             desired_f5_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::A4).bitboard,
+            attack_tables.attack_table(&BoardSquare::A4).bitboard,
             desired_a4_attack_table
         );
     }
@@ -391,15 +394,15 @@ mod tests {
         let desired_a5_attack_table = u64::pow(2, BoardSquare::B4 as u32);
 
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::B4).bitboard,
+            attack_tables.attack_table(&BoardSquare::B4).bitboard,
             desired_b4_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::H4).bitboard,
+            attack_tables.attack_table(&BoardSquare::H4).bitboard,
             desired_h4_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::A5).bitboard,
+            attack_tables.attack_table(&BoardSquare::A5).bitboard,
             desired_a5_attack_table
         );
     }
@@ -442,27 +445,27 @@ mod tests {
             u64::pow(2, BoardSquare::F7 as u32) + u64::pow(2, BoardSquare::G6 as u32);
 
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::G5).bitboard,
+            attack_tables.attack_table(&BoardSquare::G5).bitboard,
             desired_g5_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::E2).bitboard,
+            attack_tables.attack_table(&BoardSquare::E2).bitboard,
             desired_e2_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::F4).bitboard,
+            attack_tables.attack_table(&BoardSquare::F4).bitboard,
             desired_f4_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::B4).bitboard,
+            attack_tables.attack_table(&BoardSquare::B4).bitboard,
             desired_b4_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::A4).bitboard,
+            attack_tables.attack_table(&BoardSquare::A4).bitboard,
             desired_a4_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::H8).bitboard,
+            attack_tables.attack_table(&BoardSquare::H8).bitboard,
             desired_h8_attack_table
         );
     }
@@ -489,15 +492,15 @@ mod tests {
             + u64::pow(2, BoardSquare::H3 as u32);
 
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::B2).bitboard,
+            attack_tables.attack_table(&BoardSquare::B2).bitboard,
             desired_b2_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::A1).bitboard,
+            attack_tables.attack_table(&BoardSquare::A1).bitboard,
             desired_a1_attack_table
         );
         assert_eq!(
-            attack_tables.attack_table(BoardSquare::H4).bitboard,
+            attack_tables.attack_table(&BoardSquare::H4).bitboard,
             desired_h4_attack_table
         );
     }

@@ -22,7 +22,7 @@ pub fn position() {
             "0x{:x}",
             AttackTables::generate_magic_number(
                 &mut random_state,
-                attack_tables_rook.attack_table(square),
+                attack_tables_rook.attack_table(&square),
                 Piece::Rook,
                 square,
             )
@@ -36,7 +36,7 @@ pub fn position() {
             "0x{:x}",
             AttackTables::generate_magic_number(
                 &mut random_state,
-                attack_tables_bishop.attack_table(square),
+                attack_tables_bishop.attack_table(&square),
                 Piece::Bishop,
                 square,
             )
@@ -54,15 +54,15 @@ impl Bitboard {
         Bitboard { bitboard }
     }
 
-    fn get_bit(&self, square: BoardSquare) -> bool {
+    fn get_bit(&self, square: &BoardSquare) -> bool {
         self.bitboard & (1 << square.enumeration()) != 0
     }
 
-    fn set_bit(&mut self, square: BoardSquare) {
+    fn set_bit(&mut self, square: &BoardSquare) {
         self.bitboard |= 1 << square.enumeration();
     }
 
-    fn pop_bit(&mut self, square: BoardSquare) {
+    fn pop_bit(&mut self, square: &BoardSquare) {
         self.bitboard &= !(1 << square.enumeration());
     }
 
@@ -89,7 +89,7 @@ impl Bitboard {
                 print!("{}   ", (64 - square.enumeration()) / 8);
             }
 
-            print!("{} ", if self.get_bit(square) { 1 } else { 0 });
+            print!("{} ", if self.get_bit(&square) { 1 } else { 0 });
 
             if square.file() == 7 {
                 println!("");
@@ -103,7 +103,6 @@ impl Bitboard {
     }
 }
 
-#[derive(Clone, Copy)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -113,14 +112,13 @@ pub enum Piece {
     King,
 }
 
-#[derive(Clone, Copy)]
 pub enum Side {
     White,
     Black,
     Either,
 }
 
-#[derive(Clone, Copy, Display, EnumIter, FromPrimitive)]
+#[derive(Clone, Display, EnumIter, FromPrimitive)]
 pub enum BoardSquare {
     A8,
     B8,
@@ -198,19 +196,19 @@ impl BoardSquare {
         }
     }
 
-    fn enumeration(self) -> usize {
-        self as usize
+    fn enumeration(&self) -> usize {
+        self.clone() as usize
     }
 
-    fn rank(self) -> usize {
+    fn rank(&self) -> usize {
         self.enumeration() / 8
     }
 
-    fn file(self) -> usize {
+    fn file(&self) -> usize {
         self.enumeration() % 8
     }
 
-    fn to_lowercase_string(self) -> String {
+    fn to_lowercase_string(&self) -> String {
         self.to_string().to_lowercase()
     }
 }
@@ -225,9 +223,9 @@ mod tests {
         let mut bitboard2 = Bitboard::new(0);
         let mut bitboard3 = Bitboard::new(0);
 
-        bitboard1.set_bit(BoardSquare::H2);
-        bitboard2.set_bit(BoardSquare::G6);
-        bitboard3.set_bit(BoardSquare::B4);
+        bitboard1.set_bit(&BoardSquare::H2);
+        bitboard2.set_bit(&BoardSquare::G6);
+        bitboard3.set_bit(&BoardSquare::B4);
 
         assert_eq!(
             bitboard1.bitboard,
@@ -249,17 +247,17 @@ mod tests {
         let mut bitboard2 = Bitboard::new(0);
         let mut bitboard3 = Bitboard::new(0);
 
-        bitboard1.set_bit(BoardSquare::G5);
-        bitboard1.set_bit(BoardSquare::A8);
-        bitboard1.pop_bit(BoardSquare::G5);
+        bitboard1.set_bit(&BoardSquare::G5);
+        bitboard1.set_bit(&BoardSquare::A8);
+        bitboard1.pop_bit(&BoardSquare::G5);
 
-        bitboard2.set_bit(BoardSquare::C1);
-        bitboard2.set_bit(BoardSquare::A7);
-        bitboard2.pop_bit(BoardSquare::C1);
+        bitboard2.set_bit(&BoardSquare::C1);
+        bitboard2.set_bit(&BoardSquare::A7);
+        bitboard2.pop_bit(&BoardSquare::C1);
 
-        bitboard3.set_bit(BoardSquare::C4);
-        bitboard3.set_bit(BoardSquare::B8);
-        bitboard3.pop_bit(BoardSquare::C4);
+        bitboard3.set_bit(&BoardSquare::C4);
+        bitboard3.set_bit(&BoardSquare::B8);
+        bitboard3.pop_bit(&BoardSquare::C4);
 
         assert_eq!(
             bitboard1.bitboard,
@@ -280,11 +278,11 @@ mod tests {
         let mut bitboard1 = Bitboard::new(0);
         let mut bitboard2 = Bitboard::new(0);
 
-        bitboard1.set_bit(BoardSquare::F1);
-        bitboard1.pop_bit(BoardSquare::F1);
-        bitboard1.pop_bit(BoardSquare::F1);
+        bitboard1.set_bit(&BoardSquare::F1);
+        bitboard1.pop_bit(&BoardSquare::F1);
+        bitboard1.pop_bit(&BoardSquare::F1);
 
-        bitboard2.pop_bit(BoardSquare::G2);
+        bitboard2.pop_bit(&BoardSquare::G2);
 
         assert_eq!(bitboard1.bitboard, 0);
         assert_eq!(bitboard2.bitboard, 0);
