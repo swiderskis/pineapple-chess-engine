@@ -223,6 +223,135 @@ impl AttackTables {
 
         attack_table
     }
+
+    // Implementation to generate magic numbers taken from
+    // https://www.youtube.com/watch?v=UnEu5GOiSEs&list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs&index=15
+    // NB this seems to take much longer for me - no clue why, must be some problem in the code I can't see
+    // Not too important as magic numbers will be hard coded anyway
+    pub fn generate_magic_number(
+        mut random_state: &mut u32,
+        attack_table: Bitboard,
+        piece: Piece,
+        square: BoardSquare,
+    ) -> u64 {
+        let occupancy_count = match piece {
+            Piece::Bishop => [
+                6, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 7, 9,
+                9, 7, 5, 5, 5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+                6, 5, 5, 5, 5, 5, 5, 6,
+            ],
+            Piece::Rook => [
+                12, 11, 11, 11, 11, 11, 11, 12, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10,
+                10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10,
+                10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 12, 11, 11, 11, 11, 11, 11,
+                12,
+            ],
+            _ => panic!("Attempted to generate magic number for non-rook / bishop piece"),
+        };
+
+        let mut occupancies: [Bitboard; 4096] = [Bitboard::new(0); 4096];
+        let mut attacks: [Bitboard; 4096] = [Bitboard::new(0); 4096];
+
+        let occupancy_indices = 1 << occupancy_count[square.enumeration()];
+
+        for i in 0..occupancy_indices {
+            occupancies[i] = Self::set_occupancy(i, attack_table);
+            attacks[i] =
+                AttackTables::generate_current_slider_attack_table(piece, square, occupancies[i]);
+        }
+
+        'outer: loop {
+            let magic_number_candidate = Self::generate_magic_number_candidate(&mut random_state);
+
+            if (attack_table
+                .bitboard
+                .overflowing_mul(magic_number_candidate)
+                .0
+                & 0xFF00000000000000)
+                .count_ones()
+                < 6
+            {
+                continue;
+            };
+
+            let mut used_attacks: [Bitboard; 4096] = [Bitboard::new(0); 4096];
+
+            for i in 0..occupancy_indices {
+                let magic_index = ((occupancies[i]
+                    .bitboard
+                    .overflowing_mul(magic_number_candidate)
+                    .0)
+                    >> (64 - occupancy_count[square.enumeration()]))
+                    as usize;
+
+                if used_attacks[magic_index].bitboard == 0 {
+                    used_attacks[magic_index].bitboard = attacks[i].bitboard;
+                } else if used_attacks[magic_index].bitboard != attacks[i].bitboard {
+                    continue 'outer;
+                }
+            }
+
+            return magic_number_candidate;
+        }
+    }
+
+    fn generate_magic_number_candidate(mut random_seed: &mut u32) -> u64 {
+        random_numbers::generate_random_u64_integer(&mut random_seed)
+            & random_numbers::generate_random_u64_integer(&mut random_seed)
+            & random_numbers::generate_random_u64_integer(&mut random_seed)
+    }
+
+    fn set_occupancy(index: usize, attack_table: Bitboard) -> Bitboard {
+        let mut occupancy = Bitboard::new(0);
+
+        let mut attack_table_clone = attack_table.clone();
+        let mut count = 0;
+
+        loop {
+            let ls1b_square = match attack_table_clone.get_ls1b_index() {
+                Some(index) => BoardSquare::new_from_index(index),
+                None => break,
+            };
+
+            if index & (1 << count) != 0 {
+                occupancy.bitboard |= 1 << ls1b_square.enumeration();
+            }
+
+            attack_table_clone.pop_bit(ls1b_square);
+            count += 1;
+        }
+
+        occupancy
+    }
+}
+
+pub mod random_numbers {
+    pub fn generate_random_u64_integer(mut random_seed: &mut u32) -> u64 {
+        // `& 0xFFFF` operation cuts off first 16 most significant bits from 32 bit integer
+        mutate_random_state(&mut random_seed);
+        let random_u64_integer_1 = (*random_seed & 0xFFFF) as u64;
+
+        mutate_random_state(&mut random_seed);
+        let random_u64_integer_2 = (*random_seed & 0xFFFF) as u64;
+
+        mutate_random_state(&mut random_seed);
+        let random_u64_integer_3 = (*random_seed & 0xFFFF) as u64;
+
+        mutate_random_state(&mut random_seed);
+        let random_u64_integer_4 = (*random_seed & 0xFFFF) as u64;
+
+        random_u64_integer_1
+            | (random_u64_integer_2 << 16)
+            | (random_u64_integer_3 << 32)
+            | (random_u64_integer_4 << 48)
+    }
+
+    fn mutate_random_state(random_state: &mut u32) {
+        // XOR shift algorithm
+        *random_state ^= *random_state << 13;
+        *random_state ^= *random_state >> 17;
+        *random_state ^= *random_state << 5;
+    }
 }
 
 #[cfg(test)]
@@ -371,136 +500,5 @@ mod tests {
             attack_tables.attack_table(BoardSquare::H4).bitboard,
             desired_h4_attack_table
         );
-    }
-}
-
-// Implementation to generate magic numbers taken from
-// https://www.youtube.com/watch?v=UnEu5GOiSEs&list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs&index=15
-// NB this seems to take much longer for me - no clue why, must be some problem in the code I can't see
-// Not too important as magic numbers will be hard coded anyway
-pub mod magic_numbers {
-    use super::{AttackTables, Bitboard, BoardSquare, Piece};
-
-    pub fn generate_magic_number(
-        mut random_state: &mut u32,
-        attack_table: Bitboard,
-        piece: Piece,
-        square: BoardSquare,
-    ) -> u64 {
-        let occupancy_count = match piece {
-            Piece::Bishop => [
-                6, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 7, 9,
-                9, 7, 5, 5, 5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-                6, 5, 5, 5, 5, 5, 5, 6,
-            ],
-            Piece::Rook => [
-                12, 11, 11, 11, 11, 11, 11, 12, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10,
-                10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10,
-                10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 12, 11, 11, 11, 11, 11, 11,
-                12,
-            ],
-            _ => panic!("Attempted to generate magic number for non-rook / bishop piece"),
-        };
-
-        let mut occupancies: [Bitboard; 4096] = [Bitboard::new(0); 4096];
-        let mut attacks: [Bitboard; 4096] = [Bitboard::new(0); 4096];
-
-        let occupancy_indices = 1 << occupancy_count[square.enumeration()];
-
-        for i in 0..occupancy_indices {
-            occupancies[i] = set_occupancy(i, attack_table);
-            attacks[i] =
-                AttackTables::generate_current_slider_attack_table(piece, square, occupancies[i]);
-        }
-
-        'outer: loop {
-            let magic_number_candidate = generate_magic_number_candidate(&mut random_state);
-
-            if (attack_table
-                .bitboard
-                .overflowing_mul(magic_number_candidate)
-                .0
-                & 0xFF00000000000000)
-                .count_ones()
-                < 6
-            {
-                continue;
-            };
-
-            let mut used_attacks: [Bitboard; 4096] = [Bitboard::new(0); 4096];
-
-            for i in 0..occupancy_indices {
-                let magic_index = ((occupancies[i]
-                    .bitboard
-                    .overflowing_mul(magic_number_candidate)
-                    .0)
-                    >> (64 - occupancy_count[square.enumeration()]))
-                    as usize;
-
-                if used_attacks[magic_index].bitboard == 0 {
-                    used_attacks[magic_index].bitboard = attacks[i].bitboard;
-                } else if used_attacks[magic_index].bitboard != attacks[i].bitboard {
-                    continue 'outer;
-                }
-            }
-
-            return magic_number_candidate;
-        }
-    }
-
-    fn set_occupancy(index: usize, attack_table: Bitboard) -> Bitboard {
-        let mut occupancy = Bitboard::new(0);
-
-        let mut attack_table_clone = attack_table.clone();
-        let mut count = 0;
-
-        loop {
-            let ls1b_square = match attack_table_clone.get_ls1b_index() {
-                Some(index) => BoardSquare::new_from_index(index),
-                None => break,
-            };
-
-            if index & (1 << count) != 0 {
-                occupancy.bitboard |= 1 << ls1b_square.enumeration();
-            }
-
-            attack_table_clone.pop_bit(ls1b_square);
-            count += 1;
-        }
-
-        occupancy
-    }
-
-    fn generate_magic_number_candidate(mut random_seed: &mut u32) -> u64 {
-        generate_random_u64_integer(&mut random_seed)
-            & generate_random_u64_integer(&mut random_seed)
-            & generate_random_u64_integer(&mut random_seed)
-    }
-
-    fn generate_random_u64_integer(mut random_seed: &mut u32) -> u64 {
-        // `& 0xFFFF` operation cuts off first 16 most significant bits from 32 bit integer
-        mutate_random_state(&mut random_seed);
-        let random_u64_integer_1 = (*random_seed & 0xFFFF) as u64;
-
-        mutate_random_state(&mut random_seed);
-        let random_u64_integer_2 = (*random_seed & 0xFFFF) as u64;
-
-        mutate_random_state(&mut random_seed);
-        let random_u64_integer_3 = (*random_seed & 0xFFFF) as u64;
-
-        mutate_random_state(&mut random_seed);
-        let random_u64_integer_4 = (*random_seed & 0xFFFF) as u64;
-
-        random_u64_integer_1
-            | (random_u64_integer_2 << 16)
-            | (random_u64_integer_3 << 32)
-            | (random_u64_integer_4 << 48)
-    }
-
-    fn mutate_random_state(random_state: &mut u32) {
-        // XOR shift algorithm
-        *random_state ^= *random_state << 13;
-        *random_state ^= *random_state >> 17;
-        *random_state ^= *random_state << 5;
     }
 }

@@ -1,6 +1,5 @@
 mod attack_tables;
 
-use self::attack_tables::magic_numbers;
 use attack_tables::AttackTables;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -21,7 +20,7 @@ pub fn position() {
     BoardSquare::iter().for_each(|square| {
         println!(
             "0x{:x}",
-            magic_numbers::generate_magic_number(
+            AttackTables::generate_magic_number(
                 &mut random_state,
                 attack_tables_rook.attack_table(square),
                 Piece::Rook,
@@ -35,7 +34,7 @@ pub fn position() {
     BoardSquare::iter().for_each(|square| {
         println!(
             "0x{:x}",
-            magic_numbers::generate_magic_number(
+            AttackTables::generate_magic_number(
                 &mut random_state,
                 attack_tables_bishop.attack_table(square),
                 Piece::Bishop,
