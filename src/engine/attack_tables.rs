@@ -325,7 +325,7 @@ impl AttackTables {
     }
 }
 
-pub mod random_numbers {
+mod random_numbers {
     pub fn generate_random_u64_integer(mut random_seed: &mut u32) -> u64 {
         // `& 0xFFFF` operation cuts off first 16 most significant bits from 32 bit integer
         mutate_random_state(&mut random_seed);
