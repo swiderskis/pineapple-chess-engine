@@ -476,13 +476,11 @@ mod tests {
             + u64::pow(2, BoardSquare::B4 as u32)
             + u64::pow(2, BoardSquare::C3 as u32)
             + u64::pow(2, BoardSquare::D2 as u32);
-
         let desired_g7_attack_table = u64::pow(2, BoardSquare::F6 as u32)
             + u64::pow(2, BoardSquare::E5 as u32)
             + u64::pow(2, BoardSquare::D4 as u32)
             + u64::pow(2, BoardSquare::C3 as u32)
             + u64::pow(2, BoardSquare::B2 as u32);
-
         let desired_d6_attack_table = u64::pow(2, BoardSquare::C7 as u32)
             + u64::pow(2, BoardSquare::E7 as u32)
             + u64::pow(2, BoardSquare::C5 as u32)
@@ -502,6 +500,56 @@ mod tests {
         assert_eq!(
             attack_tables.attack_table(&BoardSquare::D6).bitboard,
             desired_d6_attack_table
+        );
+    }
+
+    #[test]
+    fn attack_tables_rook() {
+        let attack_tables = AttackTables::new(Piece::Rook, Side::Either);
+
+        let desired_d5_attack_table = u64::pow(2, BoardSquare::D7 as u32)
+            + u64::pow(2, BoardSquare::D6 as u32)
+            + u64::pow(2, BoardSquare::B5 as u32)
+            + u64::pow(2, BoardSquare::C5 as u32)
+            + u64::pow(2, BoardSquare::E5 as u32)
+            + u64::pow(2, BoardSquare::F5 as u32)
+            + u64::pow(2, BoardSquare::G5 as u32)
+            + u64::pow(2, BoardSquare::D4 as u32)
+            + u64::pow(2, BoardSquare::D3 as u32)
+            + u64::pow(2, BoardSquare::D2 as u32);
+        let desired_b3_attack_table = u64::pow(2, BoardSquare::B7 as u32)
+            + u64::pow(2, BoardSquare::B6 as u32)
+            + u64::pow(2, BoardSquare::B5 as u32)
+            + u64::pow(2, BoardSquare::B4 as u32)
+            + u64::pow(2, BoardSquare::B2 as u32)
+            + u64::pow(2, BoardSquare::C3 as u32)
+            + u64::pow(2, BoardSquare::D3 as u32)
+            + u64::pow(2, BoardSquare::E3 as u32)
+            + u64::pow(2, BoardSquare::F3 as u32)
+            + u64::pow(2, BoardSquare::G3 as u32);
+        let desired_e1_attack_table = u64::pow(2, BoardSquare::E7 as u32)
+            + u64::pow(2, BoardSquare::E6 as u32)
+            + u64::pow(2, BoardSquare::E5 as u32)
+            + u64::pow(2, BoardSquare::E4 as u32)
+            + u64::pow(2, BoardSquare::E3 as u32)
+            + u64::pow(2, BoardSquare::E2 as u32)
+            + u64::pow(2, BoardSquare::B1 as u32)
+            + u64::pow(2, BoardSquare::C1 as u32)
+            + u64::pow(2, BoardSquare::D1 as u32)
+            + u64::pow(2, BoardSquare::F1 as u32)
+            + u64::pow(2, BoardSquare::G1 as u32);
+
+        assert_eq!(
+            attack_tables.attack_table(&BoardSquare::D5).bitboard,
+            desired_d5_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(&BoardSquare::B3).bitboard,
+            desired_b3_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(&BoardSquare::E1).bitboard,
+            desired_e1_attack_table
         );
     }
 
