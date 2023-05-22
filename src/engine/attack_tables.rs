@@ -223,11 +223,15 @@ impl AttackTables {
 
         attack_table
     }
+}
+
+pub mod magic_numbers {
+    use super::{AttackTables, Bitboard, BoardSquare, Piece};
 
     // Implementation to generate magic numbers taken from
     // https://www.youtube.com/watch?v=UnEu5GOiSEs&list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs&index=15
     // NB this seems to take much longer for me - no clue why, must be some problem in the code I can't see
-    // Not too important as magic numbers will be hard coded anyway
+    // Not too important as magic numbers are hard coded anyway
     pub fn generate_magic_number(
         mut random_state: &mut u32,
         attack_table: Bitboard,
@@ -255,7 +259,7 @@ impl AttackTables {
         let occupancy_indices = 1 << occupancy_count[square.enumeration()];
 
         for i in 0..occupancy_indices {
-            occupancies[i] = Self::set_occupancy(i, attack_table);
+            occupancies[i] = set_occupancy(i, attack_table);
             attacks[i] = AttackTables::generate_current_slider_attack_table(
                 &piece,
                 &square,
@@ -264,7 +268,9 @@ impl AttackTables {
         }
 
         'outer: loop {
-            let magic_number_candidate = Self::generate_magic_number_candidate(&mut random_state);
+            let magic_number_candidate = generate_random_u64_integer(&mut random_state)
+                & generate_random_u64_integer(&mut random_state)
+                & generate_random_u64_integer(&mut random_state);
 
             if (attack_table
                 .bitboard
@@ -298,12 +304,6 @@ impl AttackTables {
         }
     }
 
-    fn generate_magic_number_candidate(mut random_seed: &mut u32) -> u64 {
-        random_numbers::generate_random_u64_integer(&mut random_seed)
-            & random_numbers::generate_random_u64_integer(&mut random_seed)
-            & random_numbers::generate_random_u64_integer(&mut random_seed)
-    }
-
     fn set_occupancy(index: usize, attack_table: Bitboard) -> Bitboard {
         let mut occupancy = Bitboard::new(0);
 
@@ -326,22 +326,19 @@ impl AttackTables {
 
         occupancy
     }
-}
-
-mod random_numbers {
-    pub fn generate_random_u64_integer(mut random_seed: &mut u32) -> u64 {
+    pub fn generate_random_u64_integer(mut random_state: &mut u32) -> u64 {
         // `& 0xFFFF` operation cuts off first 16 most significant bits from 32 bit integer
-        mutate_random_state(&mut random_seed);
-        let random_u64_integer_1 = (*random_seed & 0xFFFF) as u64;
+        mutate_random_state(&mut random_state);
+        let random_u64_integer_1 = (*random_state & 0xFFFF) as u64;
 
-        mutate_random_state(&mut random_seed);
-        let random_u64_integer_2 = (*random_seed & 0xFFFF) as u64;
+        mutate_random_state(&mut random_state);
+        let random_u64_integer_2 = (*random_state & 0xFFFF) as u64;
 
-        mutate_random_state(&mut random_seed);
-        let random_u64_integer_3 = (*random_seed & 0xFFFF) as u64;
+        mutate_random_state(&mut random_state);
+        let random_u64_integer_3 = (*random_state & 0xFFFF) as u64;
 
-        mutate_random_state(&mut random_seed);
-        let random_u64_integer_4 = (*random_seed & 0xFFFF) as u64;
+        mutate_random_state(&mut random_state);
+        let random_u64_integer_4 = (*random_state & 0xFFFF) as u64;
 
         random_u64_integer_1
             | (random_u64_integer_2 << 16)

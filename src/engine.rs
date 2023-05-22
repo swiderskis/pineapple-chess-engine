@@ -20,7 +20,7 @@ pub fn position() {
     BoardSquare::iter().for_each(|square| {
         println!(
             "0x{:x}",
-            AttackTables::generate_magic_number(
+            attack_tables::magic_numbers::generate_magic_number(
                 &mut random_state,
                 attack_tables_rook.attack_table(&square),
                 Piece::Rook,
@@ -34,7 +34,7 @@ pub fn position() {
     BoardSquare::iter().for_each(|square| {
         println!(
             "0x{:x}",
-            AttackTables::generate_magic_number(
+            attack_tables::magic_numbers::generate_magic_number(
                 &mut random_state,
                 attack_tables_bishop.attack_table(&square),
                 Piece::Bishop,
