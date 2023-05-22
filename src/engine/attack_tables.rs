@@ -468,6 +468,44 @@ mod tests {
     }
 
     #[test]
+    fn attack_tables_bishop() {
+        let attack_tables = AttackTables::new(Piece::Bishop, Side::Either);
+
+        let desired_a5_attack_table = u64::pow(2, BoardSquare::B6 as u32)
+            + u64::pow(2, BoardSquare::C7 as u32)
+            + u64::pow(2, BoardSquare::B4 as u32)
+            + u64::pow(2, BoardSquare::C3 as u32)
+            + u64::pow(2, BoardSquare::D2 as u32);
+
+        let desired_g7_attack_table = u64::pow(2, BoardSquare::F6 as u32)
+            + u64::pow(2, BoardSquare::E5 as u32)
+            + u64::pow(2, BoardSquare::D4 as u32)
+            + u64::pow(2, BoardSquare::C3 as u32)
+            + u64::pow(2, BoardSquare::B2 as u32);
+
+        let desired_d6_attack_table = u64::pow(2, BoardSquare::C7 as u32)
+            + u64::pow(2, BoardSquare::E7 as u32)
+            + u64::pow(2, BoardSquare::C5 as u32)
+            + u64::pow(2, BoardSquare::B4 as u32)
+            + u64::pow(2, BoardSquare::E5 as u32)
+            + u64::pow(2, BoardSquare::F4 as u32)
+            + u64::pow(2, BoardSquare::G3 as u32);
+
+        assert_eq!(
+            attack_tables.attack_table(&BoardSquare::A5).bitboard,
+            desired_a5_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(&BoardSquare::G7).bitboard,
+            desired_g7_attack_table
+        );
+        assert_eq!(
+            attack_tables.attack_table(&BoardSquare::D6).bitboard,
+            desired_d6_attack_table
+        );
+    }
+
+    #[test]
     fn attack_tables_king() {
         let attack_tables = AttackTables::new(Piece::King, Side::Either);
 
