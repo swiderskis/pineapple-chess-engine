@@ -576,40 +576,52 @@ impl MagicNumbers {
             _ => panic!("Attempted to access magic number for non-slider piece"),
         }
     }
-}
-
-pub mod generate_magic_numbers {
-    use super::{Bitboard, BoardSquare, Piece, SliderAttackTables};
 
     // Implementation to generate magic numbers taken from
     // https://www.youtube.com/watch?v=UnEu5GOiSEs&list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs&index=15
     // NB this seems to take much longer for me - no clue why, must be some problem in the code I can't see
     // Not too important as magic numbers are hard coded anyway
-    pub fn _generate_magic_number(
+    pub fn _new(random_state: &mut u32) -> Self {
+        let mut bishop_magic_numbers: [u64; 64] = [0; 64];
+        let mut rook_magic_numbers: [u64; 64] = [0; 64];
+
+        let slider_attack_tables = SliderAttackTables::initialise();
+
+        BoardSquare::iter().for_each(|square| {
+            rook_magic_numbers[square.enumeration()] = Self::_generate_magic_number(
+                random_state,
+                slider_attack_tables.attack_mask(&Piece::Rook, &Side::Either, &square),
+                Piece::Rook,
+                &square,
+            )
+        });
+
+        BoardSquare::iter().for_each(|square| {
+            bishop_magic_numbers[square.enumeration()] = Self::_generate_magic_number(
+                random_state,
+                slider_attack_tables.attack_mask(&Piece::Bishop, &Side::Either, &square),
+                Piece::Bishop,
+                &square,
+            )
+        });
+
+        Self {
+            bishop_magic_numbers,
+            rook_magic_numbers,
+        }
+    }
+
+    fn _generate_magic_number(
         mut random_state: &mut u32,
         attack_mask: Bitboard,
         piece: Piece,
-        square: BoardSquare,
+        square: &BoardSquare,
     ) -> u64 {
-        let occupancy_count = match piece {
-            Piece::Bishop => [
-                6, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 7, 9,
-                9, 7, 5, 5, 5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-                6, 5, 5, 5, 5, 5, 5, 6,
-            ],
-            Piece::Rook => [
-                12, 11, 11, 11, 11, 11, 11, 12, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10,
-                10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10,
-                10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 12, 11, 11, 11, 11, 11, 11,
-                12,
-            ],
-            _ => panic!("Attempted to generate magic number for non-slider piece"),
-        };
-
         let mut occupancies: [Bitboard; 4096] = [Bitboard::new(0); 4096];
         let mut attacks: [Bitboard; 4096] = [Bitboard::new(0); 4096];
 
-        let occupancy_indices = 1 << occupancy_count[square.enumeration()];
+        let occupancy_count = attack_mask.count_bits();
+        let occupancy_indices = 1 << occupancy_count;
 
         for i in 0..occupancy_indices {
             occupancies[i] = SliderAttackTables::set_occupancy(i, attack_mask);
@@ -618,9 +630,9 @@ pub mod generate_magic_numbers {
         }
 
         'outer: loop {
-            let magic_number_candidate = _generate_random_u64_integer(&mut random_state)
-                & _generate_random_u64_integer(&mut random_state)
-                & _generate_random_u64_integer(&mut random_state);
+            let magic_number_candidate = Self::_generate_random_u64_integer(&mut random_state)
+                & Self::_generate_random_u64_integer(&mut random_state)
+                & Self::_generate_random_u64_integer(&mut random_state);
 
             if (attack_mask
                 .bitboard
@@ -640,8 +652,7 @@ pub mod generate_magic_numbers {
                     .bitboard
                     .overflowing_mul(magic_number_candidate)
                     .0)
-                    >> (64 - occupancy_count[square.enumeration()]))
-                    as usize;
+                    >> (64 - occupancy_count)) as usize;
 
                 if used_attacks[magic_index].bitboard == 0 {
                     used_attacks[magic_index].bitboard = attacks[i].bitboard;
@@ -656,16 +667,16 @@ pub mod generate_magic_numbers {
 
     fn _generate_random_u64_integer(mut random_state: &mut u32) -> u64 {
         // `& 0xFFFF` operation cuts off first 16 most significant bits from 32 bit integer
-        _mutate_random_state(&mut random_state);
+        Self::_mutate_random_state(&mut random_state);
         let random_u64_integer_1 = (*random_state & 0xFFFF) as u64;
 
-        _mutate_random_state(&mut random_state);
+        Self::_mutate_random_state(&mut random_state);
         let random_u64_integer_2 = (*random_state & 0xFFFF) as u64;
 
-        _mutate_random_state(&mut random_state);
+        Self::_mutate_random_state(&mut random_state);
         let random_u64_integer_3 = (*random_state & 0xFFFF) as u64;
 
-        _mutate_random_state(&mut random_state);
+        Self::_mutate_random_state(&mut random_state);
         let random_u64_integer_4 = (*random_state & 0xFFFF) as u64;
 
         random_u64_integer_1
