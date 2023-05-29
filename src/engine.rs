@@ -10,17 +10,102 @@ pub fn position() {
     let leaper_attack_tables = LeaperAttackTables::initialise();
     let slider_attack_tables = SliderAttackTables::initialise();
 
-    let board = Bitboard::new(0);
+    let board = Board::initialise();
 
-    BoardSquare::iter().for_each(|square| {
-        slider_attack_tables
-            .attack_table(&board, &Piece::Bishop, &Side::Either, &square)
-            .print();
+    board.white_pawns.print();
+    board.white_knights.print();
+    board.white_bishops.print();
+    board.white_rooks.print();
+    board.white_queens.print();
+    board.white_king.print();
 
-        slider_attack_tables
-            .attack_table(&board, &Piece::Rook, &Side::Either, &square)
-            .print();
-    })
+    board.black_pawns.print();
+    board.black_knights.print();
+    board.black_bishops.print();
+    board.black_rooks.print();
+    board.black_queens.print();
+    board.black_king.print();
+}
+
+struct Board {
+    white_pawns: Bitboard,
+    white_knights: Bitboard,
+    white_bishops: Bitboard,
+    white_rooks: Bitboard,
+    white_queens: Bitboard,
+    white_king: Bitboard,
+    black_pawns: Bitboard,
+    black_knights: Bitboard,
+    black_bishops: Bitboard,
+    black_rooks: Bitboard,
+    black_queens: Bitboard,
+    black_king: Bitboard,
+}
+
+impl Board {
+    fn initialise() -> Self {
+        let mut white_pawns = Bitboard::new(0);
+        let mut white_knights = Bitboard::new(0);
+        let mut white_bishops = Bitboard::new(0);
+        let mut white_rooks = Bitboard::new(0);
+        let mut white_queens = Bitboard::new(0);
+        let mut white_king = Bitboard::new(0);
+        let mut black_pawns = Bitboard::new(0);
+        let mut black_knights = Bitboard::new(0);
+        let mut black_bishops = Bitboard::new(0);
+        let mut black_rooks = Bitboard::new(0);
+        let mut black_queens = Bitboard::new(0);
+        let mut black_king = Bitboard::new(0);
+
+        for square in (BoardSquare::A2.enumeration())..=(BoardSquare::H2.enumeration()) {
+            white_pawns.set_bit(&BoardSquare::new_from_index(square));
+        }
+
+        white_knights.set_bit(&BoardSquare::B1);
+        white_knights.set_bit(&BoardSquare::G1);
+
+        white_bishops.set_bit(&BoardSquare::C1);
+        white_bishops.set_bit(&BoardSquare::F1);
+
+        white_rooks.set_bit(&BoardSquare::A1);
+        white_rooks.set_bit(&BoardSquare::H1);
+
+        white_queens.set_bit(&BoardSquare::D1);
+
+        white_king.set_bit(&BoardSquare::E1);
+
+        for square in (BoardSquare::A7.enumeration())..=(BoardSquare::H7.enumeration()) {
+            black_pawns.set_bit(&BoardSquare::new_from_index(square));
+        }
+
+        black_knights.set_bit(&BoardSquare::B8);
+        black_knights.set_bit(&BoardSquare::G8);
+
+        black_bishops.set_bit(&BoardSquare::C8);
+        black_bishops.set_bit(&BoardSquare::F8);
+
+        black_rooks.set_bit(&BoardSquare::A8);
+        black_rooks.set_bit(&BoardSquare::H8);
+
+        black_queens.set_bit(&BoardSquare::D8);
+
+        black_king.set_bit(&BoardSquare::E8);
+
+        Self {
+            white_pawns,
+            white_knights,
+            white_bishops,
+            white_rooks,
+            white_queens,
+            white_king,
+            black_pawns,
+            black_knights,
+            black_bishops,
+            black_rooks,
+            black_queens,
+            black_king,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -50,12 +135,12 @@ impl Bitboard {
     }
 
     // ls1b = least significant 1st bit
-    fn get_ls1b_index(&self) -> Option<u32> {
+    fn get_ls1b_index(&self) -> Option<usize> {
         if self.is_empty() {
             return None;
         }
 
-        Some(self.bitboard.trailing_zeros())
+        Some(self.bitboard.trailing_zeros() as usize)
     }
 
     fn is_empty(&self) -> bool {
@@ -166,8 +251,8 @@ pub enum BoardSquare {
 }
 
 impl BoardSquare {
-    fn new_from_index(index: u32) -> Self {
-        let square_option = Self::from_u32(index);
+    fn new_from_index(index: usize) -> Self {
+        let square_option = Self::from_usize(index);
 
         match square_option {
             None => panic!("Attempted to convert invalid index into board square"),
