@@ -50,6 +50,7 @@ impl Board {
         let mut white_rooks = Bitboard::new(0);
         let mut white_queens = Bitboard::new(0);
         let mut white_king = Bitboard::new(0);
+
         let mut black_pawns = Bitboard::new(0);
         let mut black_knights = Bitboard::new(0);
         let mut black_bishops = Bitboard::new(0);
@@ -57,8 +58,19 @@ impl Board {
         let mut black_queens = Bitboard::new(0);
         let mut black_king = Bitboard::new(0);
 
-        for square in (BoardSquare::A2.enumeration())..=(BoardSquare::H2.enumeration()) {
-            white_pawns.set_bit(&BoardSquare::new_from_index(square));
+        let white_pawn_squares: [BoardSquare; 8] = [
+            BoardSquare::A2,
+            BoardSquare::B2,
+            BoardSquare::C2,
+            BoardSquare::D2,
+            BoardSquare::E2,
+            BoardSquare::F2,
+            BoardSquare::G2,
+            BoardSquare::H2,
+        ];
+
+        for square in white_pawn_squares {
+            white_pawns.set_bit(&square);
         }
 
         white_knights.set_bit(&BoardSquare::B1);
@@ -74,8 +86,19 @@ impl Board {
 
         white_king.set_bit(&BoardSquare::E1);
 
-        for square in (BoardSquare::A7.enumeration())..=(BoardSquare::H7.enumeration()) {
-            black_pawns.set_bit(&BoardSquare::new_from_index(square));
+        let black_pawn_squares: [BoardSquare; 8] = [
+            BoardSquare::A7,
+            BoardSquare::B7,
+            BoardSquare::C7,
+            BoardSquare::D7,
+            BoardSquare::E7,
+            BoardSquare::F7,
+            BoardSquare::G7,
+            BoardSquare::H7,
+        ];
+
+        for square in black_pawn_squares {
+            black_pawns.set_bit(&square);
         }
 
         black_knights.set_bit(&BoardSquare::B8);
