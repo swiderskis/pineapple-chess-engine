@@ -12,19 +12,7 @@ pub fn position() {
 
     let board = Board::initialise();
 
-    board.white_pawns.print();
-    board.white_knights.print();
-    board.white_bishops.print();
-    board.white_rooks.print();
-    board.white_queens.print();
-    board.white_king.print();
-
-    board.black_pawns.print();
-    board.black_knights.print();
-    board.black_bishops.print();
-    board.black_rooks.print();
-    board.black_queens.print();
-    board.black_king.print();
+    board.print();
 }
 
 struct Board {
@@ -40,6 +28,9 @@ struct Board {
     black_rooks: Bitboard,
     black_queens: Bitboard,
     black_king: Bitboard,
+    side_to_move: Side,
+    en_passant_square: Option<BoardSquare>,
+    castling_rights: i32,
 }
 
 impl Board {
@@ -58,20 +49,14 @@ impl Board {
         let mut black_queens = Bitboard::new(0);
         let mut black_king = Bitboard::new(0);
 
-        let white_pawn_squares: [BoardSquare; 8] = [
-            BoardSquare::A2,
-            BoardSquare::B2,
-            BoardSquare::C2,
-            BoardSquare::D2,
-            BoardSquare::E2,
-            BoardSquare::F2,
-            BoardSquare::G2,
-            BoardSquare::H2,
-        ];
-
-        for square in white_pawn_squares {
-            white_pawns.set_bit(&square);
-        }
+        white_pawns.set_bit(&BoardSquare::A2);
+        white_pawns.set_bit(&BoardSquare::B2);
+        white_pawns.set_bit(&BoardSquare::C2);
+        white_pawns.set_bit(&BoardSquare::D2);
+        white_pawns.set_bit(&BoardSquare::E2);
+        white_pawns.set_bit(&BoardSquare::F2);
+        white_pawns.set_bit(&BoardSquare::G2);
+        white_pawns.set_bit(&BoardSquare::H2);
 
         white_knights.set_bit(&BoardSquare::B1);
         white_knights.set_bit(&BoardSquare::G1);
@@ -86,20 +71,14 @@ impl Board {
 
         white_king.set_bit(&BoardSquare::E1);
 
-        let black_pawn_squares: [BoardSquare; 8] = [
-            BoardSquare::A7,
-            BoardSquare::B7,
-            BoardSquare::C7,
-            BoardSquare::D7,
-            BoardSquare::E7,
-            BoardSquare::F7,
-            BoardSquare::G7,
-            BoardSquare::H7,
-        ];
-
-        for square in black_pawn_squares {
-            black_pawns.set_bit(&square);
-        }
+        black_pawns.set_bit(&BoardSquare::A7);
+        black_pawns.set_bit(&BoardSquare::B7);
+        black_pawns.set_bit(&BoardSquare::C7);
+        black_pawns.set_bit(&BoardSquare::D7);
+        black_pawns.set_bit(&BoardSquare::E7);
+        black_pawns.set_bit(&BoardSquare::F7);
+        black_pawns.set_bit(&BoardSquare::G7);
+        black_pawns.set_bit(&BoardSquare::H7);
 
         black_knights.set_bit(&BoardSquare::B8);
         black_knights.set_bit(&BoardSquare::G8);
@@ -127,6 +106,85 @@ impl Board {
             black_rooks,
             black_queens,
             black_king,
+            side_to_move: Side::White,
+            en_passant_square: None,
+            castling_rights: 15,
+        }
+    }
+}
+
+impl Board {
+    fn print(&self) {
+        BoardSquare::iter().for_each(|square| {
+            if square.file() == 0 {
+                print!("{}   ", (64 - square.enumeration()) / 8);
+            }
+
+            match self.piece_at_square(&square) {
+                Some((piece, side)) => print!("{} ", Self::get_piece_character(&piece, &side)),
+                None => print!(". "),
+            }
+
+            if square.file() == 7 {
+                println!("");
+            }
+        });
+
+        println!("");
+        println!("    a b c d e f g h");
+        println!("");
+        println!("Side to move: {:?}", self.side_to_move);
+        println!("En passant square: {:?}", self.en_passant_square);
+        println!("Castling rights: {:b}", self.castling_rights);
+    }
+
+    fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
+        [
+            (self.white_pawns, Piece::Pawn, Side::White),
+            (self.white_knights, Piece::Knight, Side::White),
+            (self.white_bishops, Piece::Bishop, Side::White),
+            (self.white_rooks, Piece::Rook, Side::White),
+            (self.white_queens, Piece::Queen, Side::White),
+            (self.white_king, Piece::King, Side::White),
+            (self.black_pawns, Piece::Pawn, Side::Black),
+            (self.black_knights, Piece::Knight, Side::Black),
+            (self.black_bishops, Piece::Bishop, Side::Black),
+            (self.black_rooks, Piece::Rook, Side::Black),
+            (self.black_queens, Piece::Queen, Side::Black),
+            (self.black_king, Piece::King, Side::Black),
+        ]
+    }
+
+    fn piece_at_square(&self, square: &BoardSquare) -> Option<(Piece, Side)> {
+        for bitboard in self.piece_bitboards() {
+            if bitboard.0.bit_occupied(&square) {
+                return Some((bitboard.1, bitboard.2));
+            }
+        }
+
+        None
+    }
+
+    fn get_piece_character(piece: &Piece, side: &Side) -> char {
+        match side {
+            Side::White => match piece {
+                Piece::Pawn => 'P',
+                Piece::Knight => 'N',
+                Piece::Bishop => 'B',
+                Piece::Rook => 'R',
+                Piece::Queen => 'Q',
+                Piece::King => 'K',
+            },
+            Side::Black => match piece {
+                Piece::Pawn => 'p',
+                Piece::Knight => 'n',
+                Piece::Bishop => 'b',
+                Piece::Rook => 'r',
+                Piece::Queen => 'q',
+                Piece::King => 'k',
+            },
+
+            Side::Either => panic!("Attempted to get piece character without specifying side"),
         }
     }
 }
@@ -141,7 +199,7 @@ impl Bitboard {
         Bitboard { bitboard }
     }
 
-    fn get_bit(&self, square: &BoardSquare) -> bool {
+    fn bit_occupied(&self, square: &BoardSquare) -> bool {
         self.bitboard & (1 << square.enumeration()) != 0
     }
 
@@ -176,7 +234,7 @@ impl Bitboard {
                 print!("{}   ", (64 - square.enumeration()) / 8);
             }
 
-            print!("{} ", if self.get_bit(&square) { 1 } else { 0 });
+            print!("{} ", if self.bit_occupied(&square) { 1 } else { 0 });
 
             if square.file() == 7 {
                 println!("");
@@ -190,6 +248,7 @@ impl Bitboard {
     }
 }
 
+#[derive(Debug)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -199,13 +258,14 @@ pub enum Piece {
     King,
 }
 
+#[derive(Debug)]
 pub enum Side {
     White,
     Black,
     Either,
 }
 
-#[derive(Clone, Display, EnumIter, FromPrimitive)]
+#[derive(Clone, Debug, Display, EnumIter, FromPrimitive)]
 pub enum BoardSquare {
     A8,
     B8,
@@ -298,6 +358,13 @@ impl BoardSquare {
     fn to_lowercase_string(&self) -> String {
         self.to_string().to_lowercase()
     }
+}
+
+enum CastlingRights {
+    WhiteShort = 8,
+    WhiteLong = 4,
+    BlackShort = 2,
+    BlackLong = 1,
 }
 
 #[cfg(test)]
