@@ -1,8 +1,10 @@
 mod attack_tables;
 
+use core::panic;
+
 use self::attack_tables::{AttackTablesPub, LeaperAttackTables, SliderAttackTables};
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
+use num_derive::{FromPrimitive, ToPrimitive};
+use num_traits::{FromPrimitive, ToPrimitive};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 
@@ -108,7 +110,7 @@ impl Board {
             black_king,
             side_to_move: Side::White,
             en_passant_square: None,
-            castling_rights: 15,
+            castling_rights: 0b1111,
         }
     }
 }
@@ -231,7 +233,7 @@ impl Bitboard {
     fn print(&self) {
         BoardSquare::iter().for_each(|square| {
             if square.file() == 0 {
-                print!("{}   ", (64 - square.enumeration()) / 8);
+                print!("{}   ", (64 - square.enumeration() / 8));
             }
 
             print!("{} ", if self.bit_occupied(&square) { 1 } else { 0 });
@@ -245,6 +247,15 @@ impl Bitboard {
         println!("    a b c d e f g h");
         println!("");
         println!("    Bitboard decimal value: {}", self.bitboard);
+    }
+}
+
+trait EnumToUsize: ToPrimitive {
+    fn enumeration(&self) -> usize {
+        match self.to_usize() {
+            Some(value) => value,
+            None => panic!("Failed to convert enum to usize type"),
+        }
     }
 }
 
@@ -265,7 +276,7 @@ pub enum Side {
     Either,
 }
 
-#[derive(Clone, Debug, Display, EnumIter, FromPrimitive)]
+#[derive(Debug, Display, EnumIter, FromPrimitive, ToPrimitive)]
 pub enum BoardSquare {
     A8,
     B8,
@@ -333,6 +344,8 @@ pub enum BoardSquare {
     H1,
 }
 
+impl EnumToUsize for BoardSquare {}
+
 impl BoardSquare {
     fn new_from_index(index: usize) -> Self {
         let square_option = Self::from_usize(index);
@@ -341,10 +354,6 @@ impl BoardSquare {
             None => panic!("Attempted to convert invalid index into board square"),
             Some(square) => square,
         }
-    }
-
-    fn enumeration(&self) -> usize {
-        self.clone() as usize
     }
 
     fn rank(&self) -> usize {
@@ -361,10 +370,10 @@ impl BoardSquare {
 }
 
 enum CastlingRights {
-    WhiteShort = 8,
-    WhiteLong = 4,
-    BlackShort = 2,
-    BlackLong = 1,
+    WhiteShort = 0b1000,
+    WhiteLong = 0b0100,
+    BlackShort = 0b0010,
+    BlackLong = 0b0001,
 }
 
 #[cfg(test)]

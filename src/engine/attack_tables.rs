@@ -1,4 +1,4 @@
-use super::{Bitboard, BoardSquare, Piece, Side};
+use super::{Bitboard, BoardSquare, EnumToUsize, Piece, Side};
 use strum::IntoEnumIterator;
 
 pub struct LeaperAttackTables {
