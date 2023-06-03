@@ -1,18 +1,30 @@
 mod attack_tables;
 
-use core::panic;
-
 use self::attack_tables::{AttackTablesPub, LeaperAttackTables, SliderAttackTables};
+use core::panic;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
+use std::str::FromStr;
 use strum::IntoEnumIterator;
-use strum_macros::{Display, EnumIter};
+use strum_macros::{Display, EnumIter, EnumString};
 
 pub fn position() {
+    // let empty_board = String::from("8/8/8/8/8/8/8/8 w - - ");
+    // let start_position = String::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 ");
+    // let tricky_position =
+    //     String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ");
+    // let killer_position =
+    //     String::from("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1 ");
+    // let cmk_position =
+    //     String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ");
+
+    let custom_position =
+        String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w Kkq e4 0 1 ");
+
     let leaper_attack_tables = LeaperAttackTables::initialise();
     let slider_attack_tables = SliderAttackTables::initialise();
 
-    let board = Board::initialise();
+    let board = Board::from_fen(custom_position);
 
     board.print();
 }
@@ -32,7 +44,7 @@ struct Board {
     black_king: Bitboard,
     side_to_move: Side,
     en_passant_square: Option<BoardSquare>,
-    castling_rights: u32,
+    castling_rights: CastlingRights,
 }
 
 impl Board {
@@ -110,12 +122,110 @@ impl Board {
             black_king,
             side_to_move: Side::White,
             en_passant_square: None,
-            castling_rights: 0b1111,
+            castling_rights: CastlingRights::initialise("KQkq"),
         }
     }
-}
 
-impl Board {
+    fn from_fen(fen: String) -> Self {
+        let mut white_pawns = Bitboard::new(0);
+        let mut white_knights = Bitboard::new(0);
+        let mut white_bishops = Bitboard::new(0);
+        let mut white_rooks = Bitboard::new(0);
+        let mut white_queens = Bitboard::new(0);
+        let mut white_king = Bitboard::new(0);
+
+        let mut black_pawns = Bitboard::new(0);
+        let mut black_knights = Bitboard::new(0);
+        let mut black_bishops = Bitboard::new(0);
+        let mut black_rooks = Bitboard::new(0);
+        let mut black_queens = Bitboard::new(0);
+        let mut black_king = Bitboard::new(0);
+
+        let fen: Vec<&str> = fen.split_whitespace().collect();
+
+        let mut bitboard_pointer: u64 = 1;
+
+        fen[0].chars().for_each(|character| match character {
+            'P' => {
+                white_pawns.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'N' => {
+                white_knights.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'B' => {
+                white_bishops.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'R' => {
+                white_rooks.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'Q' => {
+                white_queens.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'K' => {
+                white_king.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'p' => {
+                black_pawns.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'n' => {
+                black_knights.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'b' => {
+                black_bishops.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'r' => {
+                black_rooks.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'q' => {
+                black_queens.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            'k' => {
+                black_king.bitboard |= bitboard_pointer;
+                bitboard_pointer <<= 1;
+            }
+            '/' => {}
+            '0'..='9' => bitboard_pointer <<= character as u32 - '0' as u32,
+            _ => panic!("Attempted to use invalid character in FEN string"),
+        });
+
+        Self {
+            white_pawns,
+            white_knights,
+            white_bishops,
+            white_rooks,
+            white_queens,
+            white_king,
+            black_pawns,
+            black_knights,
+            black_bishops,
+            black_rooks,
+            black_queens,
+            black_king,
+            side_to_move: if fen[1] == "w" {
+                Side::White
+            } else {
+                Side::Black
+            },
+            en_passant_square: if fen[3] == "-" {
+                None
+            } else {
+                Some(BoardSquare::new_from_string(fen[3]))
+            },
+            castling_rights: CastlingRights::initialise(fen[2]),
+        }
+    }
+
     fn print(&self) {
         BoardSquare::iter().for_each(|square| {
             if square.file() == 0 {
@@ -137,10 +247,7 @@ impl Board {
         println!();
         println!("Side to move: {:?}", self.side_to_move);
         println!("En passant square: {:?}", self.en_passant_square);
-        println!(
-            "Castling rights: {}",
-            CastlingRights::as_string(self.castling_rights)
-        );
+        println!("Castling rights: {}", self.castling_rights.as_string());
     }
 
     fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
@@ -261,11 +368,59 @@ trait EnumToInt: ToPrimitive {
         }
     }
 
-    fn as_u32(&self) -> u32 {
-        match self.to_u32() {
+    fn as_u8(&self) -> u8 {
+        match self.to_u8() {
             Some(value) => value,
             None => panic!("Failed to convert enum to u32 type"),
         }
+    }
+}
+
+struct CastlingRights {
+    castling_rights: u8,
+}
+
+impl CastlingRights {
+    fn initialise(castling_rights_string: &str) -> Self {
+        if castling_rights_string == "-" {
+            return Self { castling_rights: 0 };
+        };
+
+        let mut castling_rights = 0;
+
+        castling_rights_string
+            .chars()
+            .for_each(|character| match character {
+                'K' => castling_rights |= CastlingTypes::WhiteShort.as_u8(),
+                'Q' => castling_rights |= CastlingTypes::WhiteLong.as_u8(),
+                'k' => castling_rights |= CastlingTypes::BlackShort.as_u8(),
+                'q' => castling_rights |= CastlingTypes::BlackLong.as_u8(),
+                _ => panic!("Invalid character used when attempting to initialise castling rights"),
+            });
+
+        Self { castling_rights }
+    }
+
+    fn as_string(&self) -> String {
+        let mut castling_rights_string = String::new();
+
+        if self.castling_rights & CastlingTypes::WhiteShort.as_u8() != 0 {
+            castling_rights_string.push('K');
+        }
+
+        if self.castling_rights & CastlingTypes::WhiteLong.as_u8() != 0 {
+            castling_rights_string.push('Q');
+        }
+
+        if self.castling_rights & CastlingTypes::BlackShort.as_u8() != 0 {
+            castling_rights_string.push('k');
+        }
+
+        if self.castling_rights & CastlingTypes::BlackLong.as_u8() != 0 {
+            castling_rights_string.push('q');
+        }
+
+        castling_rights_string
     }
 }
 
@@ -286,7 +441,7 @@ pub enum Side {
     Either,
 }
 
-#[derive(Debug, Display, EnumIter, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Display, EnumIter, EnumString, FromPrimitive, ToPrimitive)]
 pub enum BoardSquare {
     A8,
     B8,
@@ -366,6 +521,13 @@ impl BoardSquare {
         }
     }
 
+    fn new_from_string(square: &str) -> Self {
+        match BoardSquare::from_str(&square.to_uppercase()) {
+            Ok(square) => square,
+            Err(_) => panic!("Attempted to convert invalid string slice into board square"),
+        }
+    }
+
     fn rank(&self) -> usize {
         self.as_usize() / 8
     }
@@ -380,38 +542,14 @@ impl BoardSquare {
 }
 
 #[derive(ToPrimitive)]
-enum CastlingRights {
+enum CastlingTypes {
     WhiteShort = 0b1000,
     WhiteLong = 0b0100,
     BlackShort = 0b0010,
     BlackLong = 0b0001,
 }
 
-impl EnumToInt for CastlingRights {}
-
-impl CastlingRights {
-    fn as_string(castling_rights: u32) -> String {
-        let mut castling_rights_string = String::new();
-
-        if castling_rights & CastlingRights::WhiteShort.as_u32() != 0 {
-            castling_rights_string.push('K');
-        }
-
-        if castling_rights & CastlingRights::WhiteLong.as_u32() != 0 {
-            castling_rights_string.push('Q');
-        }
-
-        if castling_rights & CastlingRights::BlackShort.as_u32() != 0 {
-            castling_rights_string.push('k');
-        }
-
-        if castling_rights & CastlingRights::BlackLong.as_u32() != 0 {
-            castling_rights_string.push('q');
-        }
-
-        castling_rights_string
-    }
-}
+impl EnumToInt for CastlingTypes {}
 
 #[cfg(test)]
 mod tests {
