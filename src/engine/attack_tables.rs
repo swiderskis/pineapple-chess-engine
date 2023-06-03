@@ -1,4 +1,4 @@
-use super::{Bitboard, BoardSquare, EnumToUsize, Piece, Side};
+use super::{Bitboard, BoardSquare, EnumToInt, Piece, Side};
 use strum::IntoEnumIterator;
 
 pub struct LeaperAttackTables {
@@ -52,14 +52,14 @@ impl AttackTablesPub for LeaperAttackTables {
     ) -> Bitboard {
         match piece {
             Piece::Pawn => match side {
-                Side::White => self.white_pawn_attack_tables[square.enumeration()],
-                Side::Black => self.black_pawn_attack_tables[square.enumeration()],
+                Side::White => self.white_pawn_attack_tables[square.as_usize()],
+                Side::Black => self.black_pawn_attack_tables[square.as_usize()],
                 Side::Either => {
                     panic!("Attempted to access pawn attack table with side == Side::Either")
                 }
             },
-            Piece::Knight => self.knight_attack_tables[square.enumeration()],
-            Piece::King => self.king_attack_tables[square.enumeration()],
+            Piece::Knight => self.knight_attack_tables[square.as_usize()],
+            Piece::King => self.king_attack_tables[square.as_usize()],
             _ => {
                 panic!("Attempted to access slider attack table on leaper attack tables")
             }
@@ -84,7 +84,7 @@ impl AttackTables for LeaperAttackTables {
 
             bitboard.set_bit(&square);
 
-            attack_tables[square.enumeration()] = match piece {
+            attack_tables[square.as_usize()] = match piece {
                 Piece::Pawn => {
                     if matches!(side, Side::White) {
                         attack_table.bitboard |= (bitboard.bitboard >> 7) & file_a_zeroed.bitboard;
@@ -130,14 +130,14 @@ impl AttackTables for LeaperAttackTables {
     fn attack_mask(&self, piece: &Piece, side: &Side, square: &BoardSquare) -> Bitboard {
         match piece {
             Piece::Pawn => match side {
-                Side::White => self.white_pawn_attack_tables[square.enumeration()],
-                Side::Black => self.black_pawn_attack_tables[square.enumeration()],
+                Side::White => self.white_pawn_attack_tables[square.as_usize()],
+                Side::Black => self.black_pawn_attack_tables[square.as_usize()],
                 Side::Either => {
                     panic!("Attempted to access pawn attack table with side == Side::Either")
                 }
             },
-            Piece::Knight => self.knight_attack_tables[square.enumeration()],
-            Piece::King => self.king_attack_tables[square.enumeration()],
+            Piece::Knight => self.knight_attack_tables[square.as_usize()],
+            Piece::King => self.king_attack_tables[square.as_usize()],
             _ => {
                 panic!("Attempted to access slider attack mask on leaper attack masks")
             }
@@ -156,36 +156,35 @@ impl AttackTablesPub for SliderAttackTables {
         let magic_numbers = MagicNumbers::initialise();
 
         BoardSquare::iter().for_each(|square| {
-            let bishop_occupancy_indices =
-                1 << bishop_attack_masks[square.enumeration()].count_bits();
+            let bishop_occupancy_indices = 1 << bishop_attack_masks[square.as_usize()].count_bits();
 
             for i in 0..bishop_occupancy_indices {
-                let occupancy = Self::set_occupancy(i, bishop_attack_masks[square.enumeration()]);
+                let occupancy = Self::set_occupancy(i, bishop_attack_masks[square.as_usize()]);
 
                 let magic_index = magic_numbers.generate_magic_index(
                     &occupancy,
-                    &bishop_attack_masks[square.enumeration()],
+                    &bishop_attack_masks[square.as_usize()],
                     &square,
                     &Piece::Bishop,
                 );
 
-                bishop_attack_tables[square.enumeration()][magic_index] =
+                bishop_attack_tables[square.as_usize()][magic_index] =
                     Self::generate_attack_table(&occupancy, &Piece::Bishop, &square);
             }
 
-            let rook_occupancy_indices = 1 << rook_attack_masks[square.enumeration()].count_bits();
+            let rook_occupancy_indices = 1 << rook_attack_masks[square.as_usize()].count_bits();
 
             for i in 0..rook_occupancy_indices {
-                let occupancy = Self::set_occupancy(i, rook_attack_masks[square.enumeration()]);
+                let occupancy = Self::set_occupancy(i, rook_attack_masks[square.as_usize()]);
 
                 let magic_index = magic_numbers.generate_magic_index(
                     &occupancy,
-                    &rook_attack_masks[square.enumeration()],
+                    &rook_attack_masks[square.as_usize()],
                     &square,
                     &Piece::Rook,
                 );
 
-                rook_attack_tables[square.enumeration()][magic_index] =
+                rook_attack_tables[square.as_usize()][magic_index] =
                     Self::generate_attack_table(&occupancy, &Piece::Rook, &square);
             }
         });
@@ -217,10 +216,10 @@ impl AttackTablesPub for SliderAttackTables {
 
         match piece {
             Piece::Bishop => {
-                self.bishop_attack_tables[square.enumeration()][board_clone.bitboard as usize]
+                self.bishop_attack_tables[square.as_usize()][board_clone.bitboard as usize]
             }
             Piece::Rook => {
-                self.rook_attack_tables[square.enumeration()][board_clone.bitboard as usize]
+                self.rook_attack_tables[square.as_usize()][board_clone.bitboard as usize]
             }
             _ => panic!("Attempted to access attack table for non-slider piece"),
         }
@@ -230,8 +229,8 @@ impl AttackTablesPub for SliderAttackTables {
 impl AttackTables for SliderAttackTables {
     fn attack_mask(&self, piece: &Piece, _side: &Side, square: &BoardSquare) -> Bitboard {
         match piece {
-            Piece::Bishop => self.bishop_attack_masks[square.enumeration()],
-            Piece::Rook => self.rook_attack_masks[square.enumeration()],
+            Piece::Bishop => self.bishop_attack_masks[square.as_usize()],
+            Piece::Rook => self.rook_attack_masks[square.as_usize()],
             _ => {
                 panic!("Attempted to access leaper attack mask on slider attack masks")
             }
@@ -265,7 +264,7 @@ impl AttackTables for SliderAttackTables {
                         attack_mask.bitboard |= 1 << (rank * 8 + file);
                     }
 
-                    attack_masks[square.enumeration()] = attack_mask;
+                    attack_masks[square.as_usize()] = attack_mask;
                 }
                 Piece::Rook => {
                     for rank in (piece_rank + 1)..7 {
@@ -284,7 +283,7 @@ impl AttackTables for SliderAttackTables {
                         attack_mask.bitboard |= 1 << (piece_rank * 8 + file);
                     }
 
-                    attack_masks[square.enumeration()] = attack_mask;
+                    attack_masks[square.as_usize()] = attack_mask;
                 }
                 _ => panic!("Attempted to initialise slide piece attack mask for leaper piece"),
             }
@@ -384,7 +383,7 @@ impl SliderAttackTables {
             let ls1b_square = BoardSquare::new_from_index(square_index);
 
             if index & (1 << count) != 0 {
-                occupancy.bitboard |= 1 << ls1b_square.enumeration();
+                occupancy.bitboard |= 1 << ls1b_square.as_usize();
             }
 
             attack_mask_clone.pop_bit(&ls1b_square);
@@ -568,8 +567,8 @@ impl MagicNumbers {
 
     fn magic_number(&self, piece: &Piece, square: &BoardSquare) -> u64 {
         match piece {
-            Piece::Bishop => self.bishop_magic_numbers[square.enumeration()],
-            Piece::Rook => self.rook_magic_numbers[square.enumeration()],
+            Piece::Bishop => self.bishop_magic_numbers[square.as_usize()],
+            Piece::Rook => self.rook_magic_numbers[square.as_usize()],
             _ => panic!("Attempted to access magic number for non-slider piece"),
         }
     }
@@ -585,7 +584,7 @@ impl MagicNumbers {
         let slider_attack_tables = SliderAttackTables::initialise();
 
         BoardSquare::iter().for_each(|square| {
-            rook_magic_numbers[square.enumeration()] = Self::_generate_magic_number(
+            rook_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
                 random_state,
                 slider_attack_tables.attack_mask(&Piece::Rook, &Side::Either, &square),
                 Piece::Rook,
@@ -594,7 +593,7 @@ impl MagicNumbers {
         });
 
         BoardSquare::iter().for_each(|square| {
-            bishop_magic_numbers[square.enumeration()] = Self::_generate_magic_number(
+            bishop_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
                 random_state,
                 slider_attack_tables.attack_mask(&Piece::Bishop, &Side::Either, &square),
                 Piece::Bishop,

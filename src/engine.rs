@@ -32,7 +32,7 @@ struct Board {
     black_king: Bitboard,
     side_to_move: Side,
     en_passant_square: Option<BoardSquare>,
-    castling_rights: i32,
+    castling_rights: u32,
 }
 
 impl Board {
@@ -119,7 +119,7 @@ impl Board {
     fn print(&self) {
         BoardSquare::iter().for_each(|square| {
             if square.file() == 0 {
-                print!("{}   ", (64 - square.enumeration()) / 8);
+                print!("{}   ", (64 - square.as_usize()) / 8);
             }
 
             match self.piece_at_square(&square) {
@@ -137,7 +137,10 @@ impl Board {
         println!();
         println!("Side to move: {:?}", self.side_to_move);
         println!("En passant square: {:?}", self.en_passant_square);
-        println!("Castling rights: {:b}", self.castling_rights);
+        println!(
+            "Castling rights: {}",
+            CastlingRights::as_string(self.castling_rights)
+        );
     }
 
     fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
@@ -202,15 +205,15 @@ impl Bitboard {
     }
 
     fn bit_occupied(&self, square: &BoardSquare) -> bool {
-        self.bitboard & (1 << square.enumeration()) != 0
+        self.bitboard & (1 << square.as_usize()) != 0
     }
 
     fn set_bit(&mut self, square: &BoardSquare) {
-        self.bitboard |= 1 << square.enumeration();
+        self.bitboard |= 1 << square.as_usize();
     }
 
     fn pop_bit(&mut self, square: &BoardSquare) {
-        self.bitboard &= !(1 << square.enumeration());
+        self.bitboard &= !(1 << square.as_usize());
     }
 
     fn count_bits(&self) -> u32 {
@@ -233,7 +236,7 @@ impl Bitboard {
     fn print(&self) {
         BoardSquare::iter().for_each(|square| {
             if square.file() == 0 {
-                print!("{}   ", (64 - square.enumeration() / 8));
+                print!("{}   ", (64 - square.as_usize() / 8));
             }
 
             print!("{} ", if self.bit_occupied(&square) { 1 } else { 0 });
@@ -250,11 +253,18 @@ impl Bitboard {
     }
 }
 
-trait EnumToUsize: ToPrimitive {
-    fn enumeration(&self) -> usize {
+trait EnumToInt: ToPrimitive {
+    fn as_usize(&self) -> usize {
         match self.to_usize() {
             Some(value) => value,
             None => panic!("Failed to convert enum to usize type"),
+        }
+    }
+
+    fn as_u32(&self) -> u32 {
+        match self.to_u32() {
+            Some(value) => value,
+            None => panic!("Failed to convert enum to u32 type"),
         }
     }
 }
@@ -344,7 +354,7 @@ pub enum BoardSquare {
     H1,
 }
 
-impl EnumToUsize for BoardSquare {}
+impl EnumToInt for BoardSquare {}
 
 impl BoardSquare {
     fn new_from_index(index: usize) -> Self {
@@ -357,11 +367,11 @@ impl BoardSquare {
     }
 
     fn rank(&self) -> usize {
-        self.enumeration() / 8
+        self.as_usize() / 8
     }
 
     fn file(&self) -> usize {
-        self.enumeration() % 8
+        self.as_usize() % 8
     }
 
     fn to_lowercase_string(&self) -> String {
@@ -369,11 +379,38 @@ impl BoardSquare {
     }
 }
 
+#[derive(ToPrimitive)]
 enum CastlingRights {
     WhiteShort = 0b1000,
     WhiteLong = 0b0100,
     BlackShort = 0b0010,
     BlackLong = 0b0001,
+}
+
+impl EnumToInt for CastlingRights {}
+
+impl CastlingRights {
+    fn as_string(castling_rights: u32) -> String {
+        let mut castling_rights_string = String::new();
+
+        if castling_rights & CastlingRights::WhiteShort.as_u32() != 0 {
+            castling_rights_string.push('K');
+        }
+
+        if castling_rights & CastlingRights::WhiteLong.as_u32() != 0 {
+            castling_rights_string.push('Q');
+        }
+
+        if castling_rights & CastlingRights::BlackShort.as_u32() != 0 {
+            castling_rights_string.push('k');
+        }
+
+        if castling_rights & CastlingRights::BlackLong.as_u32() != 0 {
+            castling_rights_string.push('q');
+        }
+
+        castling_rights_string
+    }
 }
 
 #[cfg(test)]
@@ -392,15 +429,15 @@ mod tests {
 
         assert_eq!(
             bitboard1.bitboard,
-            u64::pow(2, BoardSquare::H2.enumeration() as u32)
+            u64::pow(2, BoardSquare::H2.as_usize() as u32)
         );
         assert_eq!(
             bitboard2.bitboard,
-            u64::pow(2, BoardSquare::G6.enumeration() as u32)
+            u64::pow(2, BoardSquare::G6.as_usize() as u32)
         );
         assert_eq!(
             bitboard3.bitboard,
-            u64::pow(2, BoardSquare::B4.enumeration() as u32)
+            u64::pow(2, BoardSquare::B4.as_usize() as u32)
         );
     }
 
@@ -424,15 +461,15 @@ mod tests {
 
         assert_eq!(
             bitboard1.bitboard,
-            u64::pow(2, BoardSquare::A8.enumeration() as u32)
+            u64::pow(2, BoardSquare::A8.as_usize() as u32)
         );
         assert_eq!(
             bitboard2.bitboard,
-            u64::pow(2, BoardSquare::A7.enumeration() as u32)
+            u64::pow(2, BoardSquare::A7.as_usize() as u32)
         );
         assert_eq!(
             bitboard3.bitboard,
-            u64::pow(2, BoardSquare::B8.enumeration() as u32)
+            u64::pow(2, BoardSquare::B8.as_usize() as u32)
         );
     }
 
