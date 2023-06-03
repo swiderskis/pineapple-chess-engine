@@ -205,15 +205,15 @@ impl AttackTablesPub for SliderAttackTables {
         side: &Side,
         square: &BoardSquare,
     ) -> Bitboard {
-        let mut board_clone = board.clone();
+        let mut board_clone = *board;
         let magic_numbers = MagicNumbers::initialise();
 
-        board_clone.bitboard &= self.attack_mask(&piece, &side, &square).bitboard;
+        board_clone.bitboard &= self.attack_mask(piece, side, square).bitboard;
         board_clone.bitboard = board_clone
             .bitboard
-            .overflowing_mul(magic_numbers.magic_number(&piece, &square))
+            .overflowing_mul(magic_numbers.magic_number(piece, square))
             .0;
-        board_clone.bitboard >>= 64 - self.attack_mask(&piece, &side, &square).count_bits();
+        board_clone.bitboard >>= 64 - self.attack_mask(piece, side, square).count_bits();
 
         match piece {
             Piece::Bishop => {
@@ -269,19 +269,19 @@ impl AttackTables for SliderAttackTables {
                 }
                 Piece::Rook => {
                     for rank in (piece_rank + 1)..7 {
-                        attack_mask.bitboard |= 1 << rank * 8 + piece_file;
+                        attack_mask.bitboard |= 1 << (rank * 8 + piece_file);
                     }
 
                     for rank in (1..piece_rank).rev() {
-                        attack_mask.bitboard |= 1 << rank * 8 + piece_file;
+                        attack_mask.bitboard |= 1 << (rank * 8 + piece_file);
                     }
 
                     for file in (piece_file + 1)..7 {
-                        attack_mask.bitboard |= 1 << piece_rank * 8 + file;
+                        attack_mask.bitboard |= 1 << (piece_rank * 8 + file);
                     }
 
                     for file in (1..piece_file).rev() {
-                        attack_mask.bitboard |= 1 << piece_rank * 8 + file;
+                        attack_mask.bitboard |= 1 << (piece_rank * 8 + file);
                     }
 
                     attack_masks[square.enumeration()] = attack_mask;
@@ -337,33 +337,33 @@ impl SliderAttackTables {
             }
             Piece::Rook => {
                 for rank in (piece_rank + 1)..8 {
-                    attack_table.bitboard |= 1 << rank * 8 + piece_file;
+                    attack_table.bitboard |= 1 << (rank * 8 + piece_file);
 
-                    if (1 << rank * 8 + piece_file) & board.bitboard != 0 {
+                    if (1 << (rank * 8 + piece_file)) & board.bitboard != 0 {
                         break;
                     }
                 }
 
                 for rank in (0..piece_rank).rev() {
-                    attack_table.bitboard |= 1 << rank * 8 + piece_file;
+                    attack_table.bitboard |= 1 << (rank * 8 + piece_file);
 
-                    if (1 << rank * 8 + piece_file) & board.bitboard != 0 {
+                    if (1 << (rank * 8 + piece_file)) & board.bitboard != 0 {
                         break;
                     }
                 }
 
                 for file in (piece_file + 1)..8 {
-                    attack_table.bitboard |= 1 << piece_rank * 8 + file;
+                    attack_table.bitboard |= 1 << (piece_rank * 8 + file);
 
-                    if (1 << piece_rank * 8 + file) & board.bitboard != 0 {
+                    if (1 << (piece_rank * 8 + file)) & board.bitboard != 0 {
                         break;
                     }
                 }
 
                 for file in (0..piece_file).rev() {
-                    attack_table.bitboard |= 1 << piece_rank * 8 + file;
+                    attack_table.bitboard |= 1 << (piece_rank * 8 + file);
 
-                    if (1 << piece_rank * 8 + file) & board.bitboard != 0 {
+                    if (1 << (piece_rank * 8 + file)) & board.bitboard != 0 {
                         break;
                     }
                 }
@@ -377,14 +377,11 @@ impl SliderAttackTables {
     fn set_occupancy(index: usize, attack_mask: Bitboard) -> Bitboard {
         let mut occupancy = Bitboard::new(0);
 
-        let mut attack_mask_clone = attack_mask.clone();
+        let mut attack_mask_clone = attack_mask;
         let mut count = 0;
 
-        loop {
-            let ls1b_square = match attack_mask_clone.get_ls1b_index() {
-                Some(index) => BoardSquare::new_from_index(index),
-                None => break,
-            };
+        while let Some(square_index) = attack_mask_clone.get_ls1b_index() {
+            let ls1b_square = BoardSquare::new_from_index(square_index);
 
             if index & (1 << count) != 0 {
                 occupancy.bitboard |= 1 << ls1b_square.enumeration();
@@ -612,7 +609,7 @@ impl MagicNumbers {
     }
 
     fn _generate_magic_number(
-        mut random_state: &mut u32,
+        random_state: &mut u32,
         attack_mask: Bitboard,
         piece: Piece,
         square: &BoardSquare,
@@ -625,14 +622,13 @@ impl MagicNumbers {
 
         for i in 0..occupancy_indices {
             occupancies[i] = SliderAttackTables::set_occupancy(i, attack_mask);
-            attacks[i] =
-                SliderAttackTables::generate_attack_table(&occupancies[i], &piece, &square);
+            attacks[i] = SliderAttackTables::generate_attack_table(&occupancies[i], &piece, square);
         }
 
         'outer: loop {
-            let magic_number_candidate = Self::_generate_random_u64_integer(&mut random_state)
-                & Self::_generate_random_u64_integer(&mut random_state)
-                & Self::_generate_random_u64_integer(&mut random_state);
+            let magic_number_candidate = Self::_generate_random_u64_integer(random_state)
+                & Self::_generate_random_u64_integer(random_state)
+                & Self::_generate_random_u64_integer(random_state);
 
             if (attack_mask
                 .bitboard
@@ -665,18 +661,18 @@ impl MagicNumbers {
         }
     }
 
-    fn _generate_random_u64_integer(mut random_state: &mut u32) -> u64 {
+    fn _generate_random_u64_integer(random_state: &mut u32) -> u64 {
         // `& 0xFFFF` operation cuts off first 16 most significant bits from 32 bit integer
-        Self::_mutate_random_state(&mut random_state);
+        Self::_mutate_random_state(random_state);
         let random_u64_integer_1 = (*random_state & 0xFFFF) as u64;
 
-        Self::_mutate_random_state(&mut random_state);
+        Self::_mutate_random_state(random_state);
         let random_u64_integer_2 = (*random_state & 0xFFFF) as u64;
 
-        Self::_mutate_random_state(&mut random_state);
+        Self::_mutate_random_state(random_state);
         let random_u64_integer_3 = (*random_state & 0xFFFF) as u64;
 
-        Self::_mutate_random_state(&mut random_state);
+        Self::_mutate_random_state(random_state);
         let random_u64_integer_4 = (*random_state & 0xFFFF) as u64;
 
         random_u64_integer_1

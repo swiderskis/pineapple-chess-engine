@@ -128,13 +128,13 @@ impl Board {
             }
 
             if square.file() == 7 {
-                println!("");
+                println!();
             }
         });
 
-        println!("");
+        println!();
         println!("    a b c d e f g h");
-        println!("");
+        println!();
         println!("Side to move: {:?}", self.side_to_move);
         println!("En passant square: {:?}", self.en_passant_square);
         println!("Castling rights: {:b}", self.castling_rights);
@@ -159,7 +159,7 @@ impl Board {
 
     fn piece_at_square(&self, square: &BoardSquare) -> Option<(Piece, Side)> {
         for bitboard in self.piece_bitboards() {
-            if bitboard.0.bit_occupied(&square) {
+            if bitboard.0.bit_occupied(square) {
                 return Some((bitboard.1, bitboard.2));
             }
         }
@@ -239,13 +239,13 @@ impl Bitboard {
             print!("{} ", if self.bit_occupied(&square) { 1 } else { 0 });
 
             if square.file() == 7 {
-                println!("");
+                println!();
             }
         });
 
-        println!("");
+        println!();
         println!("    a b c d e f g h");
-        println!("");
+        println!();
         println!("    Bitboard decimal value: {}", self.bitboard);
     }
 }
