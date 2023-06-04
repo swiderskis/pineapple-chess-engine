@@ -143,59 +143,59 @@ impl Board {
 
         let fen: Vec<&str> = fen.split_whitespace().collect();
 
-        let mut bitboard_pointer: u64 = 1;
+        let mut square_index = 0;
 
         fen[0].chars().for_each(|character| match character {
             'P' => {
-                white_pawns.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                white_pawns.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'N' => {
-                white_knights.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                white_knights.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'B' => {
-                white_bishops.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                white_bishops.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'R' => {
-                white_rooks.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                white_rooks.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'Q' => {
-                white_queens.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                white_queens.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'K' => {
-                white_king.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                white_king.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'p' => {
-                black_pawns.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                black_pawns.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'n' => {
-                black_knights.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                black_knights.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'b' => {
-                black_bishops.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                black_bishops.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'r' => {
-                black_rooks.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                black_rooks.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'q' => {
-                black_queens.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                black_queens.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             'k' => {
-                black_king.bitboard |= bitboard_pointer;
-                bitboard_pointer <<= 1;
+                black_king.set_bit(&BoardSquare::new_from_index(square_index));
+                square_index += 1;
             }
             '/' => {}
-            '0'..='9' => bitboard_pointer <<= character as u32 - '0' as u32,
+            '0'..='9' => square_index += character as usize - '0' as usize,
             _ => panic!("Attempted to use invalid character in FEN string"),
         });
 
