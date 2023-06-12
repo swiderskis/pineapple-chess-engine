@@ -27,7 +27,7 @@ pub fn position() {
     let leaper_attack_tables = LeaperAttackTables::initialise();
     let slider_attack_tables = SliderAttackTables::initialise();
 
-    let board = Game::from_fen(custom_position);
+    let board = Game::from_fen(&custom_position);
 
     board.print();
 }

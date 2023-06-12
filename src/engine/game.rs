@@ -21,7 +21,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn from_fen(fen: String) -> Self {
+    pub fn from_fen(fen: &str) -> Self {
         let mut white_pawns = Bitboard::new(0);
         let mut white_knights = Bitboard::new(0);
         let mut white_bishops = Bitboard::new(0);
@@ -335,3 +335,172 @@ enum CastlingTypes {
 }
 
 impl EnumToInt for CastlingTypes {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // let tricky_position =
+    //     String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ");
+    // let killer_position =
+    //     String::from("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1 ");
+    // let cmk_position =
+    //     String::from("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9 ");
+    #[test]
+    fn tricky_position() {
+        let game =
+            Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ");
+
+        let desired_white_pawns_bitboard = u64::pow(2, BoardSquare::A2 as u32)
+            + u64::pow(2, BoardSquare::B2 as u32)
+            + u64::pow(2, BoardSquare::C2 as u32)
+            + u64::pow(2, BoardSquare::D5 as u32)
+            + u64::pow(2, BoardSquare::E4 as u32)
+            + u64::pow(2, BoardSquare::F2 as u32)
+            + u64::pow(2, BoardSquare::G2 as u32)
+            + u64::pow(2, BoardSquare::H2 as u32);
+        let desired_white_knights_bitboard =
+            u64::pow(2, BoardSquare::C3 as u32) + u64::pow(2, BoardSquare::E5 as u32);
+        let desired_white_bishops_bitboard =
+            u64::pow(2, BoardSquare::D2 as u32) + u64::pow(2, BoardSquare::E2 as u32);
+        let desired_white_rooks_bitboard =
+            u64::pow(2, BoardSquare::A1 as u32) + u64::pow(2, BoardSquare::H1 as u32);
+        let desired_white_queens_bitboard = u64::pow(2, BoardSquare::F3 as u32);
+        let desired_white_king_bitboard = u64::pow(2, BoardSquare::E1 as u32);
+
+        let desired_black_pawns_bitboard = u64::pow(2, BoardSquare::A7 as u32)
+            + u64::pow(2, BoardSquare::B4 as u32)
+            + u64::pow(2, BoardSquare::C7 as u32)
+            + u64::pow(2, BoardSquare::D7 as u32)
+            + u64::pow(2, BoardSquare::E6 as u32)
+            + u64::pow(2, BoardSquare::F7 as u32)
+            + u64::pow(2, BoardSquare::G6 as u32)
+            + u64::pow(2, BoardSquare::H3 as u32);
+        let desired_black_knights_bitboard =
+            u64::pow(2, BoardSquare::B6 as u32) + u64::pow(2, BoardSquare::F6 as u32);
+        let desired_black_bishops_bitboard =
+            u64::pow(2, BoardSquare::A6 as u32) + u64::pow(2, BoardSquare::G7 as u32);
+        let desired_black_rooks_bitboard =
+            u64::pow(2, BoardSquare::A8 as u32) + u64::pow(2, BoardSquare::H8 as u32);
+        let desired_black_queens_bitboard = u64::pow(2, BoardSquare::E7 as u32);
+        let desired_black_king_bitboard = u64::pow(2, BoardSquare::E8 as u32);
+
+        assert_eq!(game.white_pawns.bitboard, desired_white_pawns_bitboard);
+        assert_eq!(game.white_knights.bitboard, desired_white_knights_bitboard);
+        assert_eq!(game.white_bishops.bitboard, desired_white_bishops_bitboard);
+        assert_eq!(game.white_rooks.bitboard, desired_white_rooks_bitboard);
+        assert_eq!(game.white_queens.bitboard, desired_white_queens_bitboard);
+        assert_eq!(game.white_king.bitboard, desired_white_king_bitboard);
+        assert_eq!(game.black_pawns.bitboard, desired_black_pawns_bitboard);
+        assert_eq!(game.black_knights.bitboard, desired_black_knights_bitboard);
+        assert_eq!(game.black_bishops.bitboard, desired_black_bishops_bitboard);
+        assert_eq!(game.black_rooks.bitboard, desired_black_rooks_bitboard);
+        assert_eq!(game.black_queens.bitboard, desired_black_queens_bitboard);
+        assert_eq!(game.black_king.bitboard, desired_black_king_bitboard);
+    }
+
+    #[test]
+    fn killer_position() {
+        let game =
+            Game::from_fen("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1 ");
+
+        let desired_white_pawns_bitboard = u64::pow(2, BoardSquare::A2 as u32)
+            + u64::pow(2, BoardSquare::B4 as u32)
+            + u64::pow(2, BoardSquare::C2 as u32)
+            + u64::pow(2, BoardSquare::D3 as u32)
+            + u64::pow(2, BoardSquare::D4 as u32)
+            + u64::pow(2, BoardSquare::E2 as u32)
+            + u64::pow(2, BoardSquare::F5 as u32)
+            + u64::pow(2, BoardSquare::G7 as u32)
+            + u64::pow(2, BoardSquare::H3 as u32);
+        let desired_white_knights_bitboard =
+            u64::pow(2, BoardSquare::B1 as u32) + u64::pow(2, BoardSquare::G1 as u32);
+        let desired_white_bishops_bitboard =
+            u64::pow(2, BoardSquare::C1 as u32) + u64::pow(2, BoardSquare::F1 as u32);
+        let desired_white_rooks_bitboard =
+            u64::pow(2, BoardSquare::A1 as u32) + u64::pow(2, BoardSquare::H1 as u32);
+        let desired_white_queens_bitboard = u64::pow(2, BoardSquare::D1 as u32);
+        let desired_white_king_bitboard = u64::pow(2, BoardSquare::E1 as u32);
+
+        let desired_black_pawns_bitboard = u64::pow(2, BoardSquare::A7 as u32)
+            + u64::pow(2, BoardSquare::B7 as u32)
+            + u64::pow(2, BoardSquare::C5 as u32)
+            + u64::pow(2, BoardSquare::D7 as u32)
+            + u64::pow(2, BoardSquare::E5 as u32)
+            + u64::pow(2, BoardSquare::F7 as u32)
+            + u64::pow(2, BoardSquare::H7 as u32);
+        let desired_black_knights_bitboard = u64::pow(2, BoardSquare::B8 as u32);
+        let desired_black_bishops_bitboard =
+            u64::pow(2, BoardSquare::C8 as u32) + u64::pow(2, BoardSquare::F8 as u32);
+        let desired_black_rooks_bitboard =
+            u64::pow(2, BoardSquare::A8 as u32) + u64::pow(2, BoardSquare::H8 as u32);
+        let desired_black_queens_bitboard = u64::pow(2, BoardSquare::D8 as u32);
+        let desired_black_king_bitboard = u64::pow(2, BoardSquare::E8 as u32);
+
+        assert_eq!(game.white_pawns.bitboard, desired_white_pawns_bitboard);
+        assert_eq!(game.white_knights.bitboard, desired_white_knights_bitboard);
+        assert_eq!(game.white_bishops.bitboard, desired_white_bishops_bitboard);
+        assert_eq!(game.white_rooks.bitboard, desired_white_rooks_bitboard);
+        assert_eq!(game.white_queens.bitboard, desired_white_queens_bitboard);
+        assert_eq!(game.white_king.bitboard, desired_white_king_bitboard);
+        assert_eq!(game.black_pawns.bitboard, desired_black_pawns_bitboard);
+        assert_eq!(game.black_knights.bitboard, desired_black_knights_bitboard);
+        assert_eq!(game.black_bishops.bitboard, desired_black_bishops_bitboard);
+        assert_eq!(game.black_rooks.bitboard, desired_black_rooks_bitboard);
+        assert_eq!(game.black_queens.bitboard, desired_black_queens_bitboard);
+        assert_eq!(game.black_king.bitboard, desired_black_king_bitboard);
+    }
+
+    #[test]
+    fn cmk_position() {
+        let game =
+            Game::from_fen("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9");
+
+        let desired_white_pawns_bitboard = u64::pow(2, BoardSquare::A2 as u32)
+            + u64::pow(2, BoardSquare::B2 as u32)
+            + u64::pow(2, BoardSquare::C2 as u32)
+            + u64::pow(2, BoardSquare::D3 as u32)
+            + u64::pow(2, BoardSquare::E4 as u32)
+            + u64::pow(2, BoardSquare::F2 as u32)
+            + u64::pow(2, BoardSquare::G3 as u32)
+            + u64::pow(2, BoardSquare::H3 as u32);
+        let desired_white_knights_bitboard =
+            u64::pow(2, BoardSquare::E2 as u32) + u64::pow(2, BoardSquare::F3 as u32);
+        let desired_white_bishops_bitboard =
+            u64::pow(2, BoardSquare::C1 as u32) + u64::pow(2, BoardSquare::G2 as u32);
+        let desired_white_rooks_bitboard =
+            u64::pow(2, BoardSquare::A1 as u32) + u64::pow(2, BoardSquare::F1 as u32);
+        let desired_white_queens_bitboard = u64::pow(2, BoardSquare::D1 as u32);
+        let desired_white_king_bitboard = u64::pow(2, BoardSquare::G1 as u32);
+
+        let desired_black_pawns_bitboard = u64::pow(2, BoardSquare::A7 as u32)
+            + u64::pow(2, BoardSquare::B7 as u32)
+            + u64::pow(2, BoardSquare::C7 as u32)
+            + u64::pow(2, BoardSquare::D4 as u32)
+            + u64::pow(2, BoardSquare::E5 as u32)
+            + u64::pow(2, BoardSquare::F7 as u32)
+            + u64::pow(2, BoardSquare::G7 as u32)
+            + u64::pow(2, BoardSquare::H7 as u32);
+        let desired_black_knights_bitboard =
+            u64::pow(2, BoardSquare::C6 as u32) + u64::pow(2, BoardSquare::F6 as u32);
+        let desired_black_bishops_bitboard =
+            u64::pow(2, BoardSquare::C5 as u32) + u64::pow(2, BoardSquare::E6 as u32);
+        let desired_black_rooks_bitboard =
+            u64::pow(2, BoardSquare::A8 as u32) + u64::pow(2, BoardSquare::F8 as u32);
+        let desired_black_queens_bitboard = u64::pow(2, BoardSquare::D8 as u32);
+        let desired_black_king_bitboard = u64::pow(2, BoardSquare::G8 as u32);
+
+        assert_eq!(game.white_pawns.bitboard, desired_white_pawns_bitboard);
+        assert_eq!(game.white_knights.bitboard, desired_white_knights_bitboard);
+        assert_eq!(game.white_bishops.bitboard, desired_white_bishops_bitboard);
+        assert_eq!(game.white_rooks.bitboard, desired_white_rooks_bitboard);
+        assert_eq!(game.white_queens.bitboard, desired_white_queens_bitboard);
+        assert_eq!(game.white_king.bitboard, desired_white_king_bitboard);
+        assert_eq!(game.black_pawns.bitboard, desired_black_pawns_bitboard);
+        assert_eq!(game.black_knights.bitboard, desired_black_knights_bitboard);
+        assert_eq!(game.black_bishops.bitboard, desired_black_bishops_bitboard);
+        assert_eq!(game.black_rooks.bitboard, desired_black_rooks_bitboard);
+        assert_eq!(game.black_queens.bitboard, desired_black_queens_bitboard);
+        assert_eq!(game.black_king.bitboard, desired_black_king_bitboard);
+    }
+}
