@@ -2,7 +2,7 @@ use super::{Bitboard, BoardSquare, EnumToInt, Piece, Side};
 use num_derive::ToPrimitive;
 use strum::IntoEnumIterator;
 
-pub struct Board {
+pub struct Game {
     white_pawns: Bitboard,
     white_knights: Bitboard,
     white_bishops: Bitboard,
@@ -20,7 +20,7 @@ pub struct Board {
     castling_rights: CastlingRights,
 }
 
-impl Board {
+impl Game {
     pub fn from_fen(fen: String) -> Self {
         let mut white_pawns = Bitboard::new(0);
         let mut white_knights = Bitboard::new(0);
@@ -37,7 +37,7 @@ impl Board {
         let mut black_king = Bitboard::new(0);
 
         if fen == "startpos" {
-            return Board::start_position();
+            return Game::start_position();
         }
 
         let fen: Vec<&str> = fen.split_whitespace().collect();

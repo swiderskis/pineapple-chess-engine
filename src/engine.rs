@@ -1,9 +1,9 @@
 mod attack_tables;
-mod board;
+mod game;
 
 use self::{
     attack_tables::{AttackTablesPub, LeaperAttackTables, SliderAttackTables},
-    board::Board,
+    game::Game,
 };
 use core::panic;
 use num_derive::{FromPrimitive, ToPrimitive};
@@ -28,7 +28,7 @@ pub fn position() {
     let leaper_attack_tables = LeaperAttackTables::initialise();
     let slider_attack_tables = SliderAttackTables::initialise();
 
-    let board = Board::from_fen(custom_position);
+    let board = Game::from_fen(custom_position);
 
     board.print();
 }
