@@ -5,7 +5,6 @@ use self::{
     attack_tables::{AttackTablesPub, LeaperAttackTables, SliderAttackTables},
     game::Game,
 };
-use core::panic;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
 use std::str::FromStr;
@@ -57,6 +56,10 @@ impl Bitboard {
 
     fn count_bits(&self) -> u32 {
         self.bitboard.count_ones()
+    }
+
+    fn bitwise_or(&mut self, bitboard: Bitboard) {
+        self.bitboard |= bitboard.bitboard;
     }
 
     // ls1b = least significant 1st bit

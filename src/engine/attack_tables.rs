@@ -204,22 +204,51 @@ impl AttackTablesPub for SliderAttackTables {
         side: &Side,
         square: &BoardSquare,
     ) -> Bitboard {
-        let mut board_clone = *board;
+        let mut occupancy = *board;
         let magic_numbers = MagicNumbers::initialise();
 
-        board_clone.bitboard &= self.attack_mask(piece, side, square).bitboard;
-        board_clone.bitboard = board_clone
-            .bitboard
-            .overflowing_mul(magic_numbers.magic_number(piece, square))
-            .0;
-        board_clone.bitboard >>= 64 - self.attack_mask(piece, side, square).count_bits();
+        if matches!(piece, Piece::Bishop) || matches!(piece, Piece::Rook) {
+            occupancy.bitboard &= self.attack_mask(piece, side, square).bitboard;
+            occupancy.bitboard = occupancy
+                .bitboard
+                .overflowing_mul(magic_numbers.magic_number(piece, square))
+                .0;
+            occupancy.bitboard >>= 64 - self.attack_mask(piece, side, square).count_bits();
+        }
 
         match piece {
             Piece::Bishop => {
-                self.bishop_attack_tables[square.as_usize()][board_clone.bitboard as usize]
+                self.bishop_attack_tables[square.as_usize()][occupancy.bitboard as usize]
             }
-            Piece::Rook => {
-                self.rook_attack_tables[square.as_usize()][board_clone.bitboard as usize]
+            Piece::Rook => self.rook_attack_tables[square.as_usize()][occupancy.bitboard as usize],
+            Piece::Queen => {
+                let mut bishop_occupancy = occupancy;
+                let mut rook_occupancy = occupancy;
+
+                bishop_occupancy.bitboard &=
+                    self.attack_mask(&Piece::Bishop, side, square).bitboard;
+                bishop_occupancy.bitboard = bishop_occupancy
+                    .bitboard
+                    .overflowing_mul(magic_numbers.magic_number(&Piece::Bishop, square))
+                    .0;
+                bishop_occupancy.bitboard >>=
+                    64 - self.attack_mask(&Piece::Bishop, side, square).count_bits();
+
+                rook_occupancy.bitboard &= self.attack_mask(&Piece::Rook, side, square).bitboard;
+                rook_occupancy.bitboard = rook_occupancy
+                    .bitboard
+                    .overflowing_mul(magic_numbers.magic_number(&Piece::Rook, square))
+                    .0;
+                rook_occupancy.bitboard >>=
+                    64 - self.attack_mask(&Piece::Rook, side, square).count_bits();
+
+                let mut queen_attack_table = self.bishop_attack_tables[square.as_usize()]
+                    [bishop_occupancy.bitboard as usize];
+                queen_attack_table.bitwise_or(
+                    self.rook_attack_tables[square.as_usize()][rook_occupancy.bitboard as usize],
+                );
+
+                queen_attack_table
             }
             _ => panic!("Attempted to access attack table for non-slider piece"),
         }
@@ -1165,6 +1194,149 @@ mod tests {
         assert_eq!(
             attack_tables
                 .attack_table(&board, &Piece::Rook, &Side::Either, &BoardSquare::E5)
+                .bitboard,
+            blocked_desired_attack_table
+        );
+    }
+
+    #[test]
+    fn attack_tables_queen() {
+        let attack_tables = SliderAttackTables::initialise();
+
+        let mut board = Bitboard::new(0);
+
+        let desired_attack_table = u64::pow(2, BoardSquare::A7 as u32)
+            + u64::pow(2, BoardSquare::B6 as u32)
+            + u64::pow(2, BoardSquare::C5 as u32)
+            + u64::pow(2, BoardSquare::E3 as u32)
+            + u64::pow(2, BoardSquare::F2 as u32)
+            + u64::pow(2, BoardSquare::G1 as u32)
+            + u64::pow(2, BoardSquare::A1 as u32)
+            + u64::pow(2, BoardSquare::B2 as u32)
+            + u64::pow(2, BoardSquare::C3 as u32)
+            + u64::pow(2, BoardSquare::E5 as u32)
+            + u64::pow(2, BoardSquare::F6 as u32)
+            + u64::pow(2, BoardSquare::G7 as u32)
+            + u64::pow(2, BoardSquare::H8 as u32)
+            + u64::pow(2, BoardSquare::D1 as u32)
+            + u64::pow(2, BoardSquare::D2 as u32)
+            + u64::pow(2, BoardSquare::D3 as u32)
+            + u64::pow(2, BoardSquare::D5 as u32)
+            + u64::pow(2, BoardSquare::D6 as u32)
+            + u64::pow(2, BoardSquare::D7 as u32)
+            + u64::pow(2, BoardSquare::D8 as u32)
+            + u64::pow(2, BoardSquare::A4 as u32)
+            + u64::pow(2, BoardSquare::B4 as u32)
+            + u64::pow(2, BoardSquare::C4 as u32)
+            + u64::pow(2, BoardSquare::E4 as u32)
+            + u64::pow(2, BoardSquare::F4 as u32)
+            + u64::pow(2, BoardSquare::G4 as u32)
+            + u64::pow(2, BoardSquare::H4 as u32);
+
+        assert_eq!(
+            attack_tables
+                .attack_table(&board, &Piece::Queen, &Side::Either, &BoardSquare::D4)
+                .bitboard,
+            desired_attack_table
+        );
+
+        board.set_bit(&BoardSquare::B6);
+
+        let blocked_desired_attack_table =
+            desired_attack_table - u64::pow(2, BoardSquare::A7 as u32);
+
+        assert_eq!(
+            attack_tables
+                .attack_table(&board, &Piece::Queen, &Side::Either, &BoardSquare::D4)
+                .bitboard,
+            blocked_desired_attack_table
+        );
+
+        board.set_bit(&BoardSquare::D6);
+
+        let blocked_desired_attack_table = blocked_desired_attack_table
+            - u64::pow(2, BoardSquare::D8 as u32)
+            - u64::pow(2, BoardSquare::D7 as u32);
+
+        assert_eq!(
+            attack_tables
+                .attack_table(&board, &Piece::Queen, &Side::Either, &BoardSquare::D4)
+                .bitboard,
+            blocked_desired_attack_table
+        );
+
+        board.set_bit(&BoardSquare::F6);
+
+        let blocked_desired_attack_table = blocked_desired_attack_table
+            - u64::pow(2, BoardSquare::G7 as u32)
+            - u64::pow(2, BoardSquare::H8 as u32);
+
+        assert_eq!(
+            attack_tables
+                .attack_table(&board, &Piece::Queen, &Side::Either, &BoardSquare::D4)
+                .bitboard,
+            blocked_desired_attack_table
+        );
+
+        board.set_bit(&BoardSquare::B4);
+
+        let blocked_desired_attack_table =
+            blocked_desired_attack_table - u64::pow(2, BoardSquare::A4 as u32);
+
+        assert_eq!(
+            attack_tables
+                .attack_table(&board, &Piece::Queen, &Side::Either, &BoardSquare::D4)
+                .bitboard,
+            blocked_desired_attack_table
+        );
+
+        board.set_bit(&BoardSquare::G4);
+
+        let blocked_desired_attack_table =
+            blocked_desired_attack_table - u64::pow(2, BoardSquare::H4 as u32);
+
+        assert_eq!(
+            attack_tables
+                .attack_table(&board, &Piece::Queen, &Side::Either, &BoardSquare::D4)
+                .bitboard,
+            blocked_desired_attack_table
+        );
+
+        board.set_bit(&BoardSquare::C3);
+
+        let blocked_desired_attack_table = blocked_desired_attack_table
+            - u64::pow(2, BoardSquare::B2 as u32)
+            - u64::pow(2, BoardSquare::A1 as u32);
+
+        assert_eq!(
+            attack_tables
+                .attack_table(&board, &Piece::Queen, &Side::Either, &BoardSquare::D4)
+                .bitboard,
+            blocked_desired_attack_table
+        );
+
+        board.set_bit(&BoardSquare::D3);
+
+        let blocked_desired_attack_table = blocked_desired_attack_table
+            - u64::pow(2, BoardSquare::D2 as u32)
+            - u64::pow(2, BoardSquare::D1 as u32);
+
+        assert_eq!(
+            attack_tables
+                .attack_table(&board, &Piece::Queen, &Side::Either, &BoardSquare::D4)
+                .bitboard,
+            blocked_desired_attack_table
+        );
+
+        board.set_bit(&BoardSquare::E3);
+
+        let blocked_desired_attack_table = blocked_desired_attack_table
+            - u64::pow(2, BoardSquare::F2 as u32)
+            - u64::pow(2, BoardSquare::G1 as u32);
+
+        assert_eq!(
+            attack_tables
+                .attack_table(&board, &Piece::Queen, &Side::Either, &BoardSquare::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
