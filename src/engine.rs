@@ -49,10 +49,6 @@ impl Bitboard {
         self.bitboard.count_ones()
     }
 
-    fn bitwise_or(&mut self, bitboard: Bitboard) {
-        self.bitboard |= bitboard.bitboard;
-    }
-
     // ls1b = least significant 1st bit
     fn get_ls1b_index(&self) -> Option<usize> {
         if self.is_empty() {

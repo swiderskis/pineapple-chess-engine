@@ -242,11 +242,14 @@ impl AttackTablesPub for SliderAttackTables {
                 rook_occupancy.bitboard >>=
                     64 - self.attack_mask(&Piece::Rook, side, square).count_bits();
 
-                let mut queen_attack_table = self.bishop_attack_tables[square.as_usize()]
-                    [bishop_occupancy.bitboard as usize];
-                queen_attack_table.bitwise_or(
-                    self.rook_attack_tables[square.as_usize()][rook_occupancy.bitboard as usize],
-                );
+                let mut queen_attack_table = Bitboard::new(0);
+
+                queen_attack_table.bitboard |= self.bishop_attack_tables[square.as_usize()]
+                    [bishop_occupancy.bitboard as usize]
+                    .bitboard;
+                queen_attack_table.bitboard |= self.rook_attack_tables[square.as_usize()]
+                    [rook_occupancy.bitboard as usize]
+                    .bitboard;
 
                 queen_attack_table
             }
