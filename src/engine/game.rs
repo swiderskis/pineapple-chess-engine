@@ -1,4 +1,7 @@
-use super::{Bitboard, BoardSquare, EnumToInt, Piece, Side};
+use super::{
+    attack_tables::{AttackTablesPub, LeaperAttackTables, SliderAttackTables},
+    Bitboard, BoardSquare, EnumToInt, Piece, Side,
+};
 use num_derive::ToPrimitive;
 use strum::IntoEnumIterator;
 
@@ -227,6 +230,87 @@ impl Game {
         println!("Castling rights: {}", self.castling_rights.as_string());
     }
 
+    pub fn is_square_attacked(
+        &self,
+        side: &Side,
+        square: &BoardSquare,
+        leaper_attack_tables: &LeaperAttackTables,
+        slider_attack_tables: &SliderAttackTables,
+    ) -> bool {
+        match side {
+            Side::White => {
+                if leaper_attack_tables
+                    .attack_table(&self.board(), &Piece::Pawn, &Side::Black, square)
+                    .bitboard
+                    & self.piece_bitboard(&Piece::Pawn, side).bitboard
+                    != 0
+                {
+                    return true;
+                }
+            }
+            Side::Black => {
+                if leaper_attack_tables
+                    .attack_table(&self.board(), &Piece::Pawn, &Side::White, square)
+                    .bitboard
+                    & self.piece_bitboard(&Piece::Pawn, side).bitboard
+                    != 0
+                {
+                    return true;
+                }
+            }
+            Side::Either => {
+                panic!("Attempted to check if a square is attacked without specifying a side")
+            }
+        }
+
+        if leaper_attack_tables
+            .attack_table(&self.board(), &Piece::Knight, side, square)
+            .bitboard
+            & self.piece_bitboard(&Piece::Knight, side).bitboard
+            != 0
+        {
+            return true;
+        }
+
+        if slider_attack_tables
+            .attack_table(&self.board(), &Piece::Bishop, side, square)
+            .bitboard
+            & self.piece_bitboard(&Piece::Bishop, side).bitboard
+            != 0
+        {
+            return true;
+        }
+
+        if slider_attack_tables
+            .attack_table(&self.board(), &Piece::Rook, side, square)
+            .bitboard
+            & self.piece_bitboard(&Piece::Rook, side).bitboard
+            != 0
+        {
+            return true;
+        }
+
+        if slider_attack_tables
+            .attack_table(&self.board(), &Piece::Queen, side, square)
+            .bitboard
+            & self.piece_bitboard(&Piece::Queen, side).bitboard
+            != 0
+        {
+            return true;
+        }
+
+        if leaper_attack_tables
+            .attack_table(&self.board(), &Piece::King, side, square)
+            .bitboard
+            & self.piece_bitboard(&Piece::King, side).bitboard
+            != 0
+        {
+            return true;
+        }
+
+        false
+    }
+
     fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
         [
             (self.white_pawns, Piece::Pawn, Side::White),
@@ -242,6 +326,45 @@ impl Game {
             (self.black_queens, Piece::Queen, Side::Black),
             (self.black_king, Piece::King, Side::Black),
         ]
+    }
+
+    fn piece_bitboard(&self, piece: &Piece, side: &Side) -> Bitboard {
+        match side {
+            Side::White => match piece {
+                Piece::Pawn => self.white_pawns,
+                Piece::Knight => self.white_knights,
+                Piece::Bishop => self.white_bishops,
+                Piece::Rook => self.white_rooks,
+                Piece::Queen => self.white_queens,
+                Piece::King => self.white_king,
+            },
+            Side::Black => match piece {
+                Piece::Pawn => self.black_pawns,
+                Piece::Knight => self.black_knights,
+                Piece::Bishop => self.black_bishops,
+                Piece::Rook => self.black_rooks,
+                Piece::Queen => self.black_queens,
+                Piece::King => self.black_king,
+            },
+            Side::Either => panic!("Attempted to access piece bitboard without specifying a side"),
+        }
+    }
+
+    fn board(&self) -> Bitboard {
+        Bitboard::new(
+            self.white_pawns.bitboard
+                | self.white_knights.bitboard
+                | self.white_bishops.bitboard
+                | self.white_rooks.bitboard
+                | self.white_queens.bitboard
+                | self.white_king.bitboard
+                | self.black_pawns.bitboard
+                | self.black_knights.bitboard
+                | self.black_bishops.bitboard
+                | self.black_rooks.bitboard
+                | self.black_queens.bitboard
+                | self.black_king.bitboard,
+        )
     }
 
     fn piece_at_square(&self, square: &BoardSquare) -> Option<(Piece, Side)> {

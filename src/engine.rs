@@ -12,15 +12,25 @@ use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
 pub fn position() {
-    let custom_position =
-        String::from("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w Kkq e4 0 1 ");
+    let game = Game::initialise("startpos");
 
     let leaper_attack_tables = LeaperAttackTables::initialise();
     let slider_attack_tables = SliderAttackTables::initialise();
 
-    let board = Game::initialise(&custom_position);
+    game.print();
 
-    board.print();
+    BoardSquare::iter().for_each(|square| {
+        println!(
+            "{}: {}",
+            square,
+            game.is_square_attacked(
+                &Side::White,
+                &square,
+                &leaper_attack_tables,
+                &slider_attack_tables
+            )
+        );
+    })
 }
 
 #[derive(Clone, Copy)]
