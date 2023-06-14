@@ -103,7 +103,7 @@ trait EnumToInt: ToPrimitive {
     fn as_u8(&self) -> u8 {
         match self.to_u8() {
             Some(value) => value,
-            None => panic!("Failed to convert enum to u32 type"),
+            None => panic!("Failed to convert enum to u8 type"),
         }
     }
 }
