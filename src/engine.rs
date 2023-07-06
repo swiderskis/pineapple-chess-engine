@@ -43,27 +43,9 @@ fn generate_pawn_moves(
     game: &Game,
     side: &Side,
 ) {
-    let second_rank = [
-        BoardSquare::A2,
-        BoardSquare::B2,
-        BoardSquare::C2,
-        BoardSquare::D2,
-        BoardSquare::E2,
-        BoardSquare::F2,
-        BoardSquare::G2,
-        BoardSquare::H2,
-    ];
-
-    let seventh_rank = [
-        BoardSquare::A7,
-        BoardSquare::B7,
-        BoardSquare::C7,
-        BoardSquare::D7,
-        BoardSquare::E7,
-        BoardSquare::F7,
-        BoardSquare::G7,
-        BoardSquare::H7,
-    ];
+    // Bitboards with 2nd and 7th ranks initialised to 1
+    let second_rank = Bitboard::new(71776119061217280);
+    let seventh_rank = Bitboard::new(65280);
 
     let source_square = BoardSquare::new_from_index(source_square_index);
     let target_square = if matches!(side, Side::White) {
@@ -83,9 +65,11 @@ fn generate_pawn_moves(
         target_square.to_lowercase_string()
     );
 
+    let single_piece = Bitboard::from_square(&source_square);
+
     // Promotion check
-    if (matches!(side, Side::White) && seventh_rank.contains(&source_square))
-        || (matches!(side, Side::Black) && second_rank.contains(&source_square))
+    if (matches!(side, Side::White) && seventh_rank.bitboard & single_piece.bitboard != 0)
+        || (matches!(side, Side::Black) && second_rank.bitboard & single_piece.bitboard != 0)
     {
         println!(
             "{}{}q",
@@ -110,9 +94,11 @@ fn generate_pawn_moves(
     }
 
     // Double pawn push check
-    let target_square = if matches!(side, Side::White) && second_rank.contains(&source_square) {
+    let target_square = if matches!(side, Side::White)
+        && second_rank.bitboard & single_piece.bitboard != 0
+    {
         BoardSquare::new_from_index(source_square_index - 16)
-    } else if matches!(side, Side::Black) && seventh_rank.contains(&source_square) {
+    } else if matches!(side, Side::Black) && seventh_rank.bitboard & single_piece.bitboard != 0 {
         BoardSquare::new_from_index(source_square_index + 16)
     } else {
         bitboard.pop_bit(&source_square);
@@ -141,6 +127,14 @@ pub struct Bitboard {
 impl Bitboard {
     fn new(bitboard: u64) -> Self {
         Bitboard { bitboard }
+    }
+
+    fn from_square(square: &BoardSquare) -> Self {
+        let mut bitboard = Bitboard::new(0);
+
+        bitboard.set_bit(square);
+
+        bitboard
     }
 
     fn bit_occupied(&self, square: &BoardSquare) -> bool {
@@ -225,7 +219,7 @@ pub enum Side {
     Either,
 }
 
-#[derive(Debug, Display, EnumIter, EnumString, FromPrimitive, PartialEq, ToPrimitive)]
+#[derive(Debug, Display, EnumIter, EnumString, FromPrimitive, ToPrimitive)]
 pub enum BoardSquare {
     A8,
     B8,
