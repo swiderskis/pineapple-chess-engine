@@ -23,9 +23,9 @@ impl<'a> Input<'a> {
 /// and performs an action based on the given command.
 pub fn command() {
     loop {
-        let mut input_raw = String::new();
+        let mut input = String::new();
 
-        match io::stdin().read_line(&mut input_raw) {
+        match io::stdin().read_line(&mut input) {
             Ok(_) => {}
             Err(err) => {
                 println!("Error parsing command: {err}");
@@ -33,8 +33,8 @@ pub fn command() {
             }
         };
 
-        let input_vec: Vec<&str> = input_raw.split_whitespace().collect();
-        let input = Input::new(input_vec);
+        let input: Vec<&str> = input.split_whitespace().collect();
+        let input = Input::new(input);
 
         match input.command.trim() {
             "uci" => uci(),

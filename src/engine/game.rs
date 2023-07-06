@@ -311,7 +311,7 @@ impl Game {
         false
     }
 
-    fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
+    pub fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
         [
             (self.white_pawns, Piece::Pawn, Side::White),
             (self.white_knights, Piece::Knight, Side::White),
@@ -326,6 +326,16 @@ impl Game {
             (self.black_queens, Piece::Queen, Side::Black),
             (self.black_king, Piece::King, Side::Black),
         ]
+    }
+
+    pub fn piece_at_square(&self, square: &BoardSquare) -> Option<(Piece, Side)> {
+        for bitboard in self.piece_bitboards() {
+            if bitboard.0.bit_occupied(square) {
+                return Some((bitboard.1, bitboard.2));
+            }
+        }
+
+        None
     }
 
     fn piece_bitboard(&self, piece: &Piece, side: &Side) -> Bitboard {
@@ -365,16 +375,6 @@ impl Game {
                 | self.black_queens.bitboard
                 | self.black_king.bitboard,
         )
-    }
-
-    fn piece_at_square(&self, square: &BoardSquare) -> Option<(Piece, Side)> {
-        for bitboard in self.piece_bitboards() {
-            if bitboard.0.bit_occupied(square) {
-                return Some((bitboard.1, bitboard.2));
-            }
-        }
-
-        None
     }
 
     fn get_piece_character(piece: &Piece, side: &Side) -> char {
