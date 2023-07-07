@@ -311,7 +311,43 @@ impl Game {
         false
     }
 
-    pub fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
+    pub fn side_to_move_bitboards(&self) -> [(Bitboard, Piece); 6] {
+        match self.side_to_move {
+            Side::White => [
+                (self.white_pawns, Piece::Pawn),
+                (self.white_knights, Piece::Knight),
+                (self.white_bishops, Piece::Bishop),
+                (self.white_rooks, Piece::Rook),
+                (self.white_queens, Piece::Queen),
+                (self.white_king, Piece::King),
+            ],
+            Side::Black => [
+                (self.black_pawns, Piece::Pawn),
+                (self.black_knights, Piece::Knight),
+                (self.black_bishops, Piece::Bishop),
+                (self.black_rooks, Piece::Rook),
+                (self.black_queens, Piece::Queen),
+                (self.black_king, Piece::King),
+            ],
+            Side::Either => panic!("Attempted to access side bitboards without specifying a side"),
+        }
+    }
+
+    pub fn piece_at_square(&self, square: &BoardSquare) -> Option<(Piece, Side)> {
+        for bitboard in self.piece_bitboards() {
+            if bitboard.0.bit_occupied(square) {
+                return Some((bitboard.1, bitboard.2));
+            }
+        }
+
+        None
+    }
+
+    pub fn side_to_move(&self) -> &Side {
+        &self.side_to_move
+    }
+
+    fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
         [
             (self.white_pawns, Piece::Pawn, Side::White),
             (self.white_knights, Piece::Knight, Side::White),
@@ -326,16 +362,6 @@ impl Game {
             (self.black_queens, Piece::Queen, Side::Black),
             (self.black_king, Piece::King, Side::Black),
         ]
-    }
-
-    pub fn piece_at_square(&self, square: &BoardSquare) -> Option<(Piece, Side)> {
-        for bitboard in self.piece_bitboards() {
-            if bitboard.0.bit_occupied(square) {
-                return Some((bitboard.1, bitboard.2));
-            }
-        }
-
-        None
     }
 
     fn piece_bitboard(&self, piece: &Piece, side: &Side) -> Bitboard {

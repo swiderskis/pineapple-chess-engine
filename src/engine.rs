@@ -14,9 +14,6 @@ use strum_macros::{Display, EnumIter, EnumString};
 pub fn position() {
     let game = Game::initialise("startpos");
 
-    let leaper_attack_tables = LeaperAttackTables::initialise();
-    let slider_attack_tables = SliderAttackTables::initialise();
-
     generate_moves(&game);
 }
 
@@ -24,31 +21,40 @@ fn generate_moves(game: &Game) {
     let leaper_attack_tables = LeaperAttackTables::initialise();
     let slider_attack_tables = SliderAttackTables::initialise();
 
-    game.piece_bitboards().iter().for_each(|bitboard_info| {
-        let (mut bitboard, piece, side) = bitboard_info;
+    game.side_to_move_bitboards()
+        .iter()
+        .for_each(|bitboard_info| {
+            let (mut bitboard, piece) = bitboard_info;
 
-        while let Some(source_square_index) = bitboard.get_ls1b_index() {
-            match piece {
-                Piece::Pawn => generate_pawn_moves(source_square_index, &mut bitboard, game, side),
-                Piece::Knight => {}
-                Piece::Bishop => {}
-                Piece::Rook => {}
-                Piece::Queen => {}
-                Piece::King => {}
+            while let Some(source_square_index) = bitboard.get_ls1b_index() {
+                match piece {
+                    Piece::Pawn => generate_pawn_moves(source_square_index, &mut bitboard, game),
+                    Piece::Knight => {
+                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
+                    }
+                    Piece::Bishop => {
+                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
+                    }
+                    Piece::Rook => {
+                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
+                    }
+                    Piece::Queen => {
+                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
+                    }
+                    Piece::King => {
+                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
+                    }
+                }
             }
-        }
-    });
+        });
 }
 
-fn generate_pawn_moves(
-    source_square_index: usize,
-    bitboard: &mut Bitboard,
-    game: &Game,
-    side: &Side,
-) {
+fn generate_pawn_moves(source_square_index: usize, bitboard: &mut Bitboard, game: &Game) {
     // Bitboards with 2nd and 7th ranks initialised to 1
     let second_rank = Bitboard::new(71776119061217280);
     let seventh_rank = Bitboard::new(65280);
+
+    let side = game.side_to_move();
 
     let source_square = BoardSquare::new_from_index(source_square_index);
     let target_square = if matches!(side, Side::White) {
