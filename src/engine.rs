@@ -21,6 +21,9 @@ pub fn position() {
 }
 
 fn generate_moves(game: &Game) {
+    let leaper_attack_tables = LeaperAttackTables::initialise();
+    let slider_attack_tables = SliderAttackTables::initialise();
+
     game.piece_bitboards().iter().for_each(|bitboard_info| {
         let (mut bitboard, piece, side) = bitboard_info;
 
@@ -54,17 +57,6 @@ fn generate_pawn_moves(
         BoardSquare::new_from_index(source_square_index + 8)
     };
 
-    if game.piece_at_square(&target_square).is_some() {
-        bitboard.pop_bit(&source_square);
-        return;
-    }
-
-    println!(
-        "{}{}",
-        source_square.to_lowercase_string(),
-        target_square.to_lowercase_string()
-    );
-
     let single_piece = Bitboard::from_square(&source_square);
 
     // Promotion check
@@ -91,30 +83,29 @@ fn generate_pawn_moves(
             source_square.to_lowercase_string(),
             target_square.to_lowercase_string()
         );
+    } else if game.piece_at_square(&target_square).is_none() {
+        println!(
+            "{}{}",
+            source_square.to_lowercase_string(),
+            target_square.to_lowercase_string()
+        );
     }
 
     // Double pawn push check
-    let target_square = if matches!(side, Side::White)
-        && second_rank.bitboard & single_piece.bitboard != 0
-    {
-        BoardSquare::new_from_index(source_square_index - 16)
-    } else if matches!(side, Side::Black) && seventh_rank.bitboard & single_piece.bitboard != 0 {
-        BoardSquare::new_from_index(source_square_index + 16)
-    } else {
-        bitboard.pop_bit(&source_square);
-        return;
-    };
+    let target_square =
+        if matches!(side, Side::White) && second_rank.bitboard & single_piece.bitboard != 0 {
+            BoardSquare::new_from_index(source_square_index - 16)
+        } else {
+            BoardSquare::new_from_index(source_square_index + 16)
+        };
 
-    if game.piece_at_square(&target_square).is_some() {
-        bitboard.pop_bit(&source_square);
-        return;
+    if game.piece_at_square(&target_square).is_none() {
+        println!(
+            "{}{}",
+            source_square.to_lowercase_string(),
+            target_square.to_lowercase_string()
+        );
     }
-
-    println!(
-        "{}{}",
-        source_square.to_lowercase_string(),
-        target_square.to_lowercase_string()
-    );
 
     bitboard.pop_bit(&source_square);
 }
