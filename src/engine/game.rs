@@ -39,9 +39,11 @@ impl Game {
         let mut black_queens = Bitboard::new(0);
         let mut black_king = Bitboard::new(0);
 
-        if fen == "startpos" {
-            return Game::start_position();
-        }
+        let fen = if fen == "startpos" {
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 "
+        } else {
+            fen
+        };
 
         let fen: Vec<&str> = fen.split_whitespace().collect();
 
@@ -128,84 +130,6 @@ impl Game {
         }
     }
 
-    fn start_position() -> Self {
-        let mut white_pawns = Bitboard::new(0);
-        let mut white_knights = Bitboard::new(0);
-        let mut white_bishops = Bitboard::new(0);
-        let mut white_rooks = Bitboard::new(0);
-        let mut white_queens = Bitboard::new(0);
-        let mut white_king = Bitboard::new(0);
-
-        let mut black_pawns = Bitboard::new(0);
-        let mut black_knights = Bitboard::new(0);
-        let mut black_bishops = Bitboard::new(0);
-        let mut black_rooks = Bitboard::new(0);
-        let mut black_queens = Bitboard::new(0);
-        let mut black_king = Bitboard::new(0);
-
-        white_pawns.set_bit(&BoardSquare::A2);
-        white_pawns.set_bit(&BoardSquare::B2);
-        white_pawns.set_bit(&BoardSquare::C2);
-        white_pawns.set_bit(&BoardSquare::D2);
-        white_pawns.set_bit(&BoardSquare::E2);
-        white_pawns.set_bit(&BoardSquare::F2);
-        white_pawns.set_bit(&BoardSquare::G2);
-        white_pawns.set_bit(&BoardSquare::H2);
-
-        white_knights.set_bit(&BoardSquare::B1);
-        white_knights.set_bit(&BoardSquare::G1);
-
-        white_bishops.set_bit(&BoardSquare::C1);
-        white_bishops.set_bit(&BoardSquare::F1);
-
-        white_rooks.set_bit(&BoardSquare::A1);
-        white_rooks.set_bit(&BoardSquare::H1);
-
-        white_queens.set_bit(&BoardSquare::D1);
-
-        white_king.set_bit(&BoardSquare::E1);
-
-        black_pawns.set_bit(&BoardSquare::A7);
-        black_pawns.set_bit(&BoardSquare::B7);
-        black_pawns.set_bit(&BoardSquare::C7);
-        black_pawns.set_bit(&BoardSquare::D7);
-        black_pawns.set_bit(&BoardSquare::E7);
-        black_pawns.set_bit(&BoardSquare::F7);
-        black_pawns.set_bit(&BoardSquare::G7);
-        black_pawns.set_bit(&BoardSquare::H7);
-
-        black_knights.set_bit(&BoardSquare::B8);
-        black_knights.set_bit(&BoardSquare::G8);
-
-        black_bishops.set_bit(&BoardSquare::C8);
-        black_bishops.set_bit(&BoardSquare::F8);
-
-        black_rooks.set_bit(&BoardSquare::A8);
-        black_rooks.set_bit(&BoardSquare::H8);
-
-        black_queens.set_bit(&BoardSquare::D8);
-
-        black_king.set_bit(&BoardSquare::E8);
-
-        Self {
-            white_pawns,
-            white_knights,
-            white_bishops,
-            white_rooks,
-            white_queens,
-            white_king,
-            black_pawns,
-            black_knights,
-            black_bishops,
-            black_rooks,
-            black_queens,
-            black_king,
-            side_to_move: Side::White,
-            en_passant_square: None,
-            castling_rights: CastlingRights::initialise("KQkq"),
-        }
-    }
-
     pub fn print(&self) {
         BoardSquare::iter().for_each(|square| {
             if square.file() == 0 {
@@ -240,7 +164,12 @@ impl Game {
         match side {
             Side::White => {
                 if leaper_attack_tables
-                    .attack_table(&self.board(), &Piece::Pawn, &Side::Black, square)
+                    .attack_table(
+                        &self.board(&Side::Either),
+                        &Piece::Pawn,
+                        &Side::Black,
+                        square,
+                    )
                     .bitboard
                     & self.piece_bitboard(&Piece::Pawn, side).bitboard
                     != 0
@@ -250,7 +179,12 @@ impl Game {
             }
             Side::Black => {
                 if leaper_attack_tables
-                    .attack_table(&self.board(), &Piece::Pawn, &Side::White, square)
+                    .attack_table(
+                        &self.board(&Side::Either),
+                        &Piece::Pawn,
+                        &Side::White,
+                        square,
+                    )
                     .bitboard
                     & self.piece_bitboard(&Piece::Pawn, side).bitboard
                     != 0
@@ -264,7 +198,7 @@ impl Game {
         }
 
         if leaper_attack_tables
-            .attack_table(&self.board(), &Piece::Knight, side, square)
+            .attack_table(&self.board(&Side::Either), &Piece::Knight, side, square)
             .bitboard
             & self.piece_bitboard(&Piece::Knight, side).bitboard
             != 0
@@ -273,7 +207,7 @@ impl Game {
         }
 
         if slider_attack_tables
-            .attack_table(&self.board(), &Piece::Bishop, side, square)
+            .attack_table(&self.board(&Side::Either), &Piece::Bishop, side, square)
             .bitboard
             & self.piece_bitboard(&Piece::Bishop, side).bitboard
             != 0
@@ -282,7 +216,7 @@ impl Game {
         }
 
         if slider_attack_tables
-            .attack_table(&self.board(), &Piece::Rook, side, square)
+            .attack_table(&self.board(&Side::Either), &Piece::Rook, side, square)
             .bitboard
             & self.piece_bitboard(&Piece::Rook, side).bitboard
             != 0
@@ -291,7 +225,7 @@ impl Game {
         }
 
         if slider_attack_tables
-            .attack_table(&self.board(), &Piece::Queen, side, square)
+            .attack_table(&self.board(&Side::Either), &Piece::Queen, side, square)
             .bitboard
             & self.piece_bitboard(&Piece::Queen, side).bitboard
             != 0
@@ -300,7 +234,7 @@ impl Game {
         }
 
         if leaper_attack_tables
-            .attack_table(&self.board(), &Piece::King, side, square)
+            .attack_table(&self.board(&Side::Either), &Piece::King, side, square)
             .bitboard
             & self.piece_bitboard(&Piece::King, side).bitboard
             != 0
@@ -386,21 +320,39 @@ impl Game {
         }
     }
 
-    fn board(&self) -> Bitboard {
-        Bitboard::new(
-            self.white_pawns.bitboard
-                | self.white_knights.bitboard
-                | self.white_bishops.bitboard
-                | self.white_rooks.bitboard
-                | self.white_queens.bitboard
-                | self.white_king.bitboard
-                | self.black_pawns.bitboard
-                | self.black_knights.bitboard
-                | self.black_bishops.bitboard
-                | self.black_rooks.bitboard
-                | self.black_queens.bitboard
-                | self.black_king.bitboard,
-        )
+    fn board(&self, side: &Side) -> Bitboard {
+        match side {
+            Side::White => Bitboard::new(
+                self.white_pawns.bitboard
+                    | self.white_knights.bitboard
+                    | self.white_bishops.bitboard
+                    | self.white_rooks.bitboard
+                    | self.white_queens.bitboard
+                    | self.white_king.bitboard,
+            ),
+            Side::Black => Bitboard::new(
+                self.black_pawns.bitboard
+                    | self.black_knights.bitboard
+                    | self.black_bishops.bitboard
+                    | self.black_rooks.bitboard
+                    | self.black_queens.bitboard
+                    | self.black_king.bitboard,
+            ),
+            Side::Either => Bitboard::new(
+                self.white_pawns.bitboard
+                    | self.white_knights.bitboard
+                    | self.white_bishops.bitboard
+                    | self.white_rooks.bitboard
+                    | self.white_queens.bitboard
+                    | self.white_king.bitboard
+                    | self.black_pawns.bitboard
+                    | self.black_knights.bitboard
+                    | self.black_bishops.bitboard
+                    | self.black_rooks.bitboard
+                    | self.black_queens.bitboard
+                    | self.black_king.bitboard,
+            ),
+        }
     }
 
     fn get_piece_character(piece: &Piece, side: &Side) -> char {

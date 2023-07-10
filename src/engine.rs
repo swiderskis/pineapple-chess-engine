@@ -65,52 +65,43 @@ fn generate_pawn_moves(source_square_index: usize, bitboard: &mut Bitboard, game
 
     let single_piece = Bitboard::from_square(&source_square);
 
+    let piece_on_second_rank = second_rank.bitboard & single_piece.bitboard != 0;
+    let piece_on_seventh_rank = seventh_rank.bitboard & single_piece.bitboard != 0;
+    let target_square_empty = game.piece_at_square(&target_square).is_none();
+
+    let source_square_string = source_square.to_lowercase_string();
+    let target_square_string = target_square.to_lowercase_string();
+
     // Promotion check
-    if (matches!(side, Side::White) && seventh_rank.bitboard & single_piece.bitboard != 0)
-        || (matches!(side, Side::Black) && second_rank.bitboard & single_piece.bitboard != 0)
+    if ((matches!(side, Side::White) && piece_on_seventh_rank)
+        || (matches!(side, Side::Black) && piece_on_second_rank))
+        && target_square_empty
     {
-        println!(
-            "{}{}q",
-            source_square.to_lowercase_string(),
-            target_square.to_lowercase_string()
-        );
-        println!(
-            "{}{}r",
-            source_square.to_lowercase_string(),
-            target_square.to_lowercase_string()
-        );
-        println!(
-            "{}{}b",
-            source_square.to_lowercase_string(),
-            target_square.to_lowercase_string()
-        );
-        println!(
-            "{}{}n",
-            source_square.to_lowercase_string(),
-            target_square.to_lowercase_string()
-        );
-    } else if game.piece_at_square(&target_square).is_none() {
-        println!(
-            "{}{}",
-            source_square.to_lowercase_string(),
-            target_square.to_lowercase_string()
-        );
+        println!("{}{}q", source_square_string, target_square_string);
+        println!("{}{}r", source_square_string, target_square_string);
+        println!("{}{}b", source_square_string, target_square_string);
+        println!("{}{}n", source_square_string, target_square_string);
+    } else if target_square_empty {
+        println!("{}{}", source_square_string, target_square_string);
     }
 
     // Double pawn push check
-    let target_square =
-        if matches!(side, Side::White) && second_rank.bitboard & single_piece.bitboard != 0 {
-            BoardSquare::new_from_index(source_square_index - 16)
-        } else {
-            BoardSquare::new_from_index(source_square_index + 16)
-        };
+    let target_square = if matches!(side, Side::White) && piece_on_second_rank {
+        BoardSquare::new_from_index(source_square_index - 16)
+    } else if matches!(side, Side::Black) && piece_on_seventh_rank {
+        BoardSquare::new_from_index(source_square_index + 16)
+    } else {
+        bitboard.pop_bit(&source_square);
 
-    if game.piece_at_square(&target_square).is_none() {
-        println!(
-            "{}{}",
-            source_square.to_lowercase_string(),
-            target_square.to_lowercase_string()
-        );
+        return;
+    };
+
+    let target_square_empty = game.piece_at_square(&target_square).is_none();
+
+    let target_square_string = target_square.to_lowercase_string();
+
+    if target_square_empty {
+        println!("{}{}", source_square_string, target_square_string);
     }
 
     bitboard.pop_bit(&source_square);
