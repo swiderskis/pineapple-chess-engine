@@ -580,18 +580,22 @@ impl MagicNumbers {
     ) -> usize {
         match piece {
             Piece::Bishop => {
-                (occupancy
+                let magic_index = occupancy
                     .bitboard
                     .overflowing_mul(self.magic_number(piece, square))
                     .0
-                    >> (64 - attack_mask.count_bits())) as usize
+                    >> (64 - attack_mask.count_bits());
+
+                magic_index as usize
             }
             Piece::Rook => {
-                (occupancy
+                let magic_index = occupancy
                     .bitboard
                     .overflowing_mul(self.magic_number(piece, square))
                     .0
-                    >> (64 - attack_mask.count_bits())) as usize
+                    >> (64 - attack_mask.count_bits());
+
+                magic_index as usize
             }
             _ => panic!("Attempted to generate magic index for non-slider piece"),
         }
@@ -661,14 +665,15 @@ impl MagicNumbers {
                 & Self::_generate_random_u64_integer(random_state)
                 & Self::_generate_random_u64_integer(random_state);
 
-            if (attack_mask
+            let inappropriate_candidate = (attack_mask
                 .bitboard
                 .overflowing_mul(magic_number_candidate)
                 .0
                 & 0xFF00000000000000)
                 .count_ones()
-                < 6
-            {
+                < 6;
+
+            if inappropriate_candidate {
                 continue;
             };
 
