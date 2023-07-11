@@ -103,6 +103,20 @@ impl Game {
             _ => panic!("Attempted to use invalid character in FEN string"),
         });
 
+        let side_to_move = if fen[1] == "w" {
+            Side::White
+        } else {
+            Side::Black
+        };
+
+        let en_passant_square = if fen[3] != "-" {
+            Some(BoardSquare::new_from_string(fen[3]))
+        } else {
+            None
+        };
+
+        let castling_rights = CastlingRights::initialise(fen[2]);
+
         Self {
             white_pawns,
             white_knights,
@@ -116,17 +130,9 @@ impl Game {
             black_rooks,
             black_queens,
             black_king,
-            side_to_move: if fen[1] == "w" {
-                Side::White
-            } else {
-                Side::Black
-            },
-            en_passant_square: if fen[3] == "-" {
-                None
-            } else {
-                Some(BoardSquare::new_from_string(fen[3]))
-            },
-            castling_rights: CastlingRights::initialise(fen[2]),
+            side_to_move,
+            en_passant_square,
+            castling_rights,
         }
     }
 
@@ -321,6 +327,10 @@ impl Game {
 
     pub fn side_to_move(&self) -> &Side {
         &self.side_to_move
+    }
+
+    pub fn en_passant_square(&self) -> &Option<BoardSquare> {
+        &self.en_passant_square
     }
 
     fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {

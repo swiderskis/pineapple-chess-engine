@@ -82,7 +82,6 @@ fn generate_pawn_moves(
     let source_square_string = source_square.to_lowercase_string();
     let target_square_string = target_square.to_lowercase_string();
 
-    // Promotion push check
     if ((matches!(side, Side::White) && piece_on_seventh_rank)
         || (matches!(side, Side::Black) && piece_on_second_rank))
         && target_square_empty
@@ -95,7 +94,31 @@ fn generate_pawn_moves(
         println!("{}{}", source_square_string, target_square_string);
     }
 
-    // Pawn capture check
+    let double_push_target_square = if matches!(side, Side::White) && piece_on_second_rank {
+        Some(BoardSquare::new_from_index(source_square_index - 16))
+    } else if matches!(side, Side::Black) && piece_on_seventh_rank {
+        Some(BoardSquare::new_from_index(source_square_index + 16))
+    } else {
+        None
+    };
+
+    let single_push_target_square = target_square;
+
+    let single_push_target_square_empty =
+        game.piece_at_square(&single_push_target_square).is_none();
+
+    if let Some(target_square) = double_push_target_square {
+        if single_push_target_square_empty {
+            let target_square_empty = game.piece_at_square(&target_square).is_none();
+
+            let target_square_string = target_square.to_lowercase_string();
+
+            if target_square_empty {
+                println!("{}{}", source_square_string, target_square_string);
+            }
+        }
+    }
+
     let opponent_side = if matches!(side, Side::White) {
         Side::Black
     } else {
@@ -133,29 +156,22 @@ fn generate_pawn_moves(
         attacks.pop_bit(&target_square);
     }
 
-    // Double pawn push check
-    let double_push_target_square = if matches!(side, Side::White) && piece_on_second_rank {
-        Some(BoardSquare::new_from_index(source_square_index - 16))
-    } else if matches!(side, Side::Black) && piece_on_seventh_rank {
-        Some(BoardSquare::new_from_index(source_square_index + 16))
-    } else {
-        None
-    };
+    if let Some(target_square) = game.en_passant_square() {
+        let target_square_string = target_square.to_lowercase_string();
 
-    let single_push_target_square = target_square;
+        let en_passant_square_attacked = leaper_attack_tables
+            .attack_table(
+                &game.board(&Side::Either),
+                &Piece::Pawn,
+                side,
+                &source_square,
+            )
+            .bitboard
+            & Bitboard::from_square(target_square).bitboard
+            != 0;
 
-    let single_push_target_square_empty =
-        game.piece_at_square(&single_push_target_square).is_none();
-
-    if let Some(target_square) = double_push_target_square {
-        if single_push_target_square_empty {
-            let target_square_empty = game.piece_at_square(&target_square).is_none();
-
-            let target_square_string = target_square.to_lowercase_string();
-
-            if target_square_empty {
-                println!("{}{}", source_square_string, target_square_string);
-            }
+        if en_passant_square_attacked {
+            println!("{}{}ep", source_square_string, target_square_string);
         }
     }
 
