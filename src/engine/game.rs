@@ -274,6 +274,41 @@ impl Game {
         }
     }
 
+    pub fn board(&self, side: &Side) -> Bitboard {
+        match side {
+            Side::White => Bitboard::new(
+                self.white_pawns.bitboard
+                    | self.white_knights.bitboard
+                    | self.white_bishops.bitboard
+                    | self.white_rooks.bitboard
+                    | self.white_queens.bitboard
+                    | self.white_king.bitboard,
+            ),
+            Side::Black => Bitboard::new(
+                self.black_pawns.bitboard
+                    | self.black_knights.bitboard
+                    | self.black_bishops.bitboard
+                    | self.black_rooks.bitboard
+                    | self.black_queens.bitboard
+                    | self.black_king.bitboard,
+            ),
+            Side::Either => Bitboard::new(
+                self.white_pawns.bitboard
+                    | self.white_knights.bitboard
+                    | self.white_bishops.bitboard
+                    | self.white_rooks.bitboard
+                    | self.white_queens.bitboard
+                    | self.white_king.bitboard
+                    | self.black_pawns.bitboard
+                    | self.black_knights.bitboard
+                    | self.black_bishops.bitboard
+                    | self.black_rooks.bitboard
+                    | self.black_queens.bitboard
+                    | self.black_king.bitboard,
+            ),
+        }
+    }
+
     pub fn piece_at_square(&self, square: &BoardSquare) -> Option<(Piece, Side)> {
         for bitboard in self.piece_bitboards() {
             if bitboard.0.bit_occupied(square) {
@@ -324,41 +359,6 @@ impl Game {
                 Piece::King => self.black_king,
             },
             Side::Either => panic!("Attempted to access piece bitboard without specifying a side"),
-        }
-    }
-
-    fn board(&self, side: &Side) -> Bitboard {
-        match side {
-            Side::White => Bitboard::new(
-                self.white_pawns.bitboard
-                    | self.white_knights.bitboard
-                    | self.white_bishops.bitboard
-                    | self.white_rooks.bitboard
-                    | self.white_queens.bitboard
-                    | self.white_king.bitboard,
-            ),
-            Side::Black => Bitboard::new(
-                self.black_pawns.bitboard
-                    | self.black_knights.bitboard
-                    | self.black_bishops.bitboard
-                    | self.black_rooks.bitboard
-                    | self.black_queens.bitboard
-                    | self.black_king.bitboard,
-            ),
-            Side::Either => Bitboard::new(
-                self.white_pawns.bitboard
-                    | self.white_knights.bitboard
-                    | self.white_bishops.bitboard
-                    | self.white_rooks.bitboard
-                    | self.white_queens.bitboard
-                    | self.white_king.bitboard
-                    | self.black_pawns.bitboard
-                    | self.black_knights.bitboard
-                    | self.black_bishops.bitboard
-                    | self.black_rooks.bitboard
-                    | self.black_queens.bitboard
-                    | self.black_king.bitboard,
-            ),
         }
     }
 

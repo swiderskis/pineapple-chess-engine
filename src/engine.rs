@@ -28,7 +28,12 @@ fn generate_moves(game: &Game) {
 
             while let Some(source_square_index) = bitboard.get_ls1b_index() {
                 match piece {
-                    Piece::Pawn => generate_pawn_moves(source_square_index, &mut bitboard, game),
+                    Piece::Pawn => generate_pawn_moves(
+                        source_square_index,
+                        &mut bitboard,
+                        game,
+                        &leaper_attack_tables,
+                    ),
                     Piece::Knight => {
                         bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
                     }
@@ -49,7 +54,12 @@ fn generate_moves(game: &Game) {
         });
 }
 
-fn generate_pawn_moves(source_square_index: usize, bitboard: &mut Bitboard, game: &Game) {
+fn generate_pawn_moves(
+    source_square_index: usize,
+    bitboard: &mut Bitboard,
+    game: &Game,
+    leaper_attack_tables: &LeaperAttackTables,
+) {
     // Bitboards with 2nd and 7th ranks initialised to 1
     let second_rank = Bitboard::new(71776119061217280);
     let seventh_rank = Bitboard::new(65280);
@@ -72,7 +82,7 @@ fn generate_pawn_moves(source_square_index: usize, bitboard: &mut Bitboard, game
     let source_square_string = source_square.to_lowercase_string();
     let target_square_string = target_square.to_lowercase_string();
 
-    // Promotion check
+    // Promotion push check
     if ((matches!(side, Side::White) && piece_on_seventh_rank)
         || (matches!(side, Side::Black) && piece_on_second_rank))
         && target_square_empty
@@ -83,6 +93,44 @@ fn generate_pawn_moves(source_square_index: usize, bitboard: &mut Bitboard, game
         println!("{}{}n", source_square_string, target_square_string);
     } else if target_square_empty {
         println!("{}{}", source_square_string, target_square_string);
+    }
+
+    // Pawn capture check
+    let opponent_side = if matches!(side, Side::White) {
+        Side::Black
+    } else {
+        Side::White
+    };
+
+    let mut attacks = Bitboard::new(
+        leaper_attack_tables
+            .attack_table(
+                &game.board(&Side::Either),
+                &Piece::Pawn,
+                side,
+                &source_square,
+            )
+            .bitboard
+            & game.board(&opponent_side).bitboard,
+    );
+
+    while let Some(target_square_index) = attacks.get_ls1b_index() {
+        let target_square = BoardSquare::new_from_index(target_square_index);
+
+        let target_square_string = target_square.to_lowercase_string();
+
+        if (matches!(side, Side::White) && piece_on_seventh_rank)
+            || (matches!(side, Side::Black) && piece_on_second_rank)
+        {
+            println!("{}{}q", source_square_string, target_square_string);
+            println!("{}{}r", source_square_string, target_square_string);
+            println!("{}{}b", source_square_string, target_square_string);
+            println!("{}{}n", source_square_string, target_square_string);
+        } else {
+            println!("{}{}", source_square_string, target_square_string);
+        }
+
+        attacks.pop_bit(&target_square);
     }
 
     // Double pawn push check
