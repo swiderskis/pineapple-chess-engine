@@ -86,22 +86,29 @@ fn generate_pawn_moves(source_square_index: usize, bitboard: &mut Bitboard, game
     }
 
     // Double pawn push check
-    let target_square = if matches!(side, Side::White) && piece_on_second_rank {
-        BoardSquare::new_from_index(source_square_index - 16)
+    let double_push_target_square = if matches!(side, Side::White) && piece_on_second_rank {
+        Some(BoardSquare::new_from_index(source_square_index - 16))
     } else if matches!(side, Side::Black) && piece_on_seventh_rank {
-        BoardSquare::new_from_index(source_square_index + 16)
+        Some(BoardSquare::new_from_index(source_square_index + 16))
     } else {
-        bitboard.pop_bit(&source_square);
-
-        return;
+        None
     };
 
-    let target_square_empty = game.piece_at_square(&target_square).is_none();
+    let single_push_target_square = target_square;
 
-    let target_square_string = target_square.to_lowercase_string();
+    let single_push_target_square_empty =
+        game.piece_at_square(&single_push_target_square).is_none();
 
-    if target_square_empty {
-        println!("{}{}", source_square_string, target_square_string);
+    if let Some(target_square) = double_push_target_square {
+        if single_push_target_square_empty {
+            let target_square_empty = game.piece_at_square(&target_square).is_none();
+
+            let target_square_string = target_square.to_lowercase_string();
+
+            if target_square_empty {
+                println!("{}{}", source_square_string, target_square_string);
+            }
+        }
     }
 
     bitboard.pop_bit(&source_square);
