@@ -3,7 +3,7 @@ mod game;
 
 use self::{
     attack_tables::{AttackTablesPub, LeaperAttackTables, SliderAttackTables},
-    game::Game,
+    game::{CastlingType, Game},
 };
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
@@ -13,6 +13,8 @@ use strum_macros::{Display, EnumIter, EnumString};
 
 pub fn position() {
     let game = Game::initialise("startpos");
+
+    game.print();
 
     generate_moves(&game);
 }
@@ -28,35 +30,25 @@ fn generate_moves(game: &Game) {
 
             while let Some(source_square_index) = bitboard.get_ls1b_index() {
                 match piece {
-                    Piece::Pawn => generate_pawn_moves(
-                        source_square_index,
-                        &mut bitboard,
-                        game,
-                        &leaper_attack_tables,
-                    ),
-                    Piece::Knight => {
-                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
+                    Piece::Pawn => {
+                        generate_pawn_moves(source_square_index, game, &leaper_attack_tables);
                     }
-                    Piece::Bishop => {
-                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
-                    }
-                    Piece::Rook => {
-                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
-                    }
-                    Piece::Queen => {
-                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
-                    }
+                    Piece::Knight => {}
+                    Piece::Bishop => {}
+                    Piece::Rook => {}
+                    Piece::Queen => {}
                     Piece::King => {
-                        bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index))
+                        generate_castling_moves(game, &leaper_attack_tables, &slider_attack_tables);
                     }
                 }
+
+                bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index));
             }
         });
 }
 
 fn generate_pawn_moves(
     source_square_index: usize,
-    bitboard: &mut Bitboard,
     game: &Game,
     leaper_attack_tables: &LeaperAttackTables,
 ) {
@@ -77,20 +69,19 @@ fn generate_pawn_moves(
 
     let piece_on_second_rank = second_rank.bitboard & single_piece.bitboard != 0;
     let piece_on_seventh_rank = seventh_rank.bitboard & single_piece.bitboard != 0;
-    let target_square_empty = game.piece_at_square(&target_square).is_none();
 
     let source_square_string = source_square.to_lowercase_string();
     let target_square_string = target_square.to_lowercase_string();
 
     if ((matches!(side, Side::White) && piece_on_seventh_rank)
         || (matches!(side, Side::Black) && piece_on_second_rank))
-        && target_square_empty
+        && game.piece_at_square(&target_square).is_none()
     {
         println!("{}{}q", source_square_string, target_square_string);
         println!("{}{}r", source_square_string, target_square_string);
         println!("{}{}b", source_square_string, target_square_string);
         println!("{}{}n", source_square_string, target_square_string);
-    } else if target_square_empty {
+    } else if game.piece_at_square(&target_square).is_none() {
         println!("{}{}", source_square_string, target_square_string);
     }
 
@@ -104,11 +95,8 @@ fn generate_pawn_moves(
 
     let single_push_target_square = target_square;
 
-    let single_push_target_square_empty =
-        game.piece_at_square(&single_push_target_square).is_none();
-
     if let Some(target_square) = double_push_target_square {
-        if single_push_target_square_empty {
+        if game.piece_at_square(&single_push_target_square).is_none() {
             let target_square_empty = game.piece_at_square(&target_square).is_none();
 
             let target_square_string = target_square.to_lowercase_string();
@@ -119,12 +107,6 @@ fn generate_pawn_moves(
         }
     }
 
-    let opponent_side = if matches!(side, Side::White) {
-        Side::Black
-    } else {
-        Side::White
-    };
-
     let mut attacks = Bitboard::new(
         leaper_attack_tables
             .attack_table(
@@ -134,7 +116,7 @@ fn generate_pawn_moves(
                 &source_square,
             )
             .bitboard
-            & game.board(&opponent_side).bitboard,
+            & game.board(&side.opponent_side()).bitboard,
     );
 
     while let Some(target_square_index) = attacks.get_ls1b_index() {
@@ -171,11 +153,88 @@ fn generate_pawn_moves(
             != 0;
 
         if en_passant_square_attacked {
-            println!("{}{}ep", source_square_string, target_square_string);
+            println!("{}{}", source_square_string, target_square_string);
         }
     }
+}
 
-    bitboard.pop_bit(&source_square);
+fn generate_castling_moves(
+    game: &Game,
+    leaper_attack_tables: &LeaperAttackTables,
+    slider_attack_tables: &SliderAttackTables,
+) {
+    let side = game.side_to_move();
+
+    let (
+        b_file_square,
+        c_file_square,
+        d_file_square,
+        e_file_square,
+        f_file_square,
+        g_file_square,
+        short_castle,
+        long_castle,
+    ) = if matches!(side, Side::White) {
+        (
+            BoardSquare::B1,
+            BoardSquare::C1,
+            BoardSquare::D1,
+            BoardSquare::E1,
+            BoardSquare::F1,
+            BoardSquare::G1,
+            CastlingType::WhiteShort,
+            CastlingType::WhiteLong,
+        )
+    } else {
+        (
+            BoardSquare::B8,
+            BoardSquare::C8,
+            BoardSquare::D8,
+            BoardSquare::E8,
+            BoardSquare::F8,
+            BoardSquare::G8,
+            CastlingType::BlackShort,
+            CastlingType::BlackLong,
+        )
+    };
+
+    let d_file_square_attacked = game.is_square_attacked(
+        &side.opponent_side(),
+        &d_file_square,
+        leaper_attack_tables,
+        slider_attack_tables,
+    );
+    let e_file_square_attacked = game.is_square_attacked(
+        &side.opponent_side(),
+        &e_file_square,
+        leaper_attack_tables,
+        slider_attack_tables,
+    );
+    let f_file_square_attacked = game.is_square_attacked(
+        &side.opponent_side(),
+        &f_file_square,
+        leaper_attack_tables,
+        slider_attack_tables,
+    );
+
+    if game.piece_at_square(&f_file_square).is_none()
+        && game.piece_at_square(&g_file_square).is_none()
+        && !e_file_square_attacked
+        && !f_file_square_attacked
+        && game.castling_type_allowed(&short_castle)
+    {
+        println!("{}", short_castle.move_string());
+    }
+
+    if game.piece_at_square(&b_file_square).is_none()
+        && game.piece_at_square(&c_file_square).is_none()
+        && game.piece_at_square(&d_file_square).is_none()
+        && !d_file_square_attacked
+        && !e_file_square_attacked
+        && game.castling_type_allowed(&long_castle)
+    {
+        println!("{}", long_castle.move_string());
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -276,6 +335,16 @@ pub enum Side {
     White,
     Black,
     Either,
+}
+
+impl Side {
+    pub fn opponent_side(&self) -> Side {
+        match self {
+            Self::White => Side::Black,
+            Self::Black => Side::White,
+            Self::Either => panic!("Attempted to get the opposing side without specifying a side"),
+        }
+    }
 }
 
 #[derive(Debug, Display, EnumIter, EnumString, FromPrimitive, ToPrimitive)]

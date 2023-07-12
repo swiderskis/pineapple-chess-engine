@@ -333,6 +333,10 @@ impl Game {
         &self.en_passant_square
     }
 
+    pub fn castling_type_allowed(&self, castling_type: &CastlingType) -> bool {
+        self.castling_rights.castling_rights & castling_type.as_u8() != 0
+    }
+
     fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
         [
             (self.white_pawns, Piece::Pawn, Side::White),
@@ -411,10 +415,10 @@ impl CastlingRights {
         castling_rights_string
             .chars()
             .for_each(|character| match character {
-                'K' => castling_rights |= CastlingTypes::WhiteShort.as_u8(),
-                'Q' => castling_rights |= CastlingTypes::WhiteLong.as_u8(),
-                'k' => castling_rights |= CastlingTypes::BlackShort.as_u8(),
-                'q' => castling_rights |= CastlingTypes::BlackLong.as_u8(),
+                'K' => castling_rights |= CastlingType::WhiteShort.as_u8(),
+                'Q' => castling_rights |= CastlingType::WhiteLong.as_u8(),
+                'k' => castling_rights |= CastlingType::BlackShort.as_u8(),
+                'q' => castling_rights |= CastlingType::BlackLong.as_u8(),
                 _ => panic!("Invalid character used when attempting to initialise castling rights"),
             });
 
@@ -424,19 +428,19 @@ impl CastlingRights {
     fn as_string(&self) -> String {
         let mut castling_rights_string = String::new();
 
-        if self.castling_rights & CastlingTypes::WhiteShort.as_u8() != 0 {
+        if self.castling_rights & CastlingType::WhiteShort.as_u8() != 0 {
             castling_rights_string.push('K');
         }
 
-        if self.castling_rights & CastlingTypes::WhiteLong.as_u8() != 0 {
+        if self.castling_rights & CastlingType::WhiteLong.as_u8() != 0 {
             castling_rights_string.push('Q');
         }
 
-        if self.castling_rights & CastlingTypes::BlackShort.as_u8() != 0 {
+        if self.castling_rights & CastlingType::BlackShort.as_u8() != 0 {
             castling_rights_string.push('k');
         }
 
-        if self.castling_rights & CastlingTypes::BlackLong.as_u8() != 0 {
+        if self.castling_rights & CastlingType::BlackLong.as_u8() != 0 {
             castling_rights_string.push('q');
         }
 
@@ -445,14 +449,25 @@ impl CastlingRights {
 }
 
 #[derive(ToPrimitive)]
-enum CastlingTypes {
+pub enum CastlingType {
     WhiteShort = 0b1000,
     WhiteLong = 0b0100,
     BlackShort = 0b0010,
     BlackLong = 0b0001,
 }
 
-impl EnumToInt for CastlingTypes {}
+impl EnumToInt for CastlingType {}
+
+impl CastlingType {
+    pub fn move_string(&self) -> &str {
+        match self {
+            Self::WhiteShort => "e1g1",
+            Self::WhiteLong => "e1c1",
+            Self::BlackShort => "e8g8",
+            Self::BlackLong => "e8c8",
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

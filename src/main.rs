@@ -1,4 +1,5 @@
-use pineapple_chess_engine::uci;
+mod engine;
+mod uci;
 
 fn main() {
     uci::command();
