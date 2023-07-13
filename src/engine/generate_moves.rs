@@ -18,16 +18,23 @@ pub fn generate_moves(game: &Game) {
                     Piece::Pawn => {
                         generate_pawn_moves(source_square_index, game, &leaper_attack_tables);
                     }
-                    Piece::Knight => generate_leaper_piece_moves(
-                        source_square_index,
-                        game,
-                        &leaper_attack_tables,
-                        &Piece::Knight,
-                    ),
-                    Piece::Bishop => {}
-                    Piece::Rook => {}
-                    Piece::Queen => {}
+                    Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
+                        generate_piece_moves(
+                            source_square_index,
+                            game,
+                            &leaper_attack_tables,
+                            piece,
+                            &slider_attack_tables,
+                        );
+                    }
                     Piece::King => {
+                        generate_piece_moves(
+                            source_square_index,
+                            game,
+                            &leaper_attack_tables,
+                            piece,
+                            &slider_attack_tables,
+                        );
                         generate_castling_moves(game, &leaper_attack_tables, &slider_attack_tables);
                     }
                 }
@@ -148,22 +155,32 @@ fn generate_pawn_moves(
     }
 }
 
-fn generate_leaper_piece_moves(
+fn generate_piece_moves(
     source_square_index: usize,
     game: &Game,
     leaper_attack_tables: &LeaperAttackTables,
     piece: &Piece,
+    slider_attack_tables: &SliderAttackTables,
 ) {
     let side = game.side_to_move();
 
     let source_square = BoardSquare::new_from_index(source_square_index);
 
-    let mut attacks = Bitboard::new(
-        leaper_attack_tables
-            .attack_table(&game.board(&Side::Either), piece, side, &source_square)
-            .bitboard
-            & !game.board(side).bitboard,
-    );
+    let mut attacks = match piece {
+        Piece::Pawn => panic!("Attempted to generate piece moves for pawn"),
+        Piece::Knight | Piece::King => Bitboard::new(
+            leaper_attack_tables
+                .attack_table(&game.board(&Side::Either), piece, side, &source_square)
+                .bitboard
+                & !game.board(side).bitboard,
+        ),
+        Piece::Bishop | Piece::Rook | Piece::Queen => Bitboard::new(
+            slider_attack_tables
+                .attack_table(&game.board(&Side::Either), piece, side, &source_square)
+                .bitboard
+                & !game.board(side).bitboard,
+        ),
+    };
 
     while let Some(target_square_index) = attacks.get_ls1b_index() {
         let target_square = BoardSquare::new_from_index(target_square_index);
