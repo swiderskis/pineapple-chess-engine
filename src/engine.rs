@@ -165,37 +165,30 @@ fn generate_castling_moves(
 ) {
     let side = game.side_to_move();
 
-    let (
-        b_file_square,
-        c_file_square,
-        d_file_square,
-        e_file_square,
-        f_file_square,
-        g_file_square,
-        short_castle,
-        long_castle,
-    ) = if matches!(side, Side::White) {
-        (
-            BoardSquare::B1,
-            BoardSquare::C1,
-            BoardSquare::D1,
-            BoardSquare::E1,
-            BoardSquare::F1,
-            BoardSquare::G1,
-            CastlingType::WhiteShort,
-            CastlingType::WhiteLong,
-        )
+    let (b_file_square, c_file_square, d_file_square, e_file_square, f_file_square, g_file_square) =
+        if matches!(side, Side::White) {
+            (
+                BoardSquare::B1,
+                BoardSquare::C1,
+                BoardSquare::D1,
+                BoardSquare::E1,
+                BoardSquare::F1,
+                BoardSquare::G1,
+            )
+        } else {
+            (
+                BoardSquare::B8,
+                BoardSquare::C8,
+                BoardSquare::D8,
+                BoardSquare::E8,
+                BoardSquare::F8,
+                BoardSquare::G8,
+            )
+        };
+    let (short_castle, long_castle) = if matches!(side, Side::White) {
+        (CastlingType::WhiteShort, CastlingType::WhiteLong)
     } else {
-        (
-            BoardSquare::B8,
-            BoardSquare::C8,
-            BoardSquare::D8,
-            BoardSquare::E8,
-            BoardSquare::F8,
-            BoardSquare::G8,
-            CastlingType::BlackShort,
-            CastlingType::BlackLong,
-        )
+        (CastlingType::BlackShort, CastlingType::BlackLong)
     };
 
     let d_file_square_attacked = game.is_square_attacked(
