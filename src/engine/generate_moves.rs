@@ -1,12 +1,11 @@
 use super::{
-    attack_tables::{AttackTablesPub, LeaperAttackTables, SliderAttackTables},
+    attack_tables::AttackTables,
     game::{CastlingType, Game},
     Bitboard, BoardSquare, Piece, Side,
 };
 
 pub fn generate_moves(game: &Game) {
-    let leaper_attack_tables = LeaperAttackTables::initialise();
-    let slider_attack_tables = SliderAttackTables::initialise();
+    let attack_tables = AttackTables::initialise();
 
     game.side_to_move_bitboards()
         .iter()
@@ -16,26 +15,14 @@ pub fn generate_moves(game: &Game) {
             while let Some(source_square_index) = bitboard.get_ls1b_index() {
                 match piece {
                     Piece::Pawn => {
-                        generate_pawn_moves(source_square_index, game, &leaper_attack_tables);
+                        generate_pawn_moves(source_square_index, &attack_tables, game);
                     }
                     Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
-                        generate_piece_moves(
-                            source_square_index,
-                            game,
-                            &leaper_attack_tables,
-                            piece,
-                            &slider_attack_tables,
-                        );
+                        generate_piece_moves(source_square_index, &attack_tables, game, piece);
                     }
                     Piece::King => {
-                        generate_piece_moves(
-                            source_square_index,
-                            game,
-                            &leaper_attack_tables,
-                            piece,
-                            &slider_attack_tables,
-                        );
-                        generate_castling_moves(game, &leaper_attack_tables, &slider_attack_tables);
+                        generate_piece_moves(source_square_index, &attack_tables, game, piece);
+                        generate_castling_moves(&attack_tables, game);
                     }
                 }
 
@@ -44,11 +31,7 @@ pub fn generate_moves(game: &Game) {
         });
 }
 
-fn generate_pawn_moves(
-    source_square_index: usize,
-    game: &Game,
-    leaper_attack_tables: &LeaperAttackTables,
-) {
+fn generate_pawn_moves(source_square_index: usize, attack_tables: &AttackTables, game: &Game) {
     // Bitboards with 2nd and 7th ranks initialised to 1
     let second_rank = Bitboard::new(71776119061217280);
     let seventh_rank = Bitboard::new(65280);
@@ -105,7 +88,7 @@ fn generate_pawn_moves(
     }
 
     let mut attacks = Bitboard::new(
-        leaper_attack_tables
+        attack_tables
             .attack_table(
                 &game.board(&Side::Either),
                 &Piece::Pawn,
@@ -138,7 +121,7 @@ fn generate_pawn_moves(
     if let Some(target_square) = game.en_passant_square() {
         let target_square_string = target_square.to_lowercase_string();
 
-        let en_passant_square_attacked = leaper_attack_tables
+        let en_passant_square_attacked = attack_tables
             .attack_table(
                 &game.board(&Side::Either),
                 &Piece::Pawn,
@@ -157,10 +140,9 @@ fn generate_pawn_moves(
 
 fn generate_piece_moves(
     source_square_index: usize,
+    attack_tables: &AttackTables,
     game: &Game,
-    leaper_attack_tables: &LeaperAttackTables,
     piece: &Piece,
-    slider_attack_tables: &SliderAttackTables,
 ) {
     let side = game.side_to_move();
 
@@ -168,14 +150,8 @@ fn generate_piece_moves(
 
     let mut attacks = match piece {
         Piece::Pawn => panic!("Attempted to generate piece moves for pawn"),
-        Piece::Knight | Piece::King => Bitboard::new(
-            leaper_attack_tables
-                .attack_table(&game.board(&Side::Either), piece, side, &source_square)
-                .bitboard
-                & !game.board(side).bitboard,
-        ),
-        Piece::Bishop | Piece::Rook | Piece::Queen => Bitboard::new(
-            slider_attack_tables
+        _ => Bitboard::new(
+            attack_tables
                 .attack_table(&game.board(&Side::Either), piece, side, &source_square)
                 .bitboard
                 & !game.board(side).bitboard,
@@ -194,11 +170,7 @@ fn generate_piece_moves(
     }
 }
 
-fn generate_castling_moves(
-    game: &Game,
-    leaper_attack_tables: &LeaperAttackTables,
-    slider_attack_tables: &SliderAttackTables,
-) {
+fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) {
     let side = game.side_to_move();
 
     let (b_file_square, c_file_square, d_file_square, e_file_square, f_file_square, g_file_square) =
@@ -227,24 +199,12 @@ fn generate_castling_moves(
         (CastlingType::BlackShort, CastlingType::BlackLong)
     };
 
-    let d_file_square_attacked = game.is_square_attacked(
-        &side.opponent_side(),
-        &d_file_square,
-        leaper_attack_tables,
-        slider_attack_tables,
-    );
-    let e_file_square_attacked = game.is_square_attacked(
-        &side.opponent_side(),
-        &e_file_square,
-        leaper_attack_tables,
-        slider_attack_tables,
-    );
-    let f_file_square_attacked = game.is_square_attacked(
-        &side.opponent_side(),
-        &f_file_square,
-        leaper_attack_tables,
-        slider_attack_tables,
-    );
+    let d_file_square_attacked =
+        game.is_square_attacked(attack_tables, &d_file_square, &side.opponent_side());
+    let e_file_square_attacked =
+        game.is_square_attacked(attack_tables, &e_file_square, &side.opponent_side());
+    let f_file_square_attacked =
+        game.is_square_attacked(attack_tables, &f_file_square, &side.opponent_side());
 
     if game.piece_at_square(&f_file_square).is_none()
         && game.piece_at_square(&g_file_square).is_none()

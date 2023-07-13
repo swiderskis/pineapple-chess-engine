@@ -1,21 +1,55 @@
 use super::{Bitboard, BoardSquare, EnumToInt, Piece, Side};
 use strum::IntoEnumIterator;
 
-pub struct LeaperAttackTables {
+pub struct AttackTables {
+    leaper_attack_tables: LeaperAttackTables,
+    slider_attack_tables: SliderAttackTables,
+}
+
+impl AttackTables {
+    pub fn initialise() -> Self {
+        let leaper_attack_tables = LeaperAttackTables::initialise();
+        let slider_attack_tables = SliderAttackTables::initialise();
+
+        AttackTables {
+            leaper_attack_tables,
+            slider_attack_tables,
+        }
+    }
+
+    pub fn attack_table(
+        &self,
+        board: &Bitboard,
+        piece: &Piece,
+        side: &Side,
+        square: &BoardSquare,
+    ) -> Bitboard {
+        match piece {
+            Piece::Pawn | Piece::Knight | Piece::King => self
+                .leaper_attack_tables
+                .attack_table(board, piece, side, square),
+            Piece::Bishop | Piece::Rook | Piece::Queen => self
+                .slider_attack_tables
+                .attack_table(board, piece, side, square),
+        }
+    }
+}
+
+struct LeaperAttackTables {
     white_pawn_attack_tables: [Bitboard; 64],
     black_pawn_attack_tables: [Bitboard; 64],
     knight_attack_tables: [Bitboard; 64],
     king_attack_tables: [Bitboard; 64],
 }
 
-pub struct SliderAttackTables {
+struct SliderAttackTables {
     bishop_attack_masks: [Bitboard; 64],
     rook_attack_masks: [Bitboard; 64],
     bishop_attack_tables: Vec<[Bitboard; 512]>,
     rook_attack_tables: Vec<[Bitboard; 4096]>,
 }
 
-pub trait AttackTablesPub {
+trait AttackTablesTraits {
     fn initialise() -> Self;
 
     fn attack_table(
@@ -25,15 +59,13 @@ pub trait AttackTablesPub {
         side: &Side,
         square: &BoardSquare,
     ) -> Bitboard;
-}
 
-trait AttackTables {
     fn attack_mask(&self, piece: &Piece, side: &Side, square: &BoardSquare) -> Bitboard;
 
     fn generate_attack_masks(piece: Piece, side: Side) -> [Bitboard; 64];
 }
 
-impl AttackTablesPub for LeaperAttackTables {
+impl AttackTablesTraits for LeaperAttackTables {
     fn initialise() -> Self {
         Self {
             white_pawn_attack_tables: Self::generate_attack_masks(Piece::Pawn, Side::White),
@@ -65,9 +97,7 @@ impl AttackTablesPub for LeaperAttackTables {
             }
         }
     }
-}
 
-impl AttackTables for LeaperAttackTables {
     fn generate_attack_masks(piece: Piece, side: Side) -> [Bitboard; 64] {
         // Bitboards with all values initialised to 1, except for the file(s) indicated
         // Used to prevent incorrect attack table generation for pieces on / near edge files
@@ -145,7 +175,7 @@ impl AttackTables for LeaperAttackTables {
     }
 }
 
-impl AttackTablesPub for SliderAttackTables {
+impl AttackTablesTraits for SliderAttackTables {
     fn initialise() -> Self {
         let bishop_attack_masks = Self::generate_attack_masks(Piece::Bishop, Side::Either);
         let rook_attack_masks = Self::generate_attack_masks(Piece::Rook, Side::Either);
@@ -256,9 +286,7 @@ impl AttackTablesPub for SliderAttackTables {
             _ => panic!("Attempted to access attack table for non-slider piece"),
         }
     }
-}
 
-impl AttackTables for SliderAttackTables {
     fn attack_mask(&self, piece: &Piece, _side: &Side, square: &BoardSquare) -> Bitboard {
         match piece {
             Piece::Bishop => self.bishop_attack_masks[square.as_usize()],

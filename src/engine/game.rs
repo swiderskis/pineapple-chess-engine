@@ -1,7 +1,4 @@
-use super::{
-    attack_tables::{AttackTablesPub, LeaperAttackTables, SliderAttackTables},
-    Bitboard, BoardSquare, EnumToInt, Piece, Side,
-};
+use super::{attack_tables::AttackTables, Bitboard, BoardSquare, EnumToInt, Piece, Side};
 use num_derive::ToPrimitive;
 use strum::IntoEnumIterator;
 
@@ -162,14 +159,13 @@ impl Game {
 
     pub fn is_square_attacked(
         &self,
-        attacking_side: &Side,
+        attack_tables: &AttackTables,
         square: &BoardSquare,
-        leaper_attack_tables: &LeaperAttackTables,
-        slider_attack_tables: &SliderAttackTables,
+        attacking_side: &Side,
     ) -> bool {
         match attacking_side {
             Side::White => {
-                let pawn_attacks_square = leaper_attack_tables
+                let pawn_attacks_square = attack_tables
                     .attack_table(
                         &self.board(&Side::Either),
                         &Piece::Pawn,
@@ -185,7 +181,7 @@ impl Game {
                 }
             }
             Side::Black => {
-                let pawn_attacks_square = leaper_attack_tables
+                let pawn_attacks_square = attack_tables
                     .attack_table(
                         &self.board(&Side::Either),
                         &Piece::Pawn,
@@ -205,7 +201,7 @@ impl Game {
             }
         }
 
-        let knight_attacks_square = leaper_attack_tables
+        let knight_attacks_square = attack_tables
             .attack_table(
                 &self.board(&Side::Either),
                 &Piece::Knight,
@@ -220,7 +216,7 @@ impl Game {
             return true;
         }
 
-        let bishop_attacks_square = slider_attack_tables
+        let bishop_attacks_square = attack_tables
             .attack_table(
                 &self.board(&Side::Either),
                 &Piece::Bishop,
@@ -235,7 +231,7 @@ impl Game {
             return true;
         }
 
-        let rook_attacks_square = slider_attack_tables
+        let rook_attacks_square = attack_tables
             .attack_table(
                 &self.board(&Side::Either),
                 &Piece::Rook,
@@ -250,7 +246,7 @@ impl Game {
             return true;
         }
 
-        let queen_attacks_square = slider_attack_tables
+        let queen_attacks_square = attack_tables
             .attack_table(
                 &self.board(&Side::Either),
                 &Piece::Queen,
@@ -265,7 +261,7 @@ impl Game {
             return true;
         }
 
-        let king_attacks_square = leaper_attack_tables
+        let king_attacks_square = attack_tables
             .attack_table(
                 &self.board(&Side::Either),
                 &Piece::King,
