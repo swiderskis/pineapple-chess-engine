@@ -18,7 +18,12 @@ pub fn generate_moves(game: &Game) {
                     Piece::Pawn => {
                         generate_pawn_moves(source_square_index, game, &leaper_attack_tables);
                     }
-                    Piece::Knight => {}
+                    Piece::Knight => generate_leaper_piece_moves(
+                        source_square_index,
+                        game,
+                        &leaper_attack_tables,
+                        &Piece::Knight,
+                    ),
                     Piece::Bishop => {}
                     Piece::Rook => {}
                     Piece::Queen => {}
@@ -140,6 +145,35 @@ fn generate_pawn_moves(
         if en_passant_square_attacked {
             println!("{}{}", source_square_string, target_square_string);
         }
+    }
+}
+
+fn generate_leaper_piece_moves(
+    source_square_index: usize,
+    game: &Game,
+    leaper_attack_tables: &LeaperAttackTables,
+    piece: &Piece,
+) {
+    let side = game.side_to_move();
+
+    let source_square = BoardSquare::new_from_index(source_square_index);
+
+    let mut attacks = Bitboard::new(
+        leaper_attack_tables
+            .attack_table(&game.board(&Side::Either), piece, side, &source_square)
+            .bitboard
+            & !game.board(side).bitboard,
+    );
+
+    while let Some(target_square_index) = attacks.get_ls1b_index() {
+        let target_square = BoardSquare::new_from_index(target_square_index);
+
+        let source_square_string = source_square.to_lowercase_string();
+        let target_square_string = target_square.to_lowercase_string();
+
+        println!("{}{}", source_square_string, target_square_string);
+
+        attacks.pop_bit(&target_square);
     }
 }
 
