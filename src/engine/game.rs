@@ -162,12 +162,12 @@ impl Game {
 
     pub fn is_square_attacked(
         &self,
-        side: &Side,
+        attacking_side: &Side,
         square: &BoardSquare,
         leaper_attack_tables: &LeaperAttackTables,
         slider_attack_tables: &SliderAttackTables,
     ) -> bool {
-        match side {
+        match attacking_side {
             Side::White => {
                 let pawn_attacks_square = leaper_attack_tables
                     .attack_table(
@@ -177,7 +177,7 @@ impl Game {
                         square,
                     )
                     .bitboard
-                    & self.piece_bitboard(&Piece::Pawn, side).bitboard
+                    & self.piece_bitboard(&Piece::Pawn, attacking_side).bitboard
                     != 0;
 
                 if pawn_attacks_square {
@@ -193,7 +193,7 @@ impl Game {
                         square,
                     )
                     .bitboard
-                    & self.piece_bitboard(&Piece::Pawn, side).bitboard
+                    & self.piece_bitboard(&Piece::Pawn, attacking_side).bitboard
                     != 0;
 
                 if pawn_attacks_square {
@@ -206,9 +206,14 @@ impl Game {
         }
 
         let knight_attacks_square = leaper_attack_tables
-            .attack_table(&self.board(&Side::Either), &Piece::Knight, side, square)
+            .attack_table(
+                &self.board(&Side::Either),
+                &Piece::Knight,
+                attacking_side,
+                square,
+            )
             .bitboard
-            & self.piece_bitboard(&Piece::Knight, side).bitboard
+            & self.piece_bitboard(&Piece::Knight, attacking_side).bitboard
             != 0;
 
         if knight_attacks_square {
@@ -216,9 +221,14 @@ impl Game {
         }
 
         let bishop_attacks_square = slider_attack_tables
-            .attack_table(&self.board(&Side::Either), &Piece::Bishop, side, square)
+            .attack_table(
+                &self.board(&Side::Either),
+                &Piece::Bishop,
+                attacking_side,
+                square,
+            )
             .bitboard
-            & self.piece_bitboard(&Piece::Bishop, side).bitboard
+            & self.piece_bitboard(&Piece::Bishop, attacking_side).bitboard
             != 0;
 
         if bishop_attacks_square {
@@ -226,9 +236,14 @@ impl Game {
         }
 
         let rook_attacks_square = slider_attack_tables
-            .attack_table(&self.board(&Side::Either), &Piece::Rook, side, square)
+            .attack_table(
+                &self.board(&Side::Either),
+                &Piece::Rook,
+                attacking_side,
+                square,
+            )
             .bitboard
-            & self.piece_bitboard(&Piece::Rook, side).bitboard
+            & self.piece_bitboard(&Piece::Rook, attacking_side).bitboard
             != 0;
 
         if rook_attacks_square {
@@ -236,9 +251,14 @@ impl Game {
         }
 
         let queen_attacks_square = slider_attack_tables
-            .attack_table(&self.board(&Side::Either), &Piece::Queen, side, square)
+            .attack_table(
+                &self.board(&Side::Either),
+                &Piece::Queen,
+                attacking_side,
+                square,
+            )
             .bitboard
-            & self.piece_bitboard(&Piece::Queen, side).bitboard
+            & self.piece_bitboard(&Piece::Queen, attacking_side).bitboard
             != 0;
 
         if queen_attacks_square {
@@ -246,9 +266,14 @@ impl Game {
         }
 
         let king_attacks_square = leaper_attack_tables
-            .attack_table(&self.board(&Side::Either), &Piece::King, side, square)
+            .attack_table(
+                &self.board(&Side::Either),
+                &Piece::King,
+                attacking_side,
+                square,
+            )
             .bitboard
-            & self.piece_bitboard(&Piece::King, side).bitboard
+            & self.piece_bitboard(&Piece::King, attacking_side).bitboard
             != 0;
 
         if king_attacks_square {
