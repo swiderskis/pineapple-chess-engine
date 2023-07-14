@@ -160,18 +160,13 @@ impl Game {
     pub fn is_square_attacked(
         &self,
         attack_tables: &AttackTables,
-        square: &BoardSquare,
         attacking_side: &Side,
+        square: &BoardSquare,
     ) -> bool {
         match attacking_side {
             Side::White => {
                 let pawn_attacks_square = attack_tables
-                    .attack_table(
-                        &self.board(&Side::Either),
-                        &Piece::Pawn,
-                        &Side::Black,
-                        square,
-                    )
+                    .attack_table(&self.board(None), &Piece::Pawn, &Side::Black, square)
                     .bitboard
                     & self.piece_bitboard(&Piece::Pawn, attacking_side).bitboard
                     != 0;
@@ -182,12 +177,7 @@ impl Game {
             }
             Side::Black => {
                 let pawn_attacks_square = attack_tables
-                    .attack_table(
-                        &self.board(&Side::Either),
-                        &Piece::Pawn,
-                        &Side::White,
-                        square,
-                    )
+                    .attack_table(&self.board(None), &Piece::Pawn, &Side::White, square)
                     .bitboard
                     & self.piece_bitboard(&Piece::Pawn, attacking_side).bitboard
                     != 0;
@@ -196,18 +186,10 @@ impl Game {
                     return true;
                 }
             }
-            Side::Either => {
-                panic!("Attempted to check if a square is attacked without specifying a side")
-            }
         }
 
         let knight_attacks_square = attack_tables
-            .attack_table(
-                &self.board(&Side::Either),
-                &Piece::Knight,
-                attacking_side,
-                square,
-            )
+            .attack_table(&self.board(None), &Piece::Knight, attacking_side, square)
             .bitboard
             & self.piece_bitboard(&Piece::Knight, attacking_side).bitboard
             != 0;
@@ -217,12 +199,7 @@ impl Game {
         }
 
         let bishop_attacks_square = attack_tables
-            .attack_table(
-                &self.board(&Side::Either),
-                &Piece::Bishop,
-                attacking_side,
-                square,
-            )
+            .attack_table(&self.board(None), &Piece::Bishop, attacking_side, square)
             .bitboard
             & self.piece_bitboard(&Piece::Bishop, attacking_side).bitboard
             != 0;
@@ -232,12 +209,7 @@ impl Game {
         }
 
         let rook_attacks_square = attack_tables
-            .attack_table(
-                &self.board(&Side::Either),
-                &Piece::Rook,
-                attacking_side,
-                square,
-            )
+            .attack_table(&self.board(None), &Piece::Rook, attacking_side, square)
             .bitboard
             & self.piece_bitboard(&Piece::Rook, attacking_side).bitboard
             != 0;
@@ -247,12 +219,7 @@ impl Game {
         }
 
         let queen_attacks_square = attack_tables
-            .attack_table(
-                &self.board(&Side::Either),
-                &Piece::Queen,
-                attacking_side,
-                square,
-            )
+            .attack_table(&self.board(None), &Piece::Queen, attacking_side, square)
             .bitboard
             & self.piece_bitboard(&Piece::Queen, attacking_side).bitboard
             != 0;
@@ -262,12 +229,7 @@ impl Game {
         }
 
         let king_attacks_square = attack_tables
-            .attack_table(
-                &self.board(&Side::Either),
-                &Piece::King,
-                attacking_side,
-                square,
-            )
+            .attack_table(&self.board(None), &Piece::King, attacking_side, square)
             .bitboard
             & self.piece_bitboard(&Piece::King, attacking_side).bitboard
             != 0;
@@ -297,29 +259,30 @@ impl Game {
                 (self.black_queens, Piece::Queen),
                 (self.black_king, Piece::King),
             ],
-            Side::Either => panic!("Attempted to access side bitboards without specifying a side"),
         }
     }
 
-    pub fn board(&self, side: &Side) -> Bitboard {
+    pub fn board(&self, side: Option<&Side>) -> Bitboard {
         match side {
-            Side::White => Bitboard::new(
-                self.white_pawns.bitboard
-                    | self.white_knights.bitboard
-                    | self.white_bishops.bitboard
-                    | self.white_rooks.bitboard
-                    | self.white_queens.bitboard
-                    | self.white_king.bitboard,
-            ),
-            Side::Black => Bitboard::new(
-                self.black_pawns.bitboard
-                    | self.black_knights.bitboard
-                    | self.black_bishops.bitboard
-                    | self.black_rooks.bitboard
-                    | self.black_queens.bitboard
-                    | self.black_king.bitboard,
-            ),
-            Side::Either => Bitboard::new(
+            Some(side) => match side {
+                Side::White => Bitboard::new(
+                    self.white_pawns.bitboard
+                        | self.white_knights.bitboard
+                        | self.white_bishops.bitboard
+                        | self.white_rooks.bitboard
+                        | self.white_queens.bitboard
+                        | self.white_king.bitboard,
+                ),
+                Side::Black => Bitboard::new(
+                    self.black_pawns.bitboard
+                        | self.black_knights.bitboard
+                        | self.black_bishops.bitboard
+                        | self.black_rooks.bitboard
+                        | self.black_queens.bitboard
+                        | self.black_king.bitboard,
+                ),
+            },
+            None => Bitboard::new(
                 self.white_pawns.bitboard
                     | self.white_knights.bitboard
                     | self.white_bishops.bitboard
@@ -393,7 +356,6 @@ impl Game {
                 Piece::Queen => self.black_queens,
                 Piece::King => self.black_king,
             },
-            Side::Either => panic!("Attempted to access piece bitboard without specifying a side"),
         }
     }
 
@@ -415,8 +377,6 @@ impl Game {
                 Piece::Queen => 'q',
                 Piece::King => 'k',
             },
-
-            Side::Either => panic!("Attempted to get piece character without specifying side"),
         }
     }
 }

@@ -15,13 +15,13 @@ pub fn generate_moves(game: &Game) {
             while let Some(source_square_index) = bitboard.get_ls1b_index() {
                 match piece {
                     Piece::Pawn => {
-                        generate_pawn_moves(source_square_index, &attack_tables, game);
+                        generate_pawn_moves(&attack_tables, game, source_square_index);
                     }
                     Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
-                        generate_piece_moves(source_square_index, &attack_tables, game, piece);
+                        generate_piece_moves(&attack_tables, game, piece, source_square_index);
                     }
                     Piece::King => {
-                        generate_piece_moves(source_square_index, &attack_tables, game, piece);
+                        generate_piece_moves(&attack_tables, game, piece, source_square_index);
                         generate_castling_moves(&attack_tables, game);
                     }
                 }
@@ -31,7 +31,7 @@ pub fn generate_moves(game: &Game) {
         });
 }
 
-fn generate_pawn_moves(source_square_index: usize, attack_tables: &AttackTables, game: &Game) {
+fn generate_pawn_moves(attack_tables: &AttackTables, game: &Game, source_square_index: usize) {
     // Bitboards with 2nd and 7th ranks initialised to 1
     let second_rank = Bitboard::new(71776119061217280);
     let seventh_rank = Bitboard::new(65280);
@@ -89,14 +89,9 @@ fn generate_pawn_moves(source_square_index: usize, attack_tables: &AttackTables,
 
     let mut attacks = Bitboard::new(
         attack_tables
-            .attack_table(
-                &game.board(&Side::Either),
-                &Piece::Pawn,
-                side,
-                &source_square,
-            )
+            .attack_table(&game.board(None), &Piece::Pawn, side, &source_square)
             .bitboard
-            & game.board(&side.opponent_side()).bitboard,
+            & game.board(Some(&side.opponent_side())).bitboard,
     );
 
     while let Some(target_square_index) = attacks.get_ls1b_index() {
@@ -122,12 +117,7 @@ fn generate_pawn_moves(source_square_index: usize, attack_tables: &AttackTables,
         let target_square_string = target_square.to_lowercase_string();
 
         let en_passant_square_attacked = attack_tables
-            .attack_table(
-                &game.board(&Side::Either),
-                &Piece::Pawn,
-                side,
-                &source_square,
-            )
+            .attack_table(&game.board(None), &Piece::Pawn, side, &source_square)
             .bitboard
             & Bitboard::from_square(target_square).bitboard
             != 0;
@@ -139,10 +129,10 @@ fn generate_pawn_moves(source_square_index: usize, attack_tables: &AttackTables,
 }
 
 fn generate_piece_moves(
-    source_square_index: usize,
     attack_tables: &AttackTables,
     game: &Game,
     piece: &Piece,
+    source_square_index: usize,
 ) {
     let side = game.side_to_move();
 
@@ -152,9 +142,9 @@ fn generate_piece_moves(
         Piece::Pawn => panic!("Attempted to generate piece moves for pawn"),
         _ => Bitboard::new(
             attack_tables
-                .attack_table(&game.board(&Side::Either), piece, side, &source_square)
+                .attack_table(&game.board(None), piece, side, &source_square)
                 .bitboard
-                & !game.board(side).bitboard,
+                & !game.board(Some(side)).bitboard,
         ),
     };
 
@@ -200,11 +190,11 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) {
     };
 
     let d_file_square_attacked =
-        game.is_square_attacked(attack_tables, &d_file_square, &side.opponent_side());
+        game.is_square_attacked(attack_tables, &side.opponent_side(), &d_file_square);
     let e_file_square_attacked =
-        game.is_square_attacked(attack_tables, &e_file_square, &side.opponent_side());
+        game.is_square_attacked(attack_tables, &side.opponent_side(), &e_file_square);
     let f_file_square_attacked =
-        game.is_square_attacked(attack_tables, &f_file_square, &side.opponent_side());
+        game.is_square_attacked(attack_tables, &side.opponent_side(), &f_file_square);
 
     if game.piece_at_square(&f_file_square).is_none()
         && game.piece_at_square(&g_file_square).is_none()

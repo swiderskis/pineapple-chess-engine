@@ -64,7 +64,7 @@ impl Bitboard {
         self.bitboard == 0
     }
 
-    fn print(&self) {
+    fn _print(&self) {
         BoardSquare::iter().for_each(|square| {
             if square.file() == 0 {
                 print!("{}   ", (64 - square.as_usize() / 8));
@@ -114,7 +114,6 @@ pub enum Piece {
 pub enum Side {
     White,
     Black,
-    Either,
 }
 
 impl Side {
@@ -122,7 +121,6 @@ impl Side {
         match self {
             Self::White => Side::Black,
             Self::Black => Side::White,
-            Self::Either => panic!("Attempted to get the opposing side without specifying a side"),
         }
     }
 }
