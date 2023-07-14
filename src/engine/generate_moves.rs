@@ -18,12 +18,20 @@ pub fn generate_moves(game: &Game) {
                 let source_square = BoardSquare::new_from_index(source_square_index);
 
                 let attacks = match piece {
-                    Piece::Pawn => Bitboard::new(
-                        attack_tables
-                            .attack_table(&game.board(None), &Piece::Pawn, side, &source_square)
-                            .bitboard
-                            & game.board(Some(&side.opponent_side())).bitboard,
-                    ),
+                    Piece::Pawn => {
+                        let attack_table = attack_tables.attack_table(
+                            &game.board(None),
+                            piece,
+                            side,
+                            &source_square,
+                        );
+
+                        generate_pawn_attacks(
+                            attack_table,
+                            game.en_passant_square(),
+                            game.board(Some(&side.opponent_side())),
+                        )
+                    }
                     _ => Bitboard::new(
                         attack_tables
                             .attack_table(&game.board(None), piece, side, &source_square)
@@ -34,7 +42,7 @@ pub fn generate_moves(game: &Game) {
 
                 match piece {
                     Piece::Pawn => {
-                        generate_pawn_moves(attacks, &attack_tables, game, source_square_index);
+                        generate_pawn_moves(attacks, game, source_square_index);
                     }
                     Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
                         generate_piece_moves(attacks, &source_square);
@@ -50,12 +58,7 @@ pub fn generate_moves(game: &Game) {
         });
 }
 
-fn generate_pawn_moves(
-    mut attacks: Bitboard,
-    attack_tables: &AttackTables,
-    game: &Game,
-    source_square_index: usize,
-) {
+fn generate_pawn_moves(mut attacks: Bitboard, game: &Game, source_square_index: usize) {
     // Bitboards with 2nd and 7th ranks initialised to 1
     let second_rank = Bitboard::new(71776119061217280);
     let seventh_rank = Bitboard::new(65280);
@@ -89,6 +92,7 @@ fn generate_pawn_moves(
         println!("{}{}", source_square_string, target_square_string);
     }
 
+    let single_push_target_square = target_square;
     let double_push_target_square = if matches!(side, Side::White) && piece_on_second_rank {
         Some(BoardSquare::new_from_index(source_square_index - 16))
     } else if matches!(side, Side::Black) && piece_on_seventh_rank {
@@ -96,8 +100,6 @@ fn generate_pawn_moves(
     } else {
         None
     };
-
-    let single_push_target_square = target_square;
 
     if let Some(target_square) = double_push_target_square {
         if game.piece_at_square(&single_push_target_square).is_none() {
@@ -128,20 +130,6 @@ fn generate_pawn_moves(
         }
 
         attacks.pop_bit(&target_square);
-    }
-
-    if let Some(target_square) = game.en_passant_square() {
-        let target_square_string = target_square.to_lowercase_string();
-
-        let en_passant_square_attacked = attack_tables
-            .attack_table(&game.board(None), &Piece::Pawn, side, &source_square)
-            .bitboard
-            & Bitboard::from_square(target_square).bitboard
-            != 0;
-
-        if en_passant_square_attacked {
-            println!("{}{}", source_square_string, target_square_string);
-        }
     }
 }
 
@@ -212,4 +200,18 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) {
     {
         println!("{}", long_castle.move_string());
     }
+}
+
+fn generate_pawn_attacks(
+    attack_table: Bitboard,
+    en_passant_square: &Option<BoardSquare>,
+    opponent_board: Bitboard,
+) -> Bitboard {
+    let en_passant = if let Some(en_passant_square) = en_passant_square {
+        Bitboard::from_square(en_passant_square)
+    } else {
+        Bitboard::new(0)
+    };
+
+    Bitboard::new(attack_table.bitboard & (opponent_board.bitboard | en_passant.bitboard))
 }
