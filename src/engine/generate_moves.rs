@@ -7,21 +7,40 @@ use super::{
 pub fn generate_moves(game: &Game) {
     let attack_tables = AttackTables::initialise();
 
+    let side = game.side_to_move();
+
     game.side_to_move_bitboards()
         .iter()
         .for_each(|bitboard_info| {
             let (mut bitboard, piece) = bitboard_info;
 
             while let Some(source_square_index) = bitboard.get_ls1b_index() {
+                let source_square = BoardSquare::new_from_index(source_square_index);
+
+                let attacks = match piece {
+                    Piece::Pawn => Bitboard::new(
+                        attack_tables
+                            .attack_table(&game.board(None), &Piece::Pawn, side, &source_square)
+                            .bitboard
+                            & game.board(Some(&side.opponent_side())).bitboard,
+                    ),
+                    _ => Bitboard::new(
+                        attack_tables
+                            .attack_table(&game.board(None), piece, side, &source_square)
+                            .bitboard
+                            & !game.board(Some(side)).bitboard,
+                    ),
+                };
+
                 match piece {
                     Piece::Pawn => {
-                        generate_pawn_moves(&attack_tables, game, source_square_index);
+                        generate_pawn_moves(attacks, &attack_tables, game, source_square_index);
                     }
                     Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
-                        generate_piece_moves(&attack_tables, game, piece, source_square_index);
+                        generate_piece_moves(attacks, &source_square);
                     }
                     Piece::King => {
-                        generate_piece_moves(&attack_tables, game, piece, source_square_index);
+                        generate_piece_moves(attacks, &source_square);
                         generate_castling_moves(&attack_tables, game);
                     }
                 }
@@ -31,7 +50,12 @@ pub fn generate_moves(game: &Game) {
         });
 }
 
-fn generate_pawn_moves(attack_tables: &AttackTables, game: &Game, source_square_index: usize) {
+fn generate_pawn_moves(
+    mut attacks: Bitboard,
+    attack_tables: &AttackTables,
+    game: &Game,
+    source_square_index: usize,
+) {
     // Bitboards with 2nd and 7th ranks initialised to 1
     let second_rank = Bitboard::new(71776119061217280);
     let seventh_rank = Bitboard::new(65280);
@@ -87,13 +111,6 @@ fn generate_pawn_moves(attack_tables: &AttackTables, game: &Game, source_square_
         }
     }
 
-    let mut attacks = Bitboard::new(
-        attack_tables
-            .attack_table(&game.board(None), &Piece::Pawn, side, &source_square)
-            .bitboard
-            & game.board(Some(&side.opponent_side())).bitboard,
-    );
-
     while let Some(target_square_index) = attacks.get_ls1b_index() {
         let target_square = BoardSquare::new_from_index(target_square_index);
 
@@ -128,26 +145,7 @@ fn generate_pawn_moves(attack_tables: &AttackTables, game: &Game, source_square_
     }
 }
 
-fn generate_piece_moves(
-    attack_tables: &AttackTables,
-    game: &Game,
-    piece: &Piece,
-    source_square_index: usize,
-) {
-    let side = game.side_to_move();
-
-    let source_square = BoardSquare::new_from_index(source_square_index);
-
-    let mut attacks = match piece {
-        Piece::Pawn => panic!("Attempted to generate piece moves for pawn"),
-        _ => Bitboard::new(
-            attack_tables
-                .attack_table(&game.board(None), piece, side, &source_square)
-                .bitboard
-                & !game.board(Some(side)).bitboard,
-        ),
-    };
-
+fn generate_piece_moves(mut attacks: Bitboard, source_square: &BoardSquare) {
     while let Some(target_square_index) = attacks.get_ls1b_index() {
         let target_square = BoardSquare::new_from_index(target_square_index);
 
