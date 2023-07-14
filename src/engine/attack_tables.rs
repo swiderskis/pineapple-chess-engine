@@ -31,7 +31,6 @@ impl AttackTables {
             &Piece::Bishop,
             &magic_numbers,
             &self.slider_attack_tables,
-            side,
             square,
         );
         let rook_magic_index = magic_numbers.get_magic_index(
@@ -39,7 +38,6 @@ impl AttackTables {
             &Piece::Rook,
             &magic_numbers,
             &self.slider_attack_tables,
-            side,
             square,
         );
 
@@ -91,25 +89,17 @@ struct SliderAttackTables {
     rook_attack_tables: Vec<[Bitboard; 4096]>,
 }
 
-trait AttackTablesTraits {
-    fn initialise() -> Self;
-
-    fn attack_mask(&self, piece: &Piece, side: &Side, square: &BoardSquare) -> Bitboard;
-
-    fn generate_attack_masks(piece: Piece, side: &Side) -> [Bitboard; 64];
-}
-
-impl AttackTablesTraits for LeaperAttackTables {
+impl LeaperAttackTables {
     fn initialise() -> Self {
         Self {
-            white_pawn_attack_tables: Self::generate_attack_masks(Piece::Pawn, &Side::White),
-            black_pawn_attack_tables: Self::generate_attack_masks(Piece::Pawn, &Side::Black),
-            knight_attack_tables: Self::generate_attack_masks(Piece::Knight, &Side::White),
-            king_attack_tables: Self::generate_attack_masks(Piece::King, &Side::White),
+            white_pawn_attack_tables: Self::generate_attack_tables(Piece::Pawn, &Side::White),
+            black_pawn_attack_tables: Self::generate_attack_tables(Piece::Pawn, &Side::Black),
+            knight_attack_tables: Self::generate_attack_tables(Piece::Knight, &Side::White),
+            king_attack_tables: Self::generate_attack_tables(Piece::King, &Side::White),
         }
     }
 
-    fn generate_attack_masks(piece: Piece, side: &Side) -> [Bitboard; 64] {
+    fn generate_attack_tables(piece: Piece, side: &Side) -> [Bitboard; 64] {
         // Bitboards with all values initialised to 1, except for the file(s) indicated
         // Used to prevent incorrect attack table generation for pieces on / near edge files
         let file_a_zeroed = Bitboard::new(18374403900871474942);
@@ -174,26 +164,12 @@ impl AttackTablesTraits for LeaperAttackTables {
 
         attack_tables
     }
-
-    fn attack_mask(&self, piece: &Piece, side: &Side, square: &BoardSquare) -> Bitboard {
-        match piece {
-            Piece::Pawn => match side {
-                Side::White => self.white_pawn_attack_tables[square.as_usize()],
-                Side::Black => self.black_pawn_attack_tables[square.as_usize()],
-            },
-            Piece::Knight => self.knight_attack_tables[square.as_usize()],
-            Piece::King => self.king_attack_tables[square.as_usize()],
-            _ => {
-                panic!("Attempted to access slider attack mask on leaper attack masks")
-            }
-        }
-    }
 }
 
-impl AttackTablesTraits for SliderAttackTables {
+impl SliderAttackTables {
     fn initialise() -> Self {
-        let bishop_attack_masks = Self::generate_attack_masks(Piece::Bishop, &Side::White);
-        let rook_attack_masks = Self::generate_attack_masks(Piece::Rook, &Side::White);
+        let bishop_attack_masks = Self::generate_attack_masks(Piece::Bishop);
+        let rook_attack_masks = Self::generate_attack_masks(Piece::Rook);
 
         let mut bishop_attack_tables = vec![[Bitboard::new(0); 512]; 64];
         let mut rook_attack_tables = vec![[Bitboard::new(0); 4096]; 64];
@@ -242,17 +218,7 @@ impl AttackTablesTraits for SliderAttackTables {
         }
     }
 
-    fn attack_mask(&self, piece: &Piece, _side: &Side, square: &BoardSquare) -> Bitboard {
-        match piece {
-            Piece::Bishop => self.bishop_attack_masks[square.as_usize()],
-            Piece::Rook => self.rook_attack_masks[square.as_usize()],
-            _ => {
-                panic!("Attempted to access leaper attack mask on slider attack masks")
-            }
-        }
-    }
-
-    fn generate_attack_masks(piece: Piece, _side: &Side) -> [Bitboard; 64] {
+    fn generate_attack_masks(piece: Piece) -> [Bitboard; 64] {
         let mut attack_masks: [Bitboard; 64] = [Bitboard::new(0); 64];
 
         BoardSquare::iter().for_each(|square| {
@@ -306,9 +272,7 @@ impl AttackTablesTraits for SliderAttackTables {
 
         attack_masks
     }
-}
 
-impl SliderAttackTables {
     fn generate_attack_table(board: &Bitboard, piece: &Piece, square: &BoardSquare) -> Bitboard {
         let mut attack_table = Bitboard::new(0);
 
@@ -406,6 +370,16 @@ impl SliderAttackTables {
         }
 
         occupancy
+    }
+
+    fn attack_mask(&self, piece: &Piece, square: &BoardSquare) -> Bitboard {
+        match piece {
+            Piece::Bishop => self.bishop_attack_masks[square.as_usize()],
+            Piece::Rook => self.rook_attack_masks[square.as_usize()],
+            _ => {
+                panic!("Attempted to access leaper attack mask on slider attack masks")
+            }
+        }
     }
 }
 
@@ -598,22 +572,16 @@ impl MagicNumbers {
         piece: &Piece,
         magic_numbers: &MagicNumbers,
         slider_attack_tables: &SliderAttackTables,
-        side: &Side,
         square: &BoardSquare,
     ) -> usize {
         let mut magic_index = *board;
 
-        magic_index.bitboard &= slider_attack_tables
-            .attack_mask(piece, side, square)
-            .bitboard;
+        magic_index.bitboard &= slider_attack_tables.attack_mask(piece, square).bitboard;
         magic_index.bitboard = magic_index
             .bitboard
             .overflowing_mul(magic_numbers.magic_number(piece, square))
             .0;
-        magic_index.bitboard >>= 64
-            - slider_attack_tables
-                .attack_mask(piece, side, square)
-                .count_bits();
+        magic_index.bitboard >>= 64 - slider_attack_tables.attack_mask(piece, square).count_bits();
 
         magic_index.bitboard as usize
     }
@@ -631,7 +599,7 @@ impl MagicNumbers {
         BoardSquare::iter().for_each(|square| {
             rook_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
                 random_state,
-                slider_attack_tables.attack_mask(&Piece::Rook, &Side::White, &square),
+                slider_attack_tables.attack_mask(&Piece::Rook, &square),
                 Piece::Rook,
                 &square,
             )
@@ -640,7 +608,7 @@ impl MagicNumbers {
         BoardSquare::iter().for_each(|square| {
             bishop_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
                 random_state,
-                slider_attack_tables.attack_mask(&Piece::Bishop, &Side::White, &square),
+                slider_attack_tables.attack_mask(&Piece::Bishop, &square),
                 Piece::Bishop,
                 &square,
             )
@@ -956,21 +924,21 @@ mod tests {
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Bishop, &Side::White, &BoardSquare::A5)
+                .attack_mask(&Piece::Bishop, &BoardSquare::A5)
                 .bitboard,
             desired_a5_attack_mask
         );
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Bishop, &Side::White, &BoardSquare::G7)
+                .attack_mask(&Piece::Bishop, &BoardSquare::G7)
                 .bitboard,
             desired_g7_attack_mask
         );
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Bishop, &Side::White, &BoardSquare::D6)
+                .attack_mask(&Piece::Bishop, &BoardSquare::D6)
                 .bitboard,
             desired_d6_attack_mask
         );
@@ -1102,21 +1070,21 @@ mod tests {
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Rook, &Side::White, &BoardSquare::D5)
+                .attack_mask(&Piece::Rook, &BoardSquare::D5)
                 .bitboard,
             desired_d5_attack_mask
         );
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Rook, &Side::White, &BoardSquare::B3)
+                .attack_mask(&Piece::Rook, &BoardSquare::B3)
                 .bitboard,
             desired_b3_attack_mask
         );
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Rook, &Side::White, &BoardSquare::E1)
+                .attack_mask(&Piece::Rook, &BoardSquare::E1)
                 .bitboard,
             desired_e1_attack_mask
         );
