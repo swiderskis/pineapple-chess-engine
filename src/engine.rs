@@ -92,6 +92,13 @@ trait EnumToInt: ToPrimitive {
         }
     }
 
+    fn as_u32(&self) -> u32 {
+        match self.to_u32() {
+            Some(value) => value,
+            None => panic!("Failed to convert enum to u32 type"),
+        }
+    }
+
     fn as_u8(&self) -> u8 {
         match self.to_u8() {
             Some(value) => value,
@@ -100,7 +107,7 @@ trait EnumToInt: ToPrimitive {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, FromPrimitive, ToPrimitive)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -109,6 +116,19 @@ pub enum Piece {
     Queen,
     King,
 }
+
+impl Piece {
+    fn new_from_u32(index: u32) -> Piece {
+        let piece_option = Self::from_u32(index);
+
+        match piece_option {
+            Some(piece) => piece,
+            None => panic!("Attempted to convert invalid index into piece"),
+        }
+    }
+}
+
+impl EnumToInt for Piece {}
 
 #[derive(Debug)]
 pub enum Side {

@@ -1,8 +1,90 @@
 use super::{
     attack_tables::AttackTables,
     game::{CastlingType, Game},
-    Bitboard, BoardSquare, Piece, Side,
+    Bitboard, BoardSquare, EnumToInt, Piece, Side,
 };
+
+static NONE_PIECE_VALUE: u32 = 0b1111;
+
+struct Move {
+    move_information: u32,
+}
+
+impl Move {
+    pub fn new(
+        source_square: &BoardSquare,
+        target_square: &BoardSquare,
+        (piece, side): (&Piece, &Side),
+        promoted_piece: Option<&Piece>,
+        capture: bool,
+        double_push: bool,
+        en_passant: bool,
+        castling: bool,
+    ) -> Self {
+        let side_info = if matches!(side, Side::Black) { 6 } else { 0 };
+        let piece_info = piece.as_u32() + side_info;
+        let promoted_piece_info = if let Some(promoted_piece) = promoted_piece {
+            promoted_piece.as_u32() + side_info
+        } else {
+            NONE_PIECE_VALUE
+        };
+
+        let mut move_information = source_square.as_u32();
+        move_information |= target_square.as_u32() << 6;
+        move_information |= piece_info << 12;
+        move_information |= promoted_piece_info << 16;
+        move_information |= (capture as u32) << 20;
+        move_information |= (double_push as u32) << 21;
+        move_information |= (en_passant as u32) << 22;
+        move_information |= (castling as u32) << 23;
+
+        Move { move_information }
+    }
+
+    pub fn source_square(&self) -> BoardSquare {
+        let source_square_index = self.move_information & 0x3F;
+
+        BoardSquare::new_from_index(source_square_index as usize)
+    }
+
+    pub fn target_square(&self) -> BoardSquare {
+        let target_square_index = (self.move_information & 0xFC0) >> 6;
+
+        BoardSquare::new_from_index(target_square_index as usize)
+    }
+
+    pub fn piece(&self) -> Piece {
+        let piece_index = (self.move_information & 0xF000) >> 12;
+
+        Piece::new_from_u32(piece_index)
+    }
+
+    pub fn promoted_piece(&self) -> Option<Piece> {
+        let promoted_piece_index = (self.move_information & 0xF0000) >> 16;
+
+        if promoted_piece_index == NONE_PIECE_VALUE {
+            None
+        } else {
+            Some(Piece::new_from_u32(promoted_piece_index))
+        }
+    }
+
+    pub fn capture(&self) -> bool {
+        self.move_information & 0x100000 != 0
+    }
+
+    pub fn double_push(&self) -> bool {
+        self.move_information & 0x200000 != 0
+    }
+
+    pub fn en_passant(&self) -> bool {
+        self.move_information & 0x400000 != 0
+    }
+
+    pub fn castling(&self) -> bool {
+        self.move_information & 0x800000 != 0
+    }
+}
 
 pub fn generate_moves(game: &Game) {
     let attack_tables = AttackTables::initialise();
@@ -214,4 +296,14 @@ fn generate_pawn_attacks(
     };
 
     Bitboard::new(attack_table.bitboard & (opponent_board.bitboard | en_passant.bitboard))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn move_encoding() {
+        // let move = Move::new(BoardSquare::E2, BoardSquare::E4,Piece::Pawn,)
+    }
 }
