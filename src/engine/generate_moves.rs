@@ -4,37 +4,82 @@ use super::{
     Bitboard, BoardSquare, EnumToInt, Piece, Side,
 };
 
-static NONE_PIECE_VALUE: u32 = 0b1111;
+static BLACK_PIECE_OFFSET: u32 = 6;
+static NO_PIECE_VALUE: u32 = 0b1111;
 
+struct MoveList {
+    moves: Vec<Move>,
+}
+
+impl MoveList {
+    pub fn print_move(&self, index: usize) {
+        print!(
+            "{}{}",
+            self.moves[index].source_square().to_lowercase_string(),
+            self.moves[index].target_square().to_lowercase_string(),
+        );
+        if let Some(promoted_piece) = self.moves[index].promoted_piece() {
+            print!("{}", promoted_piece.to_char(None))
+        }
+        println!();
+    }
+
+    pub fn print_move_list(&self) {
+        self.moves.iter().enumerate().for_each(|(index, mv)| {
+            println!("Move {}", index);
+            println!();
+            print!(
+                "Move: {}{}",
+                mv.source_square().to_lowercase_string(),
+                mv.target_square().to_lowercase_string(),
+            );
+            if let Some(promoted_piece) = mv.promoted_piece() {
+                print!("{}", promoted_piece.to_char(None))
+            }
+            println!();
+            println!("Piece: {}", mv.piece());
+            println!("Capture: {}", mv.capture());
+            println!("Double pawn push: {}", mv.double_pawn_push());
+            println!("En passant: {}", mv.en_passant());
+            println!("Castling: {}", mv.castling());
+            println!();
+            println!("---");
+            println!();
+        });
+    }
+}
 struct Move {
     move_information: u32,
 }
 
 impl Move {
     pub fn new(
-        source_square: &BoardSquare,
-        target_square: &BoardSquare,
+        (source_square, target_square): (&BoardSquare, &BoardSquare),
         (piece, side): (&Piece, &Side),
         promoted_piece: Option<&Piece>,
         capture: bool,
-        double_push: bool,
+        double_pawn_push: bool,
         en_passant: bool,
         castling: bool,
     ) -> Self {
-        let side_info = if matches!(side, Side::Black) { 6 } else { 0 };
-        let piece_info = piece.as_u32() + side_info;
-        let promoted_piece_info = if let Some(promoted_piece) = promoted_piece {
-            promoted_piece.as_u32() + side_info
+        let side_value_offset = if matches!(side, Side::Black) {
+            BLACK_PIECE_OFFSET
         } else {
-            NONE_PIECE_VALUE
+            0
+        };
+        let piece_value = piece.as_u32() + side_value_offset;
+        let promoted_piece_value = if let Some(promoted_piece) = promoted_piece {
+            promoted_piece.as_u32() + side_value_offset
+        } else {
+            NO_PIECE_VALUE
         };
 
         let mut move_information = source_square.as_u32();
         move_information |= target_square.as_u32() << 6;
-        move_information |= piece_info << 12;
-        move_information |= promoted_piece_info << 16;
+        move_information |= piece_value << 12;
+        move_information |= promoted_piece_value << 16;
         move_information |= (capture as u32) << 20;
-        move_information |= (double_push as u32) << 21;
+        move_information |= (double_pawn_push as u32) << 21;
         move_information |= (en_passant as u32) << 22;
         move_information |= (castling as u32) << 23;
 
@@ -54,18 +99,24 @@ impl Move {
     }
 
     pub fn piece(&self) -> Piece {
-        let piece_index = (self.move_information & 0xF000) >> 12;
+        let piece_value = (self.move_information & 0xF000) >> 12;
 
-        Piece::new_from_u32(piece_index)
+        let piece_value = if piece_value >= BLACK_PIECE_OFFSET {
+            piece_value - BLACK_PIECE_OFFSET
+        } else {
+            piece_value
+        };
+
+        Piece::new_from_u32(piece_value)
     }
 
     pub fn promoted_piece(&self) -> Option<Piece> {
-        let promoted_piece_index = (self.move_information & 0xF0000) >> 16;
+        let promoted_piece_value = (self.move_information & 0xF0000) >> 16;
 
-        if promoted_piece_index == NONE_PIECE_VALUE {
+        if promoted_piece_value == NO_PIECE_VALUE {
             None
         } else {
-            Some(Piece::new_from_u32(promoted_piece_index))
+            Some(Piece::new_from_u32(promoted_piece_value))
         }
     }
 
@@ -73,7 +124,7 @@ impl Move {
         self.move_information & 0x100000 != 0
     }
 
-    pub fn double_push(&self) -> bool {
+    pub fn double_pawn_push(&self) -> bool {
         self.move_information & 0x200000 != 0
     }
 
@@ -296,14 +347,4 @@ fn generate_pawn_attacks(
     };
 
     Bitboard::new(attack_table.bitboard & (opponent_board.bitboard | en_passant.bitboard))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn move_encoding() {
-        // let move = Move::new(BoardSquare::E2, BoardSquare::E4,Piece::Pawn,)
-    }
 }
