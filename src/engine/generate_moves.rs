@@ -50,7 +50,23 @@ impl MoveList {
         });
     }
 
-    fn add_move(&mut self, mv: Move) {
+    fn add_move(
+        &mut self,
+        (source_square, target_square): (&BoardSquare, &BoardSquare),
+        (piece, side): (&Piece, &Side),
+        promoted_piece: Option<&Piece>,
+        (capture, double_pawn_push, en_passant, castling): (bool, bool, bool, bool),
+    ) {
+        let mv = Move::new(
+            (source_square, target_square),
+            (piece, side),
+            promoted_piece,
+            (capture, double_pawn_push, en_passant, castling),
+        );
+        self.push_move(mv);
+    }
+
+    fn push_move(&mut self, mv: Move) {
         self.moves.push(mv);
     }
 
@@ -68,10 +84,7 @@ impl Move {
         (source_square, target_square): (&BoardSquare, &BoardSquare),
         (piece, side): (&Piece, &Side),
         promoted_piece: Option<&Piece>,
-        capture: bool,
-        double_pawn_push: bool,
-        en_passant: bool,
-        castling: bool,
+        (capture, double_pawn_push, en_passant, castling): (bool, bool, bool, bool),
     ) -> Self {
         let side_value_offset = if matches!(side, Side::Black) {
             BLACK_PIECE_OFFSET
@@ -256,28 +269,20 @@ fn generate_pawn_moves(
         && game.piece_at_square(&target_square).is_none()
     {
         PROMOTION_PIECES.iter().for_each(|promoted_piece| {
-            let mv = Move::new(
+            move_list.add_move(
                 (&source_square, &target_square),
                 (&Piece::Pawn, side),
                 Some(promoted_piece),
-                false,
-                false,
-                false,
-                false,
+                (false, false, false, false),
             );
-            move_list.add_move(mv);
         });
     } else if game.piece_at_square(&target_square).is_none() {
-        let mv = Move::new(
+        move_list.add_move(
             (&source_square, &target_square),
             (&Piece::Pawn, side),
             None,
-            false,
-            false,
-            false,
-            false,
+            (false, false, false, false),
         );
-        move_list.add_move(mv);
     }
 
     let single_push_target_square = target_square;
@@ -294,16 +299,12 @@ fn generate_pawn_moves(
             let target_square_empty = game.piece_at_square(&target_square).is_none();
 
             if target_square_empty {
-                let mv = Move::new(
+                move_list.add_move(
                     (&source_square, &target_square),
                     (&Piece::Pawn, side),
                     None,
-                    false,
-                    true,
-                    false,
-                    false,
+                    (false, true, false, false),
                 );
-                move_list.add_move(mv);
             }
         }
     }
@@ -315,28 +316,20 @@ fn generate_pawn_moves(
             || (matches!(side, Side::Black) && piece_on_second_rank)
         {
             PROMOTION_PIECES.iter().for_each(|promoted_piece| {
-                let mv = Move::new(
+                move_list.add_move(
                     (&source_square, &target_square),
                     (&Piece::Pawn, side),
                     Some(promoted_piece),
-                    true,
-                    false,
-                    false,
-                    false,
+                    (true, false, false, false),
                 );
-                move_list.add_move(mv);
             });
         } else {
-            let mv = Move::new(
+            move_list.add_move(
                 (&source_square, &target_square),
                 (&Piece::Pawn, side),
                 None,
-                true,
-                false,
-                false,
-                false,
+                (true, false, false, false),
             );
-            move_list.add_move(mv);
         }
 
         attacks.pop_bit(&target_square);
@@ -347,16 +340,12 @@ fn generate_pawn_moves(
             attack_table.bitboard & Bitboard::from_square(target_square).bitboard != 0;
 
         if en_passant_square_attacked {
-            let mv = Move::new(
+            move_list.add_move(
                 (&source_square, target_square),
                 (&Piece::Pawn, side),
                 None,
-                true,
-                false,
-                true,
-                false,
+                (true, false, true, false),
             );
-            move_list.add_move(mv);
         }
     }
 
@@ -380,16 +369,13 @@ fn generate_piece_moves(
 
         let capture_flag = matches!(game.piece_at_square(&target_square), Some(_));
 
-        let mv = Move::new(
+        move_list.add_move(
             (source_square, &target_square),
             (&piece, &side),
             None,
-            capture_flag,
-            false,
-            false,
-            false,
+            (capture_flag, false, false, false),
         );
-        move_list.add_move(mv);
+
         attacks.pop_bit(&target_square);
     }
 
@@ -440,16 +426,12 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveLis
         && !f_file_square_attacked
         && game.castling_type_allowed(&short_castle)
     {
-        let mv = Move::new(
+        move_list.add_move(
             (&e_file_square, &g_file_square),
             (&Piece::King, side),
             None,
-            false,
-            false,
-            false,
-            true,
+            (false, false, false, true),
         );
-        move_list.add_move(mv);
     }
 
     if game.piece_at_square(&b_file_square).is_none()
@@ -459,16 +441,12 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveLis
         && !e_file_square_attacked
         && game.castling_type_allowed(&long_castle)
     {
-        let mv = Move::new(
+        move_list.add_move(
             (&e_file_square, &c_file_square),
             (&Piece::King, side),
             None,
-            false,
-            false,
-            false,
-            true,
+            (false, false, false, true),
         );
-        move_list.add_move(mv);
     }
 
     move_list
