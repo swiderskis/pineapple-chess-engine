@@ -3,15 +3,21 @@ use super::{
     game::{CastlingType, Game},
     Bitboard, BoardSquare, EnumToInt, Piece, Side,
 };
+use core::panic;
 
 static BLACK_PIECE_OFFSET: u32 = 6;
 static NO_PIECE_VALUE: u32 = 0b1111;
+static PROMOTION_PIECES: [Piece; 4] = [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight];
 
-struct MoveList {
+pub struct MoveList {
     moves: Vec<Move>,
 }
 
 impl MoveList {
+    pub fn new() -> Self {
+        MoveList { moves: Vec::new() }
+    }
+
     pub fn print_move(&self, index: usize) {
         print!(
             "{}{}",
@@ -25,9 +31,7 @@ impl MoveList {
     }
 
     pub fn print_move_list(&self) {
-        self.moves.iter().enumerate().for_each(|(index, mv)| {
-            println!("Move {}", index);
-            println!();
+        self.moves.iter().for_each(|mv| {
             print!(
                 "Move: {}{}",
                 mv.source_square().to_lowercase_string(),
@@ -37,23 +41,30 @@ impl MoveList {
                 print!("{}", promoted_piece.to_char(None))
             }
             println!();
-            println!("Piece: {}", mv.piece());
-            println!("Capture: {}", mv.capture());
-            println!("Double pawn push: {}", mv.double_pawn_push());
-            println!("En passant: {}", mv.en_passant());
+            print!("Piece: {} | ", mv.piece());
+            print!("Capture: {} | ", mv.capture());
+            print!("Double push: {} | ", mv.double_pawn_push());
+            print!("En passant: {} | ", mv.en_passant());
             println!("Castling: {}", mv.castling());
-            println!();
             println!("---");
-            println!();
         });
     }
+
+    fn add_move(&mut self, mv: Move) {
+        self.moves.push(mv);
+    }
+
+    fn append_move_list(&mut self, move_list: &mut MoveList) {
+        self.moves.append(&mut move_list.moves);
+    }
 }
-struct Move {
+
+pub struct Move {
     move_information: u32,
 }
 
 impl Move {
-    pub fn new(
+    fn new(
         (source_square, target_square): (&BoardSquare, &BoardSquare),
         (piece, side): (&Piece, &Side),
         promoted_piece: Option<&Piece>,
@@ -69,7 +80,10 @@ impl Move {
         };
         let piece_value = piece.as_u32() + side_value_offset;
         let promoted_piece_value = if let Some(promoted_piece) = promoted_piece {
-            promoted_piece.as_u32() + side_value_offset
+            match promoted_piece {
+                Piece::Pawn | Piece::King => panic!("Attempted to promote pawn to pawn or king"),
+                _ => promoted_piece.as_u32() + side_value_offset,
+            }
         } else {
             NO_PIECE_VALUE
         };
@@ -100,7 +114,6 @@ impl Move {
 
     pub fn piece(&self) -> Piece {
         let piece_value = (self.move_information & 0xF000) >> 12;
-
         let piece_value = if piece_value >= BLACK_PIECE_OFFSET {
             piece_value - BLACK_PIECE_OFFSET
         } else {
@@ -137,7 +150,9 @@ impl Move {
     }
 }
 
-pub fn generate_moves(game: &Game) {
+pub fn generate_moves(game: &Game) -> MoveList {
+    let mut move_list = MoveList::new();
+
     let attack_tables = AttackTables::initialise();
 
     let side = game.side_to_move();
@@ -158,12 +173,9 @@ pub fn generate_moves(game: &Game) {
                             side,
                             &source_square,
                         );
+                        let opponent_board = game.board(Some(&side.opponent_side()));
 
-                        generate_pawn_attacks(
-                            attack_table,
-                            game.en_passant_square(),
-                            game.board(Some(&side.opponent_side())),
-                        )
+                        Bitboard::new(attack_table.bitboard & opponent_board.bitboard)
                     }
                     _ => Bitboard::new(
                         attack_tables
@@ -175,23 +187,52 @@ pub fn generate_moves(game: &Game) {
 
                 match piece {
                     Piece::Pawn => {
-                        generate_pawn_moves(attacks, game, source_square_index);
+                        let attack_table = attack_tables.attack_table(
+                            &game.board(None),
+                            piece,
+                            side,
+                            &source_square,
+                        );
+                        move_list.append_move_list(&mut generate_pawn_moves(
+                            attack_table,
+                            attacks,
+                            game,
+                            source_square_index,
+                        ));
                     }
                     Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
-                        generate_piece_moves(attacks, &source_square);
+                        move_list.append_move_list(&mut generate_piece_moves(
+                            attacks,
+                            game,
+                            &source_square,
+                        ));
                     }
                     Piece::King => {
-                        generate_piece_moves(attacks, &source_square);
-                        generate_castling_moves(&attack_tables, game);
+                        move_list.append_move_list(&mut generate_piece_moves(
+                            attacks,
+                            game,
+                            &source_square,
+                        ));
+                        move_list
+                            .append_move_list(&mut generate_castling_moves(&attack_tables, game));
                     }
                 }
 
                 bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index));
             }
         });
+
+    move_list
 }
 
-fn generate_pawn_moves(mut attacks: Bitboard, game: &Game, source_square_index: usize) {
+fn generate_pawn_moves(
+    attack_table: Bitboard,
+    mut attacks: Bitboard,
+    game: &Game,
+    source_square_index: usize,
+) -> MoveList {
+    let mut move_list = MoveList::new();
+
     // Bitboards with 2nd and 7th ranks initialised to 1
     let second_rank = Bitboard::new(71776119061217280);
     let seventh_rank = Bitboard::new(65280);
@@ -210,19 +251,33 @@ fn generate_pawn_moves(mut attacks: Bitboard, game: &Game, source_square_index: 
     let piece_on_second_rank = second_rank.bitboard & single_piece.bitboard != 0;
     let piece_on_seventh_rank = seventh_rank.bitboard & single_piece.bitboard != 0;
 
-    let source_square_string = source_square.to_lowercase_string();
-    let target_square_string = target_square.to_lowercase_string();
-
     if ((matches!(side, Side::White) && piece_on_seventh_rank)
         || (matches!(side, Side::Black) && piece_on_second_rank))
         && game.piece_at_square(&target_square).is_none()
     {
-        println!("{}{}q", source_square_string, target_square_string);
-        println!("{}{}r", source_square_string, target_square_string);
-        println!("{}{}b", source_square_string, target_square_string);
-        println!("{}{}n", source_square_string, target_square_string);
+        PROMOTION_PIECES.iter().for_each(|promoted_piece| {
+            let mv = Move::new(
+                (&source_square, &target_square),
+                (&Piece::Pawn, side),
+                Some(promoted_piece),
+                false,
+                false,
+                false,
+                false,
+            );
+            move_list.add_move(mv);
+        });
     } else if game.piece_at_square(&target_square).is_none() {
-        println!("{}{}", source_square_string, target_square_string);
+        let mv = Move::new(
+            (&source_square, &target_square),
+            (&Piece::Pawn, side),
+            None,
+            false,
+            false,
+            false,
+            false,
+        );
+        move_list.add_move(mv);
     }
 
     let single_push_target_square = target_square;
@@ -238,10 +293,17 @@ fn generate_pawn_moves(mut attacks: Bitboard, game: &Game, source_square_index: 
         if game.piece_at_square(&single_push_target_square).is_none() {
             let target_square_empty = game.piece_at_square(&target_square).is_none();
 
-            let target_square_string = target_square.to_lowercase_string();
-
             if target_square_empty {
-                println!("{}{}", source_square_string, target_square_string);
+                let mv = Move::new(
+                    (&source_square, &target_square),
+                    (&Piece::Pawn, side),
+                    None,
+                    false,
+                    true,
+                    false,
+                    false,
+                );
+                move_list.add_move(mv);
             }
         }
     }
@@ -249,37 +311,94 @@ fn generate_pawn_moves(mut attacks: Bitboard, game: &Game, source_square_index: 
     while let Some(target_square_index) = attacks.get_ls1b_index() {
         let target_square = BoardSquare::new_from_index(target_square_index);
 
-        let target_square_string = target_square.to_lowercase_string();
-
         if (matches!(side, Side::White) && piece_on_seventh_rank)
             || (matches!(side, Side::Black) && piece_on_second_rank)
         {
-            println!("{}{}q", source_square_string, target_square_string);
-            println!("{}{}r", source_square_string, target_square_string);
-            println!("{}{}b", source_square_string, target_square_string);
-            println!("{}{}n", source_square_string, target_square_string);
+            PROMOTION_PIECES.iter().for_each(|promoted_piece| {
+                let mv = Move::new(
+                    (&source_square, &target_square),
+                    (&Piece::Pawn, side),
+                    Some(promoted_piece),
+                    true,
+                    false,
+                    false,
+                    false,
+                );
+                move_list.add_move(mv);
+            });
         } else {
-            println!("{}{}", source_square_string, target_square_string);
+            let mv = Move::new(
+                (&source_square, &target_square),
+                (&Piece::Pawn, side),
+                None,
+                true,
+                false,
+                false,
+                false,
+            );
+            move_list.add_move(mv);
         }
 
         attacks.pop_bit(&target_square);
     }
+
+    if let Some(target_square) = game.en_passant_square() {
+        let en_passant_square_attacked =
+            attack_table.bitboard & Bitboard::from_square(target_square).bitboard != 0;
+
+        if en_passant_square_attacked {
+            let mv = Move::new(
+                (&source_square, target_square),
+                (&Piece::Pawn, side),
+                None,
+                true,
+                false,
+                true,
+                false,
+            );
+            move_list.add_move(mv);
+        }
+    }
+
+    move_list
 }
 
-fn generate_piece_moves(mut attacks: Bitboard, source_square: &BoardSquare) {
+fn generate_piece_moves(
+    mut attacks: Bitboard,
+    game: &Game,
+    source_square: &BoardSquare,
+) -> MoveList {
+    let mut move_list = MoveList::new();
+
     while let Some(target_square_index) = attacks.get_ls1b_index() {
         let target_square = BoardSquare::new_from_index(target_square_index);
 
-        let source_square_string = source_square.to_lowercase_string();
-        let target_square_string = target_square.to_lowercase_string();
+        let (piece, side) = match game.piece_at_square(source_square) {
+            Some((piece, side)) => (piece, side),
+            None => panic!("Attempting to generate piece moves for empty source square"),
+        };
 
-        println!("{}{}", source_square_string, target_square_string);
+        let capture_flag = matches!(game.piece_at_square(&target_square), Some(_));
 
+        let mv = Move::new(
+            (source_square, &target_square),
+            (&piece, &side),
+            None,
+            capture_flag,
+            false,
+            false,
+            false,
+        );
+        move_list.add_move(mv);
         attacks.pop_bit(&target_square);
     }
+
+    move_list
 }
 
-fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) {
+fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveList {
+    let mut move_list = MoveList::new();
+
     let side = game.side_to_move();
 
     let (b_file_square, c_file_square, d_file_square, e_file_square, f_file_square, g_file_square) =
@@ -321,7 +440,16 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) {
         && !f_file_square_attacked
         && game.castling_type_allowed(&short_castle)
     {
-        println!("{}", short_castle.move_string());
+        let mv = Move::new(
+            (&e_file_square, &g_file_square),
+            (&Piece::King, side),
+            None,
+            false,
+            false,
+            false,
+            true,
+        );
+        move_list.add_move(mv);
     }
 
     if game.piece_at_square(&b_file_square).is_none()
@@ -331,20 +459,17 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) {
         && !e_file_square_attacked
         && game.castling_type_allowed(&long_castle)
     {
-        println!("{}", long_castle.move_string());
+        let mv = Move::new(
+            (&e_file_square, &c_file_square),
+            (&Piece::King, side),
+            None,
+            false,
+            false,
+            false,
+            true,
+        );
+        move_list.add_move(mv);
     }
-}
 
-fn generate_pawn_attacks(
-    attack_table: Bitboard,
-    en_passant_square: &Option<BoardSquare>,
-    opponent_board: Bitboard,
-) -> Bitboard {
-    let en_passant = if let Some(en_passant_square) = en_passant_square {
-        Bitboard::from_square(en_passant_square)
-    } else {
-        Bitboard::new(0)
-    };
-
-    Bitboard::new(attack_table.bitboard & (opponent_board.bitboard | en_passant.bitboard))
+    move_list
 }

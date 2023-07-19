@@ -12,9 +12,9 @@ use strum_macros::{Display, EnumIter, EnumString};
 pub fn position() {
     let game = Game::initialise("startpos");
 
-    game.print();
+    let moves = generate_moves::generate_moves(&game);
 
-    generate_moves::generate_moves(&game);
+    moves.print_move_list();
 }
 
 #[derive(Clone, Copy)]
@@ -137,7 +137,7 @@ impl Piece {
                 Self::Queen => 'Q',
                 Self::King => 'K',
             },
-            Some(Side::Black) | None => match self {
+            _ => match self {
                 Self::Pawn => 'p',
                 Self::Knight => 'n',
                 Self::Bishop => 'b',
