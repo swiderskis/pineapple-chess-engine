@@ -140,10 +140,16 @@ impl Move {
         let promoted_piece_value = (self.move_information & 0xF0000) >> 16;
 
         if promoted_piece_value == NO_PIECE_VALUE {
-            None
-        } else {
-            Some(Piece::new_from_u32(promoted_piece_value))
+            return None;
         }
+
+        let promoted_piece_value = if promoted_piece_value >= BLACK_PIECE_OFFSET {
+            promoted_piece_value - BLACK_PIECE_OFFSET
+        } else {
+            promoted_piece_value
+        };
+
+        Some(Piece::new_from_u32(promoted_piece_value))
     }
 
     pub fn capture(&self) -> bool {
