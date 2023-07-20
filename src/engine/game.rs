@@ -1,4 +1,4 @@
-use super::{attack_tables::AttackTables, Bitboard, BoardSquare, EnumToInt, Piece, Side};
+use super::{attack_tables::AttackTables, Bitboard, EnumToInt, Piece, Side, Square};
 use num_derive::ToPrimitive;
 use strum::IntoEnumIterator;
 
@@ -16,7 +16,7 @@ pub struct Game {
     black_queens: Bitboard,
     black_king: Bitboard,
     side_to_move: Side,
-    en_passant_square: Option<BoardSquare>,
+    en_passant_square: Option<Square>,
     castling_rights: CastlingRights,
 }
 
@@ -48,51 +48,51 @@ impl Game {
 
         fen[0].chars().for_each(|character| match character {
             'P' => {
-                white_pawns.set_bit(&BoardSquare::new_from_index(square_index));
+                white_pawns.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'N' => {
-                white_knights.set_bit(&BoardSquare::new_from_index(square_index));
+                white_knights.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'B' => {
-                white_bishops.set_bit(&BoardSquare::new_from_index(square_index));
+                white_bishops.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'R' => {
-                white_rooks.set_bit(&BoardSquare::new_from_index(square_index));
+                white_rooks.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'Q' => {
-                white_queens.set_bit(&BoardSquare::new_from_index(square_index));
+                white_queens.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'K' => {
-                white_king.set_bit(&BoardSquare::new_from_index(square_index));
+                white_king.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'p' => {
-                black_pawns.set_bit(&BoardSquare::new_from_index(square_index));
+                black_pawns.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'n' => {
-                black_knights.set_bit(&BoardSquare::new_from_index(square_index));
+                black_knights.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'b' => {
-                black_bishops.set_bit(&BoardSquare::new_from_index(square_index));
+                black_bishops.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'r' => {
-                black_rooks.set_bit(&BoardSquare::new_from_index(square_index));
+                black_rooks.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'q' => {
-                black_queens.set_bit(&BoardSquare::new_from_index(square_index));
+                black_queens.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             'k' => {
-                black_king.set_bit(&BoardSquare::new_from_index(square_index));
+                black_king.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
             '/' => {}
@@ -107,7 +107,7 @@ impl Game {
         };
 
         let en_passant_square = if fen[3] != "-" {
-            Some(BoardSquare::new_from_string(fen[3]))
+            Some(Square::new_from_string(fen[3]))
         } else {
             None
         };
@@ -134,7 +134,7 @@ impl Game {
     }
 
     pub fn print(&self) {
-        BoardSquare::iter().for_each(|square| {
+        Square::iter().for_each(|square| {
             if square.file() == 0 {
                 print!("{}   ", (64 - square.as_usize()) / 8);
             }
@@ -161,7 +161,7 @@ impl Game {
         &self,
         attack_tables: &AttackTables,
         attacking_side: &Side,
-        square: &BoardSquare,
+        square: &Square,
     ) -> bool {
         match attacking_side {
             Side::White => {
@@ -299,7 +299,7 @@ impl Game {
         }
     }
 
-    pub fn piece_at_square(&self, square: &BoardSquare) -> Option<(Piece, Side)> {
+    pub fn piece_at_square(&self, square: &Square) -> Option<(Piece, Side)> {
         for bitboard in self.piece_bitboards() {
             if bitboard.0.bit_occupied(square) {
                 return Some((bitboard.1, bitboard.2));
@@ -313,7 +313,7 @@ impl Game {
         &self.side_to_move
     }
 
-    pub fn en_passant_square(&self) -> &Option<BoardSquare> {
+    pub fn en_passant_square(&self) -> &Option<Square> {
         &self.en_passant_square
     }
 
@@ -460,39 +460,39 @@ mod tests {
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ",
         );
 
-        let desired_white_pawns_bitboard = u64::pow(2, BoardSquare::A2 as u32)
-            + u64::pow(2, BoardSquare::B2 as u32)
-            + u64::pow(2, BoardSquare::C2 as u32)
-            + u64::pow(2, BoardSquare::D5 as u32)
-            + u64::pow(2, BoardSquare::E4 as u32)
-            + u64::pow(2, BoardSquare::F2 as u32)
-            + u64::pow(2, BoardSquare::G2 as u32)
-            + u64::pow(2, BoardSquare::H2 as u32);
+        let desired_white_pawns_bitboard = u64::pow(2, Square::A2 as u32)
+            + u64::pow(2, Square::B2 as u32)
+            + u64::pow(2, Square::C2 as u32)
+            + u64::pow(2, Square::D5 as u32)
+            + u64::pow(2, Square::E4 as u32)
+            + u64::pow(2, Square::F2 as u32)
+            + u64::pow(2, Square::G2 as u32)
+            + u64::pow(2, Square::H2 as u32);
         let desired_white_knights_bitboard =
-            u64::pow(2, BoardSquare::C3 as u32) + u64::pow(2, BoardSquare::E5 as u32);
+            u64::pow(2, Square::C3 as u32) + u64::pow(2, Square::E5 as u32);
         let desired_white_bishops_bitboard =
-            u64::pow(2, BoardSquare::D2 as u32) + u64::pow(2, BoardSquare::E2 as u32);
+            u64::pow(2, Square::D2 as u32) + u64::pow(2, Square::E2 as u32);
         let desired_white_rooks_bitboard =
-            u64::pow(2, BoardSquare::A1 as u32) + u64::pow(2, BoardSquare::H1 as u32);
-        let desired_white_queens_bitboard = u64::pow(2, BoardSquare::F3 as u32);
-        let desired_white_king_bitboard = u64::pow(2, BoardSquare::E1 as u32);
+            u64::pow(2, Square::A1 as u32) + u64::pow(2, Square::H1 as u32);
+        let desired_white_queens_bitboard = u64::pow(2, Square::F3 as u32);
+        let desired_white_king_bitboard = u64::pow(2, Square::E1 as u32);
 
-        let desired_black_pawns_bitboard = u64::pow(2, BoardSquare::A7 as u32)
-            + u64::pow(2, BoardSquare::B4 as u32)
-            + u64::pow(2, BoardSquare::C7 as u32)
-            + u64::pow(2, BoardSquare::D7 as u32)
-            + u64::pow(2, BoardSquare::E6 as u32)
-            + u64::pow(2, BoardSquare::F7 as u32)
-            + u64::pow(2, BoardSquare::G6 as u32)
-            + u64::pow(2, BoardSquare::H3 as u32);
+        let desired_black_pawns_bitboard = u64::pow(2, Square::A7 as u32)
+            + u64::pow(2, Square::B4 as u32)
+            + u64::pow(2, Square::C7 as u32)
+            + u64::pow(2, Square::D7 as u32)
+            + u64::pow(2, Square::E6 as u32)
+            + u64::pow(2, Square::F7 as u32)
+            + u64::pow(2, Square::G6 as u32)
+            + u64::pow(2, Square::H3 as u32);
         let desired_black_knights_bitboard =
-            u64::pow(2, BoardSquare::B6 as u32) + u64::pow(2, BoardSquare::F6 as u32);
+            u64::pow(2, Square::B6 as u32) + u64::pow(2, Square::F6 as u32);
         let desired_black_bishops_bitboard =
-            u64::pow(2, BoardSquare::A6 as u32) + u64::pow(2, BoardSquare::G7 as u32);
+            u64::pow(2, Square::A6 as u32) + u64::pow(2, Square::G7 as u32);
         let desired_black_rooks_bitboard =
-            u64::pow(2, BoardSquare::A8 as u32) + u64::pow(2, BoardSquare::H8 as u32);
-        let desired_black_queens_bitboard = u64::pow(2, BoardSquare::E7 as u32);
-        let desired_black_king_bitboard = u64::pow(2, BoardSquare::E8 as u32);
+            u64::pow(2, Square::A8 as u32) + u64::pow(2, Square::H8 as u32);
+        let desired_black_queens_bitboard = u64::pow(2, Square::E7 as u32);
+        let desired_black_king_bitboard = u64::pow(2, Square::E8 as u32);
 
         assert_eq!(game.white_pawns.bitboard, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights.bitboard, desired_white_knights_bitboard);
@@ -514,38 +514,38 @@ mod tests {
             "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1 ",
         );
 
-        let desired_white_pawns_bitboard = u64::pow(2, BoardSquare::A2 as u32)
-            + u64::pow(2, BoardSquare::B4 as u32)
-            + u64::pow(2, BoardSquare::C2 as u32)
-            + u64::pow(2, BoardSquare::D3 as u32)
-            + u64::pow(2, BoardSquare::D4 as u32)
-            + u64::pow(2, BoardSquare::E2 as u32)
-            + u64::pow(2, BoardSquare::F5 as u32)
-            + u64::pow(2, BoardSquare::G7 as u32)
-            + u64::pow(2, BoardSquare::H3 as u32);
+        let desired_white_pawns_bitboard = u64::pow(2, Square::A2 as u32)
+            + u64::pow(2, Square::B4 as u32)
+            + u64::pow(2, Square::C2 as u32)
+            + u64::pow(2, Square::D3 as u32)
+            + u64::pow(2, Square::D4 as u32)
+            + u64::pow(2, Square::E2 as u32)
+            + u64::pow(2, Square::F5 as u32)
+            + u64::pow(2, Square::G7 as u32)
+            + u64::pow(2, Square::H3 as u32);
         let desired_white_knights_bitboard =
-            u64::pow(2, BoardSquare::B1 as u32) + u64::pow(2, BoardSquare::G1 as u32);
+            u64::pow(2, Square::B1 as u32) + u64::pow(2, Square::G1 as u32);
         let desired_white_bishops_bitboard =
-            u64::pow(2, BoardSquare::C1 as u32) + u64::pow(2, BoardSquare::F1 as u32);
+            u64::pow(2, Square::C1 as u32) + u64::pow(2, Square::F1 as u32);
         let desired_white_rooks_bitboard =
-            u64::pow(2, BoardSquare::A1 as u32) + u64::pow(2, BoardSquare::H1 as u32);
-        let desired_white_queens_bitboard = u64::pow(2, BoardSquare::D1 as u32);
-        let desired_white_king_bitboard = u64::pow(2, BoardSquare::E1 as u32);
+            u64::pow(2, Square::A1 as u32) + u64::pow(2, Square::H1 as u32);
+        let desired_white_queens_bitboard = u64::pow(2, Square::D1 as u32);
+        let desired_white_king_bitboard = u64::pow(2, Square::E1 as u32);
 
-        let desired_black_pawns_bitboard = u64::pow(2, BoardSquare::A7 as u32)
-            + u64::pow(2, BoardSquare::B7 as u32)
-            + u64::pow(2, BoardSquare::C5 as u32)
-            + u64::pow(2, BoardSquare::D7 as u32)
-            + u64::pow(2, BoardSquare::E5 as u32)
-            + u64::pow(2, BoardSquare::F7 as u32)
-            + u64::pow(2, BoardSquare::H7 as u32);
-        let desired_black_knights_bitboard = u64::pow(2, BoardSquare::B8 as u32);
+        let desired_black_pawns_bitboard = u64::pow(2, Square::A7 as u32)
+            + u64::pow(2, Square::B7 as u32)
+            + u64::pow(2, Square::C5 as u32)
+            + u64::pow(2, Square::D7 as u32)
+            + u64::pow(2, Square::E5 as u32)
+            + u64::pow(2, Square::F7 as u32)
+            + u64::pow(2, Square::H7 as u32);
+        let desired_black_knights_bitboard = u64::pow(2, Square::B8 as u32);
         let desired_black_bishops_bitboard =
-            u64::pow(2, BoardSquare::C8 as u32) + u64::pow(2, BoardSquare::F8 as u32);
+            u64::pow(2, Square::C8 as u32) + u64::pow(2, Square::F8 as u32);
         let desired_black_rooks_bitboard =
-            u64::pow(2, BoardSquare::A8 as u32) + u64::pow(2, BoardSquare::H8 as u32);
-        let desired_black_queens_bitboard = u64::pow(2, BoardSquare::D8 as u32);
-        let desired_black_king_bitboard = u64::pow(2, BoardSquare::E8 as u32);
+            u64::pow(2, Square::A8 as u32) + u64::pow(2, Square::H8 as u32);
+        let desired_black_queens_bitboard = u64::pow(2, Square::D8 as u32);
+        let desired_black_king_bitboard = u64::pow(2, Square::E8 as u32);
 
         assert_eq!(game.white_pawns.bitboard, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights.bitboard, desired_white_knights_bitboard);
@@ -567,39 +567,39 @@ mod tests {
             "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9",
         );
 
-        let desired_white_pawns_bitboard = u64::pow(2, BoardSquare::A2 as u32)
-            + u64::pow(2, BoardSquare::B2 as u32)
-            + u64::pow(2, BoardSquare::C2 as u32)
-            + u64::pow(2, BoardSquare::D3 as u32)
-            + u64::pow(2, BoardSquare::E4 as u32)
-            + u64::pow(2, BoardSquare::F2 as u32)
-            + u64::pow(2, BoardSquare::G3 as u32)
-            + u64::pow(2, BoardSquare::H3 as u32);
+        let desired_white_pawns_bitboard = u64::pow(2, Square::A2 as u32)
+            + u64::pow(2, Square::B2 as u32)
+            + u64::pow(2, Square::C2 as u32)
+            + u64::pow(2, Square::D3 as u32)
+            + u64::pow(2, Square::E4 as u32)
+            + u64::pow(2, Square::F2 as u32)
+            + u64::pow(2, Square::G3 as u32)
+            + u64::pow(2, Square::H3 as u32);
         let desired_white_knights_bitboard =
-            u64::pow(2, BoardSquare::E2 as u32) + u64::pow(2, BoardSquare::F3 as u32);
+            u64::pow(2, Square::E2 as u32) + u64::pow(2, Square::F3 as u32);
         let desired_white_bishops_bitboard =
-            u64::pow(2, BoardSquare::C1 as u32) + u64::pow(2, BoardSquare::G2 as u32);
+            u64::pow(2, Square::C1 as u32) + u64::pow(2, Square::G2 as u32);
         let desired_white_rooks_bitboard =
-            u64::pow(2, BoardSquare::A1 as u32) + u64::pow(2, BoardSquare::F1 as u32);
-        let desired_white_queens_bitboard = u64::pow(2, BoardSquare::D1 as u32);
-        let desired_white_king_bitboard = u64::pow(2, BoardSquare::G1 as u32);
+            u64::pow(2, Square::A1 as u32) + u64::pow(2, Square::F1 as u32);
+        let desired_white_queens_bitboard = u64::pow(2, Square::D1 as u32);
+        let desired_white_king_bitboard = u64::pow(2, Square::G1 as u32);
 
-        let desired_black_pawns_bitboard = u64::pow(2, BoardSquare::A7 as u32)
-            + u64::pow(2, BoardSquare::B7 as u32)
-            + u64::pow(2, BoardSquare::C7 as u32)
-            + u64::pow(2, BoardSquare::D4 as u32)
-            + u64::pow(2, BoardSquare::E5 as u32)
-            + u64::pow(2, BoardSquare::F7 as u32)
-            + u64::pow(2, BoardSquare::G7 as u32)
-            + u64::pow(2, BoardSquare::H7 as u32);
+        let desired_black_pawns_bitboard = u64::pow(2, Square::A7 as u32)
+            + u64::pow(2, Square::B7 as u32)
+            + u64::pow(2, Square::C7 as u32)
+            + u64::pow(2, Square::D4 as u32)
+            + u64::pow(2, Square::E5 as u32)
+            + u64::pow(2, Square::F7 as u32)
+            + u64::pow(2, Square::G7 as u32)
+            + u64::pow(2, Square::H7 as u32);
         let desired_black_knights_bitboard =
-            u64::pow(2, BoardSquare::C6 as u32) + u64::pow(2, BoardSquare::F6 as u32);
+            u64::pow(2, Square::C6 as u32) + u64::pow(2, Square::F6 as u32);
         let desired_black_bishops_bitboard =
-            u64::pow(2, BoardSquare::C5 as u32) + u64::pow(2, BoardSquare::E6 as u32);
+            u64::pow(2, Square::C5 as u32) + u64::pow(2, Square::E6 as u32);
         let desired_black_rooks_bitboard =
-            u64::pow(2, BoardSquare::A8 as u32) + u64::pow(2, BoardSquare::F8 as u32);
-        let desired_black_queens_bitboard = u64::pow(2, BoardSquare::D8 as u32);
-        let desired_black_king_bitboard = u64::pow(2, BoardSquare::G8 as u32);
+            u64::pow(2, Square::A8 as u32) + u64::pow(2, Square::F8 as u32);
+        let desired_black_queens_bitboard = u64::pow(2, Square::D8 as u32);
+        let desired_black_king_bitboard = u64::pow(2, Square::G8 as u32);
 
         assert_eq!(game.white_pawns.bitboard, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights.bitboard, desired_white_knights_bitboard);

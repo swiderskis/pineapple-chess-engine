@@ -1,7 +1,7 @@
 use super::{
     attack_tables::AttackTables,
     game::{CastlingType, Game},
-    Bitboard, BoardSquare, EnumToInt, Piece, Side,
+    Bitboard, EnumToInt, Piece, Side, Square,
 };
 use core::panic;
 
@@ -52,7 +52,7 @@ impl MoveList {
 
     fn add_move(
         &mut self,
-        (source_square, target_square): (&BoardSquare, &BoardSquare),
+        (source_square, target_square): (&Square, &Square),
         (piece, side): (&Piece, &Side),
         promoted_piece: Option<&Piece>,
         (capture, double_pawn_push, en_passant, castling): (bool, bool, bool, bool),
@@ -81,7 +81,7 @@ pub struct Move {
 
 impl Move {
     fn new(
-        (source_square, target_square): (&BoardSquare, &BoardSquare),
+        (source_square, target_square): (&Square, &Square),
         (piece, side): (&Piece, &Side),
         promoted_piece: Option<&Piece>,
         (capture, double_pawn_push, en_passant, castling): (bool, bool, bool, bool),
@@ -113,16 +113,16 @@ impl Move {
         Move { move_information }
     }
 
-    pub fn source_square(&self) -> BoardSquare {
+    pub fn source_square(&self) -> Square {
         let source_square_index = self.move_information & 0x3F;
 
-        BoardSquare::new_from_index(source_square_index as usize)
+        Square::new_from_index(source_square_index as usize)
     }
 
-    pub fn target_square(&self) -> BoardSquare {
+    pub fn target_square(&self) -> Square {
         let target_square_index = (self.move_information & 0xFC0) >> 6;
 
-        BoardSquare::new_from_index(target_square_index as usize)
+        Square::new_from_index(target_square_index as usize)
     }
 
     pub fn piece(&self) -> Piece {
@@ -176,7 +176,7 @@ pub fn generate_moves(game: &Game) -> MoveList {
             let (mut bitboard, piece) = bitboard_info;
 
             while let Some(source_square_index) = bitboard.get_ls1b_index() {
-                let source_square = BoardSquare::new_from_index(source_square_index);
+                let source_square = Square::new_from_index(source_square_index);
 
                 let attacks = match piece {
                     Piece::Pawn => {
@@ -231,7 +231,7 @@ pub fn generate_moves(game: &Game) -> MoveList {
                     }
                 }
 
-                bitboard.pop_bit(&BoardSquare::new_from_index(source_square_index));
+                bitboard.pop_bit(&Square::new_from_index(source_square_index));
             }
         });
 
@@ -252,11 +252,11 @@ fn generate_pawn_moves(
 
     let side = game.side_to_move();
 
-    let source_square = BoardSquare::new_from_index(source_square_index);
+    let source_square = Square::new_from_index(source_square_index);
     let target_square = if matches!(side, Side::White) {
-        BoardSquare::new_from_index(source_square_index - 8)
+        Square::new_from_index(source_square_index - 8)
     } else {
-        BoardSquare::new_from_index(source_square_index + 8)
+        Square::new_from_index(source_square_index + 8)
     };
 
     let single_piece = Bitboard::from_square(&source_square);
@@ -287,9 +287,9 @@ fn generate_pawn_moves(
 
     let single_push_target_square = target_square;
     let double_push_target_square = if matches!(side, Side::White) && piece_on_second_rank {
-        Some(BoardSquare::new_from_index(source_square_index - 16))
+        Some(Square::new_from_index(source_square_index - 16))
     } else if matches!(side, Side::Black) && piece_on_seventh_rank {
-        Some(BoardSquare::new_from_index(source_square_index + 16))
+        Some(Square::new_from_index(source_square_index + 16))
     } else {
         None
     };
@@ -310,7 +310,7 @@ fn generate_pawn_moves(
     }
 
     while let Some(target_square_index) = attacks.get_ls1b_index() {
-        let target_square = BoardSquare::new_from_index(target_square_index);
+        let target_square = Square::new_from_index(target_square_index);
 
         if (matches!(side, Side::White) && piece_on_seventh_rank)
             || (matches!(side, Side::Black) && piece_on_second_rank)
@@ -352,15 +352,11 @@ fn generate_pawn_moves(
     move_list
 }
 
-fn generate_piece_moves(
-    mut attacks: Bitboard,
-    game: &Game,
-    source_square: &BoardSquare,
-) -> MoveList {
+fn generate_piece_moves(mut attacks: Bitboard, game: &Game, source_square: &Square) -> MoveList {
     let mut move_list = MoveList::new();
 
     while let Some(target_square_index) = attacks.get_ls1b_index() {
-        let target_square = BoardSquare::new_from_index(target_square_index);
+        let target_square = Square::new_from_index(target_square_index);
 
         let (piece, side) = match game.piece_at_square(source_square) {
             Some((piece, side)) => (piece, side),
@@ -390,21 +386,21 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveLis
     let (b_file_square, c_file_square, d_file_square, e_file_square, f_file_square, g_file_square) =
         if matches!(side, Side::White) {
             (
-                BoardSquare::B1,
-                BoardSquare::C1,
-                BoardSquare::D1,
-                BoardSquare::E1,
-                BoardSquare::F1,
-                BoardSquare::G1,
+                Square::B1,
+                Square::C1,
+                Square::D1,
+                Square::E1,
+                Square::F1,
+                Square::G1,
             )
         } else {
             (
-                BoardSquare::B8,
-                BoardSquare::C8,
-                BoardSquare::D8,
-                BoardSquare::E8,
-                BoardSquare::F8,
-                BoardSquare::G8,
+                Square::B8,
+                Square::C8,
+                Square::D8,
+                Square::E8,
+                Square::F8,
+                Square::G8,
             )
         };
     let (short_castle, long_castle) = if matches!(side, Side::White) {

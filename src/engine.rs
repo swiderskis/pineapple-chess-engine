@@ -27,7 +27,7 @@ impl Bitboard {
         Bitboard { bitboard }
     }
 
-    fn from_square(square: &BoardSquare) -> Self {
+    fn from_square(square: &Square) -> Self {
         let mut bitboard = Bitboard::new(0);
 
         bitboard.set_bit(square);
@@ -35,15 +35,15 @@ impl Bitboard {
         bitboard
     }
 
-    fn bit_occupied(&self, square: &BoardSquare) -> bool {
+    fn bit_occupied(&self, square: &Square) -> bool {
         self.bitboard & (1 << square.as_usize()) != 0
     }
 
-    fn set_bit(&mut self, square: &BoardSquare) {
+    fn set_bit(&mut self, square: &Square) {
         self.bitboard |= 1 << square.as_usize();
     }
 
-    fn pop_bit(&mut self, square: &BoardSquare) {
+    fn pop_bit(&mut self, square: &Square) {
         self.bitboard &= !(1 << square.as_usize());
     }
 
@@ -65,7 +65,7 @@ impl Bitboard {
     }
 
     fn _print(&self) {
-        BoardSquare::iter().for_each(|square| {
+        Square::iter().for_each(|square| {
             if square.file() == 0 {
                 print!("{}   ", (64 - square.as_usize() / 8));
             }
@@ -167,7 +167,7 @@ impl Side {
 }
 
 #[derive(Debug, Display, EnumIter, EnumString, FromPrimitive, ToPrimitive)]
-pub enum BoardSquare {
+pub enum Square {
     A8,
     B8,
     C8,
@@ -234,9 +234,9 @@ pub enum BoardSquare {
     H1,
 }
 
-impl EnumToInt for BoardSquare {}
+impl EnumToInt for Square {}
 
-impl BoardSquare {
+impl Square {
     fn new_from_index(index: usize) -> Self {
         let square_option = Self::from_usize(index);
 
@@ -247,7 +247,7 @@ impl BoardSquare {
     }
 
     fn new_from_string(square: &str) -> Self {
-        match BoardSquare::from_str(&square.to_uppercase()) {
+        match Square::from_str(&square.to_uppercase()) {
             Ok(square) => square,
             Err(_) => panic!("Attempted to convert invalid string slice into board square"),
         }
@@ -276,21 +276,21 @@ mod tests {
         let mut bitboard2 = Bitboard::new(0);
         let mut bitboard3 = Bitboard::new(0);
 
-        bitboard1.set_bit(&BoardSquare::H2);
-        bitboard2.set_bit(&BoardSquare::G6);
-        bitboard3.set_bit(&BoardSquare::B4);
+        bitboard1.set_bit(&Square::H2);
+        bitboard2.set_bit(&Square::G6);
+        bitboard3.set_bit(&Square::B4);
 
         assert_eq!(
             bitboard1.bitboard,
-            u64::pow(2, BoardSquare::H2.as_usize() as u32)
+            u64::pow(2, Square::H2.as_usize() as u32)
         );
         assert_eq!(
             bitboard2.bitboard,
-            u64::pow(2, BoardSquare::G6.as_usize() as u32)
+            u64::pow(2, Square::G6.as_usize() as u32)
         );
         assert_eq!(
             bitboard3.bitboard,
-            u64::pow(2, BoardSquare::B4.as_usize() as u32)
+            u64::pow(2, Square::B4.as_usize() as u32)
         );
     }
 
@@ -300,29 +300,29 @@ mod tests {
         let mut bitboard2 = Bitboard::new(0);
         let mut bitboard3 = Bitboard::new(0);
 
-        bitboard1.set_bit(&BoardSquare::G5);
-        bitboard1.set_bit(&BoardSquare::A8);
-        bitboard1.pop_bit(&BoardSquare::G5);
+        bitboard1.set_bit(&Square::G5);
+        bitboard1.set_bit(&Square::A8);
+        bitboard1.pop_bit(&Square::G5);
 
-        bitboard2.set_bit(&BoardSquare::C1);
-        bitboard2.set_bit(&BoardSquare::A7);
-        bitboard2.pop_bit(&BoardSquare::C1);
+        bitboard2.set_bit(&Square::C1);
+        bitboard2.set_bit(&Square::A7);
+        bitboard2.pop_bit(&Square::C1);
 
-        bitboard3.set_bit(&BoardSquare::C4);
-        bitboard3.set_bit(&BoardSquare::B8);
-        bitboard3.pop_bit(&BoardSquare::C4);
+        bitboard3.set_bit(&Square::C4);
+        bitboard3.set_bit(&Square::B8);
+        bitboard3.pop_bit(&Square::C4);
 
         assert_eq!(
             bitboard1.bitboard,
-            u64::pow(2, BoardSquare::A8.as_usize() as u32)
+            u64::pow(2, Square::A8.as_usize() as u32)
         );
         assert_eq!(
             bitboard2.bitboard,
-            u64::pow(2, BoardSquare::A7.as_usize() as u32)
+            u64::pow(2, Square::A7.as_usize() as u32)
         );
         assert_eq!(
             bitboard3.bitboard,
-            u64::pow(2, BoardSquare::B8.as_usize() as u32)
+            u64::pow(2, Square::B8.as_usize() as u32)
         );
     }
 
@@ -331,11 +331,11 @@ mod tests {
         let mut bitboard1 = Bitboard::new(0);
         let mut bitboard2 = Bitboard::new(0);
 
-        bitboard1.set_bit(&BoardSquare::F1);
-        bitboard1.pop_bit(&BoardSquare::F1);
-        bitboard1.pop_bit(&BoardSquare::F1);
+        bitboard1.set_bit(&Square::F1);
+        bitboard1.pop_bit(&Square::F1);
+        bitboard1.pop_bit(&Square::F1);
 
-        bitboard2.pop_bit(&BoardSquare::G2);
+        bitboard2.pop_bit(&Square::G2);
 
         assert_eq!(bitboard1.bitboard, 0);
         assert_eq!(bitboard2.bitboard, 0);
