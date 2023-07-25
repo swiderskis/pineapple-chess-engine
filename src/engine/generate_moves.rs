@@ -9,6 +9,14 @@ static BLACK_PIECE_OFFSET: u32 = 6;
 static NO_PIECE_VALUE: u32 = 0b1111;
 static PROMOTION_PIECES: [Piece; 4] = [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight];
 
+enum MoveType {
+    Quiet,
+    Capture,
+    DoublePawnPush,
+    EnPassant,
+    Castling,
+}
+
 pub struct MoveList {
     moves: Vec<Move>,
 }
@@ -73,14 +81,6 @@ impl MoveList {
     fn append_move_list(&mut self, move_list: &mut MoveList) {
         self.moves.append(&mut move_list.moves);
     }
-}
-
-enum MoveType {
-    Quiet,
-    Capture,
-    DoublePawnPush,
-    EnPassant,
-    Castling,
 }
 
 #[derive(PartialEq)]
