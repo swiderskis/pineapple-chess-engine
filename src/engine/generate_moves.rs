@@ -55,13 +55,13 @@ impl MoveList {
         (source_square, target_square): (&Square, &Square),
         (piece, side): (&Piece, &Side),
         promoted_piece: Option<&Piece>,
-        (capture, double_pawn_push, en_passant, castling): (bool, bool, bool, bool),
+        move_type: MoveType,
     ) {
         let mv = Move::new(
             (source_square, target_square),
             (piece, side),
             promoted_piece,
-            (capture, double_pawn_push, en_passant, castling),
+            move_type,
         );
         self.push_move(mv);
     }
@@ -75,6 +75,15 @@ impl MoveList {
     }
 }
 
+enum MoveType {
+    Quiet,
+    Capture,
+    DoublePawnPush,
+    EnPassant,
+    Castling,
+}
+
+#[derive(PartialEq)]
 pub struct Move {
     move_information: u32,
 }
@@ -84,12 +93,11 @@ impl Move {
         (source_square, target_square): (&Square, &Square),
         (piece, side): (&Piece, &Side),
         promoted_piece: Option<&Piece>,
-        (capture, double_pawn_push, en_passant, castling): (bool, bool, bool, bool),
+        move_type: MoveType,
     ) -> Self {
-        let side_value_offset = if matches!(side, Side::Black) {
-            BLACK_PIECE_OFFSET
-        } else {
-            0
+        let side_value_offset = match side {
+            Side::White => 0,
+            Side::Black => BLACK_PIECE_OFFSET,
         };
         let piece_value = piece.as_u32() + side_value_offset;
         let promoted_piece_value = if let Some(promoted_piece) = promoted_piece {
@@ -100,15 +108,19 @@ impl Move {
         } else {
             NO_PIECE_VALUE
         };
+        let move_flags = match move_type {
+            MoveType::Quiet => 0b0000,
+            MoveType::Capture => 0b0001,
+            MoveType::DoublePawnPush => 0b0010,
+            MoveType::EnPassant => 0b0101,
+            MoveType::Castling => 0b1000,
+        };
 
         let mut move_information = source_square.as_u32();
         move_information |= target_square.as_u32() << 6;
         move_information |= piece_value << 12;
         move_information |= promoted_piece_value << 16;
-        move_information |= (capture as u32) << 20;
-        move_information |= (double_pawn_push as u32) << 21;
-        move_information |= (en_passant as u32) << 22;
-        move_information |= (castling as u32) << 23;
+        move_information |= move_flags << 20;
 
         Move { move_information }
     }
@@ -279,7 +291,7 @@ fn generate_pawn_moves(
                 (&source_square, &target_square),
                 (&Piece::Pawn, side),
                 Some(promoted_piece),
-                (false, false, false, false),
+                MoveType::Quiet,
             );
         });
     } else if game.piece_at_square(&target_square).is_none() {
@@ -287,7 +299,7 @@ fn generate_pawn_moves(
             (&source_square, &target_square),
             (&Piece::Pawn, side),
             None,
-            (false, false, false, false),
+            MoveType::Quiet,
         );
     }
 
@@ -309,7 +321,7 @@ fn generate_pawn_moves(
                     (&source_square, &target_square),
                     (&Piece::Pawn, side),
                     None,
-                    (false, true, false, false),
+                    MoveType::DoublePawnPush,
                 );
             }
         }
@@ -326,7 +338,7 @@ fn generate_pawn_moves(
                     (&source_square, &target_square),
                     (&Piece::Pawn, side),
                     Some(promoted_piece),
-                    (true, false, false, false),
+                    MoveType::Capture,
                 );
             });
         } else {
@@ -334,7 +346,7 @@ fn generate_pawn_moves(
                 (&source_square, &target_square),
                 (&Piece::Pawn, side),
                 None,
-                (true, false, false, false),
+                MoveType::Capture,
             );
         }
 
@@ -350,7 +362,7 @@ fn generate_pawn_moves(
                 (&source_square, target_square),
                 (&Piece::Pawn, side),
                 None,
-                (true, false, true, false),
+                MoveType::EnPassant,
             );
         }
     }
@@ -369,13 +381,16 @@ fn generate_piece_moves(mut attacks: Bitboard, game: &Game, source_square: &Squa
             None => panic!("Attempting to generate piece moves for empty source square"),
         };
 
-        let capture_flag = matches!(game.piece_at_square(&target_square), Some(_));
+        let move_type = match game.piece_at_square(&target_square) {
+            Some(_) => MoveType::Capture,
+            None => MoveType::Quiet,
+        };
 
         move_list.add_move(
             (source_square, &target_square),
             (&piece, &side),
             None,
-            (capture_flag, false, false, false),
+            move_type,
         );
 
         attacks.pop_bit(&target_square);
@@ -432,7 +447,7 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveLis
             (&e_file_square, &g_file_square),
             (&Piece::King, side),
             None,
-            (false, false, false, true),
+            MoveType::Castling,
         );
     }
 
@@ -447,7 +462,7 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveLis
             (&e_file_square, &c_file_square),
             (&Piece::King, side),
             None,
-            (false, false, false, true),
+            MoveType::Castling,
         );
     }
 
