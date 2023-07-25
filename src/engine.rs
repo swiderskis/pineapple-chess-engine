@@ -107,7 +107,7 @@ trait EnumToInt: ToPrimitive {
     }
 }
 
-#[derive(Debug, Display, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Display, FromPrimitive, PartialEq, ToPrimitive)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -151,7 +151,7 @@ impl Piece {
 
 impl EnumToInt for Piece {}
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Side {
     White,
     Black,
@@ -166,7 +166,7 @@ impl Side {
     }
 }
 
-#[derive(Debug, Display, EnumIter, EnumString, FromPrimitive, ToPrimitive)]
+#[derive(Debug, Display, EnumIter, EnumString, FromPrimitive, PartialEq, ToPrimitive)]
 pub enum Square {
     A8,
     B8,

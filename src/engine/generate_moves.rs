@@ -271,10 +271,9 @@ fn generate_pawn_moves(
     let side = game.side_to_move();
 
     let source_square = Square::new_from_index(source_square_index);
-    let target_square = if matches!(side, Side::White) {
-        Square::new_from_index(source_square_index - 8)
-    } else {
-        Square::new_from_index(source_square_index + 8)
+    let target_square = match side {
+        Side::White => Square::new_from_index(source_square_index - 8),
+        Side::Black => Square::new_from_index(source_square_index + 8),
     };
 
     let single_piece = Bitboard::from_square(&source_square);
@@ -282,8 +281,8 @@ fn generate_pawn_moves(
     let piece_on_second_rank = second_rank.bitboard & single_piece.bitboard != 0;
     let piece_on_seventh_rank = seventh_rank.bitboard & single_piece.bitboard != 0;
 
-    if ((matches!(side, Side::White) && piece_on_seventh_rank)
-        || (matches!(side, Side::Black) && piece_on_second_rank))
+    if ((*side == Side::White && piece_on_seventh_rank)
+        || (*side == Side::Black && piece_on_second_rank))
         && game.piece_at_square(&target_square).is_none()
     {
         PROMOTION_PIECES.iter().for_each(|promoted_piece| {
@@ -304,9 +303,9 @@ fn generate_pawn_moves(
     }
 
     let single_push_target_square = target_square;
-    let double_push_target_square = if matches!(side, Side::White) && piece_on_second_rank {
+    let double_push_target_square = if *side == Side::White && piece_on_second_rank {
         Some(Square::new_from_index(source_square_index - 16))
-    } else if matches!(side, Side::Black) && piece_on_seventh_rank {
+    } else if *side == Side::Black && piece_on_seventh_rank {
         Some(Square::new_from_index(source_square_index + 16))
     } else {
         None
@@ -330,8 +329,8 @@ fn generate_pawn_moves(
     while let Some(target_square_index) = attacks.get_ls1b_index() {
         let target_square = Square::new_from_index(target_square_index);
 
-        if (matches!(side, Side::White) && piece_on_seventh_rank)
-            || (matches!(side, Side::Black) && piece_on_second_rank)
+        if (*side == Side::White && piece_on_seventh_rank)
+            || (*side == Side::Black && piece_on_second_rank)
         {
             PROMOTION_PIECES.iter().for_each(|promoted_piece| {
                 move_list.add_move(
@@ -405,29 +404,27 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveLis
     let side = game.side_to_move();
 
     let (b_file_square, c_file_square, d_file_square, e_file_square, f_file_square, g_file_square) =
-        if matches!(side, Side::White) {
-            (
+        match side {
+            Side::White => (
                 Square::B1,
                 Square::C1,
                 Square::D1,
                 Square::E1,
                 Square::F1,
                 Square::G1,
-            )
-        } else {
-            (
+            ),
+            Side::Black => (
                 Square::B8,
                 Square::C8,
                 Square::D8,
                 Square::E8,
                 Square::F8,
                 Square::G8,
-            )
+            ),
         };
-    let (short_castle, long_castle) = if matches!(side, Side::White) {
-        (CastlingType::WhiteShort, CastlingType::WhiteLong)
-    } else {
-        (CastlingType::BlackShort, CastlingType::BlackLong)
+    let (short_castle, long_castle) = match side {
+        Side::White => (CastlingType::WhiteShort, CastlingType::WhiteLong),
+        Side::Black => (CastlingType::BlackShort, CastlingType::BlackLong),
     };
 
     let d_file_square_attacked =
