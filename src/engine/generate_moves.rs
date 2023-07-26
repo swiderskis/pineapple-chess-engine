@@ -196,25 +196,7 @@ pub fn generate_moves(game: &Game) -> MoveList {
             while let Some(source_square_index) = bitboard.get_ls1b_index() {
                 let source_square = Square::new_from_index(source_square_index);
 
-                let attacks = match piece {
-                    Piece::Pawn => {
-                        let attack_table = attack_tables.attack_table(
-                            &game.board(None),
-                            piece,
-                            side,
-                            &source_square,
-                        );
-                        let opponent_board = game.board(Some(&side.opponent_side()));
-
-                        Bitboard::new(attack_table.bitboard & opponent_board.bitboard)
-                    }
-                    _ => Bitboard::new(
-                        attack_tables
-                            .attack_table(&game.board(None), piece, side, &source_square)
-                            .bitboard
-                            & !game.board(Some(side)).bitboard,
-                    ),
-                };
+                let attacks = generate_attacks(&attack_tables, game, piece, &source_square);
 
                 match piece {
                     Piece::Pawn => {
@@ -464,4 +446,29 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveLis
     }
 
     move_list
+}
+
+fn generate_attacks(
+    attack_tables: &AttackTables,
+    game: &Game,
+    piece: &Piece,
+    source_square: &Square,
+) -> Bitboard {
+    let side = game.side_to_move();
+
+    match piece {
+        Piece::Pawn => {
+            let attack_table =
+                attack_tables.attack_table(&game.board(None), piece, side, source_square);
+            let opponent_board = game.board(Some(&side.opponent_side()));
+
+            Bitboard::new(attack_table.bitboard & opponent_board.bitboard)
+        }
+        _ => Bitboard::new(
+            attack_tables
+                .attack_table(&game.board(None), piece, side, source_square)
+                .bitboard
+                & !game.board(Some(side)).bitboard,
+        ),
+    }
 }
