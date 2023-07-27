@@ -472,3 +472,1131 @@ fn generate_attacks(
         ),
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unusual_byte_groupings)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn move_encoding() {
+        let mv = Move::new(
+            (&Square::D4, &Square::D5),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_encoding = 0b0000_1111_0000_011011_100011;
+
+        assert_eq!(mv.move_information, desired_encoding);
+
+        let mv = Move::new(
+            (&Square::D5, &Square::D4),
+            (&Piece::Pawn, &Side::Black),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_encoding = 0b0000_1111_0110_100011_011011;
+
+        assert_eq!(mv.move_information, desired_encoding);
+
+        let mv = Move::new(
+            (&Square::D2, &Square::D4),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::DoublePawnPush,
+        );
+        let desired_encoding = 0b0010_1111_0000_100011_110011;
+
+        assert_eq!(mv.move_information, desired_encoding);
+
+        let mv = Move::new(
+            (&Square::D4, &Square::E5),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let desired_encoding = 0b0001_1111_0000_011100_100011;
+
+        assert_eq!(mv.move_information, desired_encoding);
+
+        let mv = Move::new(
+            (&Square::D5, &Square::E6),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::EnPassant,
+        );
+        let desired_encoding = 0b0101_1111_0000_010100_011011;
+
+        assert_eq!(mv.move_information, desired_encoding);
+
+        let mv = Move::new(
+            (&Square::D7, &Square::D8),
+            (&Piece::Pawn, &Side::White),
+            Some(&Piece::Queen),
+            MoveType::Quiet,
+        );
+        let desired_encoding = 0b0000_0100_0000_000011_001011;
+
+        assert_eq!(mv.move_information, desired_encoding);
+
+        let mv = Move::new(
+            (&Square::E1, &Square::G1),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Castling,
+        );
+        let desired_encoding = 0b1000_1111_0101_111110_111100;
+
+        assert_eq!(mv.move_information, desired_encoding);
+    }
+
+    #[test]
+    fn move_decoding() {
+        let mv = Move::new(
+            (&Square::D4, &Square::D5),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        assert_eq!(mv.source_square(), Square::D4);
+        assert_eq!(mv.target_square(), Square::D5);
+        assert_eq!(mv.piece(), Piece::Pawn);
+
+        let mv = Move::new(
+            (&Square::D2, &Square::D4),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::DoublePawnPush,
+        );
+
+        assert!(mv.double_pawn_push());
+
+        let mv = Move::new(
+            (&Square::D4, &Square::E5),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+
+        assert!(mv.capture());
+
+        let mv = Move::new(
+            (&Square::D5, &Square::E6),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::EnPassant,
+        );
+
+        assert!(mv.en_passant());
+
+        let mv = Move::new(
+            (&Square::D7, &Square::D8),
+            (&Piece::Pawn, &Side::White),
+            Some(&Piece::Queen),
+            MoveType::Quiet,
+        );
+
+        assert_eq!(mv.promoted_piece(), Some(Piece::Queen));
+
+        let mv = Move::new(
+            (&Square::E1, &Square::G1),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Castling,
+        );
+
+        assert!(mv.castling());
+    }
+
+    #[test]
+    fn single_pawn_push() {
+        let white_game = Game::initialise("8/8/8/8/8/3P4/8/8 w - - 0 1");
+        let black_game = Game::initialise("8/8/3p4/8/8/8/8/8 b - - 0 1");
+
+        let white_square = Square::D3;
+        let black_square = Square::D6;
+
+        let attack_tables = AttackTables::initialise();
+
+        let white_attack_table = attack_tables.attack_table(
+            &white_game.board(None),
+            &Piece::Pawn,
+            &Side::White,
+            &white_square,
+        );
+        let black_attack_table = attack_tables.attack_table(
+            &black_game.board(None),
+            &Piece::Pawn,
+            &Side::Black,
+            &black_square,
+        );
+
+        let white_attacks =
+            generate_attacks(&attack_tables, &white_game, &Piece::Pawn, &white_square);
+        let black_attacks =
+            generate_attacks(&attack_tables, &black_game, &Piece::Pawn, &black_square);
+
+        let white_moves = generate_pawn_moves(
+            white_attack_table,
+            white_attacks,
+            &white_game,
+            white_square.as_usize(),
+        );
+        let black_moves = generate_pawn_moves(
+            black_attack_table,
+            black_attacks,
+            &black_game,
+            black_square.as_usize(),
+        );
+
+        let white_pawn_push = Move::new(
+            (&Square::D3, &Square::D4),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let black_pawn_push = Move::new(
+            (&Square::D6, &Square::D5),
+            (&Piece::Pawn, &Side::Black),
+            None,
+            MoveType::Quiet,
+        );
+
+        let white_moves_correct =
+            white_moves.moves.contains(&white_pawn_push) && white_moves.moves.len() == 1;
+        let black_moves_correct =
+            black_moves.moves.contains(&black_pawn_push) && black_moves.moves.len() == 1;
+
+        assert!(white_moves_correct);
+        assert!(black_moves_correct);
+
+        // blocked from pushing
+        let white_game = Game::initialise("8/8/8/8/3p4/3P4/8/8 w - - 0 1");
+        let black_game = Game::initialise("8/8/3p4/3P4/8/8/8/8 b - - 0 1");
+
+        let white_square = Square::D3;
+        let black_square = Square::D6;
+
+        let attack_tables = AttackTables::initialise();
+
+        let white_attack_table = attack_tables.attack_table(
+            &white_game.board(None),
+            &Piece::Pawn,
+            &Side::White,
+            &white_square,
+        );
+        let black_attack_table = attack_tables.attack_table(
+            &black_game.board(None),
+            &Piece::Pawn,
+            &Side::Black,
+            &black_square,
+        );
+
+        let white_attacks =
+            generate_attacks(&attack_tables, &white_game, &Piece::Pawn, &white_square);
+        let black_attacks =
+            generate_attacks(&attack_tables, &black_game, &Piece::Pawn, &black_square);
+
+        let white_moves = generate_pawn_moves(
+            white_attack_table,
+            white_attacks,
+            &white_game,
+            white_square.as_usize(),
+        );
+        let black_moves = generate_pawn_moves(
+            black_attack_table,
+            black_attacks,
+            &black_game,
+            black_square.as_usize(),
+        );
+
+        let white_moves_correct = white_moves.moves.is_empty();
+        let black_moves_correct = black_moves.moves.is_empty();
+
+        assert!(white_moves_correct);
+        assert!(black_moves_correct);
+    }
+
+    #[test]
+    fn double_pawn_push() {
+        let white_game = Game::initialise("8/8/8/8/8/8/3P4/8 w - - 0 1");
+        let black_game = Game::initialise("8/3p4/8/8/8/8/8/8 b - - 0 1");
+
+        let white_square = Square::D2;
+        let black_square = Square::D7;
+
+        let attack_tables = AttackTables::initialise();
+
+        let white_attack_table = attack_tables.attack_table(
+            &white_game.board(None),
+            &Piece::Pawn,
+            &Side::White,
+            &white_square,
+        );
+        let black_attack_table = attack_tables.attack_table(
+            &black_game.board(None),
+            &Piece::Pawn,
+            &Side::Black,
+            &black_square,
+        );
+
+        let white_attacks =
+            generate_attacks(&attack_tables, &white_game, &Piece::Pawn, &white_square);
+        let black_attacks =
+            generate_attacks(&attack_tables, &black_game, &Piece::Pawn, &black_square);
+
+        let white_moves = generate_pawn_moves(
+            white_attack_table,
+            white_attacks,
+            &white_game,
+            white_square.as_usize(),
+        );
+        let black_moves = generate_pawn_moves(
+            black_attack_table,
+            black_attacks,
+            &black_game,
+            black_square.as_usize(),
+        );
+
+        let white_single_pawn_push = Move::new(
+            (&Square::D2, &Square::D3),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let white_double_pawn_push = Move::new(
+            (&Square::D2, &Square::D4),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::DoublePawnPush,
+        );
+
+        let black_single_pawn_push = Move::new(
+            (&Square::D7, &Square::D6),
+            (&Piece::Pawn, &Side::Black),
+            None,
+            MoveType::Quiet,
+        );
+        let black_double_pawn_push = Move::new(
+            (&Square::D7, &Square::D5),
+            (&Piece::Pawn, &Side::Black),
+            None,
+            MoveType::DoublePawnPush,
+        );
+
+        let white_moves_correct = white_moves.moves.contains(&white_single_pawn_push)
+            && white_moves.moves.contains(&white_double_pawn_push)
+            && white_moves.moves.len() == 2;
+        let black_moves_correct = black_moves.moves.contains(&black_single_pawn_push)
+            && black_moves.moves.contains(&black_double_pawn_push)
+            && black_moves.moves.len() == 2;
+
+        assert!(white_moves_correct);
+        assert!(black_moves_correct);
+
+        // blocked from double push
+        let white_game = Game::initialise("8/8/8/8/3p4/8/3P4/8 w - - 0 1");
+        let black_game = Game::initialise("8/3p4/8/3P4/8/8/8/8 b - - 0 1");
+
+        let white_moves = generate_pawn_moves(
+            white_attack_table,
+            white_attacks,
+            &white_game,
+            white_square.as_usize(),
+        );
+        let black_moves = generate_pawn_moves(
+            black_attack_table,
+            black_attacks,
+            &black_game,
+            black_square.as_usize(),
+        );
+
+        let white_moves_correct =
+            white_moves.moves.contains(&white_single_pawn_push) && white_moves.moves.len() == 1;
+        let black_moves_correct =
+            black_moves.moves.contains(&black_single_pawn_push) && black_moves.moves.len() == 1;
+
+        assert!(white_moves_correct);
+        assert!(black_moves_correct);
+
+        // blocked from single push
+        let white_game = Game::initialise("8/8/8/8/8/3p4/3P4/8 w - - 0 1");
+        let black_game = Game::initialise("8/3p4/3P4/8/8/8/8/8 b - - 0 1");
+
+        let white_moves = generate_pawn_moves(
+            white_attack_table,
+            white_attacks,
+            &white_game,
+            white_square.as_usize(),
+        );
+        let black_moves = generate_pawn_moves(
+            black_attack_table,
+            black_attacks,
+            &black_game,
+            black_square.as_usize(),
+        );
+
+        let white_moves_correct = white_moves.moves.is_empty();
+        let black_moves_correct = black_moves.moves.is_empty();
+
+        assert!(white_moves_correct);
+        assert!(black_moves_correct);
+    }
+
+    #[test]
+    fn pawn_capture() {
+        let white_game = Game::initialise("8/8/8/2P1p3/3P4/8/8/8 w - - 0 1");
+        let black_game = Game::initialise("8/8/8/3p4/2p1P3/8/8/8 b - - 0 1");
+
+        let white_square = Square::D4;
+        let black_square = Square::D5;
+
+        let attack_tables = AttackTables::initialise();
+
+        let white_attack_table = attack_tables.attack_table(
+            &white_game.board(None),
+            &Piece::Pawn,
+            &Side::White,
+            &white_square,
+        );
+        let black_attack_table = attack_tables.attack_table(
+            &black_game.board(None),
+            &Piece::Pawn,
+            &Side::Black,
+            &black_square,
+        );
+
+        let white_attacks =
+            generate_attacks(&attack_tables, &white_game, &Piece::Pawn, &white_square);
+        let black_attacks =
+            generate_attacks(&attack_tables, &black_game, &Piece::Pawn, &black_square);
+
+        let white_moves = generate_pawn_moves(
+            white_attack_table,
+            white_attacks,
+            &white_game,
+            white_square.as_usize(),
+        );
+        let black_moves = generate_pawn_moves(
+            black_attack_table,
+            black_attacks,
+            &black_game,
+            black_square.as_usize(),
+        );
+
+        let white_capture = Move::new(
+            (&Square::D4, &Square::E5),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let black_capture = Move::new(
+            (&Square::D5, &Square::E4),
+            (&Piece::Pawn, &Side::Black),
+            None,
+            MoveType::Capture,
+        );
+
+        assert!(white_moves.moves.contains(&white_capture));
+        assert!(black_moves.moves.contains(&black_capture));
+    }
+
+    #[test]
+    fn pawn_promotion() {
+        let white_game = Game::initialise("8/3P4/8/8/8/8/8/8 w - - 0 1");
+        let black_game = Game::initialise("8/8/8/8/8/8/3p4/8 b - - 0 1");
+
+        let white_square = Square::D7;
+        let black_square = Square::D2;
+
+        let attack_tables = AttackTables::initialise();
+
+        let white_attack_table = attack_tables.attack_table(
+            &white_game.board(None),
+            &Piece::Pawn,
+            &Side::White,
+            &white_square,
+        );
+        let black_attack_table = attack_tables.attack_table(
+            &black_game.board(None),
+            &Piece::Pawn,
+            &Side::Black,
+            &black_square,
+        );
+
+        let white_attacks =
+            generate_attacks(&attack_tables, &white_game, &Piece::Pawn, &white_square);
+        let black_attacks =
+            generate_attacks(&attack_tables, &black_game, &Piece::Pawn, &black_square);
+
+        let white_moves = generate_pawn_moves(
+            white_attack_table,
+            white_attacks,
+            &white_game,
+            white_square.as_usize(),
+        );
+        let black_moves = generate_pawn_moves(
+            black_attack_table,
+            black_attacks,
+            &black_game,
+            black_square.as_usize(),
+        );
+
+        let white_promotion_queen = Move::new(
+            (&Square::D7, &Square::D8),
+            (&Piece::Pawn, &Side::White),
+            Some(&Piece::Queen),
+            MoveType::Quiet,
+        );
+        let white_promotion_rook = Move::new(
+            (&Square::D7, &Square::D8),
+            (&Piece::Pawn, &Side::White),
+            Some(&Piece::Rook),
+            MoveType::Quiet,
+        );
+        let white_promotion_bishop = Move::new(
+            (&Square::D7, &Square::D8),
+            (&Piece::Pawn, &Side::White),
+            Some(&Piece::Bishop),
+            MoveType::Quiet,
+        );
+        let white_promotion_knight = Move::new(
+            (&Square::D7, &Square::D8),
+            (&Piece::Pawn, &Side::White),
+            Some(&Piece::Knight),
+            MoveType::Quiet,
+        );
+
+        let black_promotion_queen = Move::new(
+            (&Square::D2, &Square::D1),
+            (&Piece::Pawn, &Side::Black),
+            Some(&Piece::Queen),
+            MoveType::Quiet,
+        );
+        let black_promotion_rook = Move::new(
+            (&Square::D2, &Square::D1),
+            (&Piece::Pawn, &Side::Black),
+            Some(&Piece::Rook),
+            MoveType::Quiet,
+        );
+        let black_promotion_bishop = Move::new(
+            (&Square::D2, &Square::D1),
+            (&Piece::Pawn, &Side::Black),
+            Some(&Piece::Bishop),
+            MoveType::Quiet,
+        );
+        let black_promotion_knight = Move::new(
+            (&Square::D2, &Square::D1),
+            (&Piece::Pawn, &Side::Black),
+            Some(&Piece::Knight),
+            MoveType::Quiet,
+        );
+
+        let white_moves_correct = white_moves.moves.contains(&white_promotion_queen)
+            && white_moves.moves.contains(&white_promotion_rook)
+            && white_moves.moves.contains(&white_promotion_bishop)
+            && white_moves.moves.contains(&white_promotion_knight)
+            && white_moves.moves.len() == 4;
+        let black_moves_correct = black_moves.moves.contains(&black_promotion_queen)
+            && black_moves.moves.contains(&black_promotion_rook)
+            && black_moves.moves.contains(&black_promotion_bishop)
+            && black_moves.moves.contains(&black_promotion_knight)
+            && black_moves.moves.len() == 4;
+
+        assert!(white_moves_correct);
+        assert!(black_moves_correct);
+    }
+
+    #[test]
+    fn en_passant() {
+        let white_game = Game::initialise("8/8/8/3Pp3/8/8/8/8 w - e6 0 1");
+        let black_game = Game::initialise("8/8/8/8/3pP3/8/8/8 b - e3 0 1");
+
+        let white_square = Square::D5;
+        let black_square = Square::D4;
+
+        let attack_tables = AttackTables::initialise();
+
+        let white_attack_table = attack_tables.attack_table(
+            &white_game.board(None),
+            &Piece::Pawn,
+            &Side::White,
+            &white_square,
+        );
+        let black_attack_table = attack_tables.attack_table(
+            &black_game.board(None),
+            &Piece::Pawn,
+            &Side::Black,
+            &black_square,
+        );
+
+        let white_attacks =
+            generate_attacks(&attack_tables, &white_game, &Piece::Pawn, &white_square);
+        let black_attacks =
+            generate_attacks(&attack_tables, &black_game, &Piece::Pawn, &black_square);
+
+        let white_moves = generate_pawn_moves(
+            white_attack_table,
+            white_attacks,
+            &white_game,
+            white_square.as_usize(),
+        );
+        let black_moves = generate_pawn_moves(
+            black_attack_table,
+            black_attacks,
+            &black_game,
+            black_square.as_usize(),
+        );
+
+        let white_en_passant = Move::new(
+            (&Square::D5, &Square::E6),
+            (&Piece::Pawn, &Side::White),
+            None,
+            MoveType::EnPassant,
+        );
+        let black_en_passant = Move::new(
+            (&Square::D4, &Square::E3),
+            (&Piece::Pawn, &Side::Black),
+            None,
+            MoveType::EnPassant,
+        );
+
+        let white_moves_correct = white_moves.moves.contains(&white_en_passant);
+        let black_moves_correct = black_moves.moves.contains(&black_en_passant);
+
+        assert!(white_moves_correct);
+        assert!(black_moves_correct);
+    }
+
+    #[test]
+    fn knight_moves() {
+        let game = Game::initialise("8/8/2p5/5P2/3N4/1p6/2p1P3/8 w - - 0 1");
+
+        let source_square = Square::D4;
+
+        let attack_tables = AttackTables::initialise();
+
+        let attacks = generate_attacks(&attack_tables, &game, &Piece::Knight, &source_square);
+
+        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+
+        let desired_c6_move = Move::new(
+            (&Square::D4, &Square::C6),
+            (&Piece::Knight, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let desired_e6_move = Move::new(
+            (&Square::D4, &Square::E6),
+            (&Piece::Knight, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_b5_move = Move::new(
+            (&Square::D4, &Square::B5),
+            (&Piece::Knight, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_b3_move = Move::new(
+            (&Square::D4, &Square::B3),
+            (&Piece::Knight, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let desired_f3_move = Move::new(
+            (&Square::D4, &Square::F3),
+            (&Piece::Knight, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_c2_move = Move::new(
+            (&Square::D4, &Square::C2),
+            (&Piece::Knight, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+
+        let knight_moves_correct = moves.moves.contains(&desired_c6_move)
+            && moves.moves.contains(&desired_e6_move)
+            && moves.moves.contains(&desired_b5_move)
+            && moves.moves.contains(&desired_b3_move)
+            && moves.moves.contains(&desired_f3_move)
+            && moves.moves.contains(&desired_c2_move)
+            && moves.moves.len() == 6;
+
+        assert!(knight_moves_correct);
+    }
+
+    #[test]
+    fn bishop_moves() {
+        let game = Game::initialise("8/6p1/8/8/3B4/8/5P2/8 w - - 0 1");
+
+        let source_square = Square::D4;
+
+        let attack_tables = AttackTables::initialise();
+
+        let attacks = generate_attacks(&attack_tables, &game, &Piece::Bishop, &source_square);
+
+        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+
+        let desired_a7_move = Move::new(
+            (&Square::D4, &Square::A7),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_b6_move = Move::new(
+            (&Square::D4, &Square::B6),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_c5_move = Move::new(
+            (&Square::D4, &Square::C5),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_g7_move = Move::new(
+            (&Square::D4, &Square::G7),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let desired_f6_move = Move::new(
+            (&Square::D4, &Square::F6),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_e5_move = Move::new(
+            (&Square::D4, &Square::E5),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_c3_move = Move::new(
+            (&Square::D4, &Square::C3),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_b2_move = Move::new(
+            (&Square::D4, &Square::B2),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_a1_move = Move::new(
+            (&Square::D4, &Square::A1),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_e3_move = Move::new(
+            (&Square::D4, &Square::E3),
+            (&Piece::Bishop, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let bishop_moves_correct = moves.moves.contains(&desired_a7_move)
+            && moves.moves.contains(&desired_b6_move)
+            && moves.moves.contains(&desired_c5_move)
+            && moves.moves.contains(&desired_g7_move)
+            && moves.moves.contains(&desired_f6_move)
+            && moves.moves.contains(&desired_e5_move)
+            && moves.moves.contains(&desired_c3_move)
+            && moves.moves.contains(&desired_b2_move)
+            && moves.moves.contains(&desired_a1_move)
+            && moves.moves.contains(&desired_e3_move)
+            && moves.moves.len() == 10;
+
+        assert!(bishop_moves_correct);
+    }
+
+    #[test]
+    fn rook_moves() {
+        let game = Game::initialise("3p4/8/8/8/3R1P2/8/8/8 w - - 0 1");
+
+        let source_square = Square::D4;
+
+        let attack_tables = AttackTables::initialise();
+
+        let attacks = generate_attacks(&attack_tables, &game, &Piece::Rook, &source_square);
+
+        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+
+        let desired_d8_move = Move::new(
+            (&Square::D4, &Square::D8),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let desired_d7_move = Move::new(
+            (&Square::D4, &Square::D7),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_d6_move = Move::new(
+            (&Square::D4, &Square::D6),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_d5_move = Move::new(
+            (&Square::D4, &Square::D5),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_a4_move = Move::new(
+            (&Square::D4, &Square::A4),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_b4_move = Move::new(
+            (&Square::D4, &Square::B4),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_c4_move = Move::new(
+            (&Square::D4, &Square::C4),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_e4_move = Move::new(
+            (&Square::D4, &Square::E4),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_d3_move = Move::new(
+            (&Square::D4, &Square::D3),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_d2_move = Move::new(
+            (&Square::D4, &Square::D2),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_d1_move = Move::new(
+            (&Square::D4, &Square::D1),
+            (&Piece::Rook, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let rook_moves_correct = moves.moves.contains(&desired_d8_move)
+            && moves.moves.contains(&desired_d7_move)
+            && moves.moves.contains(&desired_d6_move)
+            && moves.moves.contains(&desired_d5_move)
+            && moves.moves.contains(&desired_a4_move)
+            && moves.moves.contains(&desired_b4_move)
+            && moves.moves.contains(&desired_c4_move)
+            && moves.moves.contains(&desired_e4_move)
+            && moves.moves.contains(&desired_d3_move)
+            && moves.moves.contains(&desired_d2_move)
+            && moves.moves.contains(&desired_d1_move)
+            && moves.moves.len() == 11;
+
+        assert!(rook_moves_correct)
+    }
+
+    #[test]
+    fn queen_moves() {
+        let game = Game::initialise("3p4/6p1/8/8/3Q1P2/8/5P2/8 w - - 0 1");
+
+        let source_square = Square::D4;
+
+        let attack_tables = AttackTables::initialise();
+
+        let attacks = generate_attacks(&attack_tables, &game, &Piece::Queen, &source_square);
+
+        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+
+        let desired_a7_move = Move::new(
+            (&Square::D4, &Square::A7),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_b6_move = Move::new(
+            (&Square::D4, &Square::B6),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_c5_move = Move::new(
+            (&Square::D4, &Square::C5),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_d8_move = Move::new(
+            (&Square::D4, &Square::D8),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let desired_d7_move = Move::new(
+            (&Square::D4, &Square::D7),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_d6_move = Move::new(
+            (&Square::D4, &Square::D6),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_d5_move = Move::new(
+            (&Square::D4, &Square::D5),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_g7_move = Move::new(
+            (&Square::D4, &Square::G7),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let desired_f6_move = Move::new(
+            (&Square::D4, &Square::F6),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_e5_move = Move::new(
+            (&Square::D4, &Square::E5),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_a4_move = Move::new(
+            (&Square::D4, &Square::A4),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_b4_move = Move::new(
+            (&Square::D4, &Square::B4),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_c4_move = Move::new(
+            (&Square::D4, &Square::C4),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_e4_move = Move::new(
+            (&Square::D4, &Square::E4),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_c3_move = Move::new(
+            (&Square::D4, &Square::C3),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_b2_move = Move::new(
+            (&Square::D4, &Square::B2),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_a1_move = Move::new(
+            (&Square::D4, &Square::A1),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_d3_move = Move::new(
+            (&Square::D4, &Square::D3),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_d2_move = Move::new(
+            (&Square::D4, &Square::D2),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_d1_move = Move::new(
+            (&Square::D4, &Square::D1),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let desired_e3_move = Move::new(
+            (&Square::D4, &Square::E3),
+            (&Piece::Queen, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let queen_moves_correct = moves.moves.contains(&desired_a7_move)
+            && moves.moves.contains(&desired_b6_move)
+            && moves.moves.contains(&desired_c5_move)
+            && moves.moves.contains(&desired_d8_move)
+            && moves.moves.contains(&desired_d7_move)
+            && moves.moves.contains(&desired_d6_move)
+            && moves.moves.contains(&desired_d5_move)
+            && moves.moves.contains(&desired_g7_move)
+            && moves.moves.contains(&desired_f6_move)
+            && moves.moves.contains(&desired_e5_move)
+            && moves.moves.contains(&desired_a4_move)
+            && moves.moves.contains(&desired_b4_move)
+            && moves.moves.contains(&desired_c4_move)
+            && moves.moves.contains(&desired_e4_move)
+            && moves.moves.contains(&desired_c3_move)
+            && moves.moves.contains(&desired_b2_move)
+            && moves.moves.contains(&desired_a1_move)
+            && moves.moves.contains(&desired_d3_move)
+            && moves.moves.contains(&desired_d2_move)
+            && moves.moves.contains(&desired_d1_move)
+            && moves.moves.contains(&desired_e3_move)
+            && moves.moves.len() == 21;
+
+        assert!(queen_moves_correct);
+    }
+
+    #[test]
+    fn king_moves() {
+        let game = Game::initialise("8/8/8/2pP4/2PK4/2p5/8/8 w - - 0 1");
+
+        let source_square = Square::D4;
+
+        let attack_tables = AttackTables::initialise();
+
+        let attacks = generate_attacks(&attack_tables, &game, &Piece::King, &source_square);
+
+        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+
+        let desired_c5_move = Move::new(
+            (&Square::D4, &Square::C5),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let desired_e5_move = Move::new(
+            (&Square::D4, &Square::E5),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_e4_move = Move::new(
+            (&Square::D4, &Square::E4),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_c3_move = Move::new(
+            (&Square::D4, &Square::C3),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Capture,
+        );
+        let desired_d3_move = Move::new(
+            (&Square::D4, &Square::D3),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+        let desired_e3_move = Move::new(
+            (&Square::D4, &Square::E3),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Quiet,
+        );
+
+        let king_moves_correct = moves.moves.contains(&desired_c5_move)
+            && moves.moves.contains(&desired_e5_move)
+            && moves.moves.contains(&desired_e4_move)
+            && moves.moves.contains(&desired_c3_move)
+            && moves.moves.contains(&desired_d3_move)
+            && moves.moves.contains(&desired_e3_move)
+            && moves.moves.len() == 6;
+
+        assert!(king_moves_correct);
+    }
+
+    #[test]
+    fn castling() {
+        let game = Game::initialise("8/8/8/8/8/8/8/R3K2R w KQ - 0 1");
+
+        let attack_tables = AttackTables::initialise();
+
+        let moves = generate_castling_moves(&attack_tables, &game);
+
+        let desired_short_castle = Move::new(
+            (&Square::E1, &Square::G1),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Castling,
+        );
+        let desired_long_castle = Move::new(
+            (&Square::E1, &Square::C1),
+            (&Piece::King, &Side::White),
+            None,
+            MoveType::Castling,
+        );
+
+        let castling_moves_correct = moves.moves.contains(&desired_short_castle)
+            && moves.moves.contains(&desired_long_castle)
+            && moves.moves.len() == 2;
+
+        assert!(castling_moves_correct);
+
+        let game = Game::initialise("8/8/8/8/8/5r2/8/R3K2R w KQ - 0 1");
+
+        let moves = generate_castling_moves(&attack_tables, &game);
+
+        let castling_moves_correct =
+            moves.moves.contains(&desired_long_castle) && moves.moves.len() == 1;
+
+        assert!(castling_moves_correct);
+
+        let game = Game::initialise("8/8/8/8/8/5q2/8/R3K2R w KQ - 0 1");
+
+        let moves = generate_castling_moves(&attack_tables, &game);
+
+        assert!(moves.moves.is_empty());
+
+        let game = Game::initialise("8/8/8/8/8/8/8/R3K2R w - - 0 1");
+
+        let moves = generate_castling_moves(&attack_tables, &game);
+
+        assert!(moves.moves.is_empty());
+    }
+}
