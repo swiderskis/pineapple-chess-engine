@@ -7,7 +7,6 @@ use core::panic;
 
 static BLACK_PIECE_OFFSET: u32 = 6;
 static NO_PIECE_VALUE: u32 = 0b1111;
-static PROMOTION_PIECES: [Piece; 4] = [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight];
 
 enum MoveType {
     Quiet,
@@ -60,14 +59,18 @@ impl MoveList {
 
     fn add_move(
         &mut self,
-        (source_square, target_square): (&Square, &Square),
-        (piece, side): (&Piece, &Side),
+        source_square: &Square,
+        target_square: &Square,
+        piece: &Piece,
+        side: &Side,
         promoted_piece: Option<&Piece>,
         move_type: MoveType,
     ) {
         let mv = Move::new(
-            (source_square, target_square),
-            (piece, side),
+            source_square,
+            target_square,
+            piece,
+            side,
             promoted_piece,
             move_type,
         );
@@ -90,8 +93,10 @@ pub struct Move {
 
 impl Move {
     fn new(
-        (source_square, target_square): (&Square, &Square),
-        (piece, side): (&Piece, &Side),
+        source_square: &Square,
+        target_square: &Square,
+        piece: &Piece,
+        side: &Side,
         promoted_piece: Option<&Piece>,
         move_type: MoveType,
     ) -> Self {
@@ -244,6 +249,8 @@ fn generate_pawn_moves(
     game: &Game,
     source_square_index: usize,
 ) -> MoveList {
+    let promotion_pieces = [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight];
+
     let mut move_list = MoveList::new();
 
     // Bitboards with 2nd and 7th ranks initialised to 1
@@ -267,18 +274,22 @@ fn generate_pawn_moves(
         || (*side == Side::Black && piece_on_second_rank))
         && game.piece_at_square(&target_square).is_none()
     {
-        PROMOTION_PIECES.iter().for_each(|promoted_piece| {
+        promotion_pieces.iter().for_each(|promoted_piece| {
             move_list.add_move(
-                (&source_square, &target_square),
-                (&Piece::Pawn, side),
+                &source_square,
+                &target_square,
+                &Piece::Pawn,
+                side,
                 Some(promoted_piece),
                 MoveType::Quiet,
             );
         });
     } else if game.piece_at_square(&target_square).is_none() {
         move_list.add_move(
-            (&source_square, &target_square),
-            (&Piece::Pawn, side),
+            &source_square,
+            &target_square,
+            &Piece::Pawn,
+            side,
             None,
             MoveType::Quiet,
         );
@@ -299,8 +310,10 @@ fn generate_pawn_moves(
 
             if target_square_empty {
                 move_list.add_move(
-                    (&source_square, &target_square),
-                    (&Piece::Pawn, side),
+                    &source_square,
+                    &target_square,
+                    &Piece::Pawn,
+                    side,
                     None,
                     MoveType::DoublePawnPush,
                 );
@@ -314,18 +327,22 @@ fn generate_pawn_moves(
         if (*side == Side::White && piece_on_seventh_rank)
             || (*side == Side::Black && piece_on_second_rank)
         {
-            PROMOTION_PIECES.iter().for_each(|promoted_piece| {
+            promotion_pieces.iter().for_each(|promoted_piece| {
                 move_list.add_move(
-                    (&source_square, &target_square),
-                    (&Piece::Pawn, side),
+                    &source_square,
+                    &target_square,
+                    &Piece::Pawn,
+                    side,
                     Some(promoted_piece),
                     MoveType::Capture,
                 );
             });
         } else {
             move_list.add_move(
-                (&source_square, &target_square),
-                (&Piece::Pawn, side),
+                &source_square,
+                &target_square,
+                &Piece::Pawn,
+                side,
                 None,
                 MoveType::Capture,
             );
@@ -340,8 +357,10 @@ fn generate_pawn_moves(
 
         if en_passant_square_attacked {
             move_list.add_move(
-                (&source_square, target_square),
-                (&Piece::Pawn, side),
+                &source_square,
+                target_square,
+                &Piece::Pawn,
+                side,
                 None,
                 MoveType::EnPassant,
             );
@@ -368,8 +387,10 @@ fn generate_piece_moves(mut attacks: Bitboard, game: &Game, source_square: &Squa
         };
 
         move_list.add_move(
-            (source_square, &target_square),
-            (&piece, &side),
+            source_square,
+            &target_square,
+            &piece,
+            &side,
             None,
             move_type,
         );
@@ -423,8 +444,10 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveLis
         && game.castling_type_allowed(&short_castle)
     {
         move_list.add_move(
-            (&e_file_square, &g_file_square),
-            (&Piece::King, side),
+            &e_file_square,
+            &g_file_square,
+            &Piece::King,
+            side,
             None,
             MoveType::Castling,
         );
@@ -438,8 +461,10 @@ fn generate_castling_moves(attack_tables: &AttackTables, game: &Game) -> MoveLis
         && game.castling_type_allowed(&long_castle)
     {
         move_list.add_move(
-            (&e_file_square, &c_file_square),
-            (&Piece::King, side),
+            &e_file_square,
+            &c_file_square,
+            &Piece::King,
+            side,
             None,
             MoveType::Castling,
         );
@@ -481,8 +506,10 @@ mod tests {
     #[test]
     fn move_encoding() {
         let mv = Move::new(
-            (&Square::D4, &Square::D5),
-            (&Piece::Pawn, &Side::White),
+            &Square::D4,
+            &Square::D5,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
@@ -491,8 +518,10 @@ mod tests {
         assert_eq!(mv.move_information, desired_encoding);
 
         let mv = Move::new(
-            (&Square::D5, &Square::D4),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D5,
+            &Square::D4,
+            &Piece::Pawn,
+            &Side::Black,
             None,
             MoveType::Quiet,
         );
@@ -501,8 +530,10 @@ mod tests {
         assert_eq!(mv.move_information, desired_encoding);
 
         let mv = Move::new(
-            (&Square::D2, &Square::D4),
-            (&Piece::Pawn, &Side::White),
+            &Square::D2,
+            &Square::D4,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::DoublePawnPush,
         );
@@ -511,8 +542,10 @@ mod tests {
         assert_eq!(mv.move_information, desired_encoding);
 
         let mv = Move::new(
-            (&Square::D4, &Square::E5),
-            (&Piece::Pawn, &Side::White),
+            &Square::D4,
+            &Square::E5,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::Capture,
         );
@@ -521,8 +554,10 @@ mod tests {
         assert_eq!(mv.move_information, desired_encoding);
 
         let mv = Move::new(
-            (&Square::D5, &Square::E6),
-            (&Piece::Pawn, &Side::White),
+            &Square::D5,
+            &Square::E6,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::EnPassant,
         );
@@ -531,8 +566,10 @@ mod tests {
         assert_eq!(mv.move_information, desired_encoding);
 
         let mv = Move::new(
-            (&Square::D7, &Square::D8),
-            (&Piece::Pawn, &Side::White),
+            &Square::D7,
+            &Square::D8,
+            &Piece::Pawn,
+            &Side::White,
             Some(&Piece::Queen),
             MoveType::Quiet,
         );
@@ -541,8 +578,10 @@ mod tests {
         assert_eq!(mv.move_information, desired_encoding);
 
         let mv = Move::new(
-            (&Square::E1, &Square::G1),
-            (&Piece::King, &Side::White),
+            &Square::E1,
+            &Square::G1,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Castling,
         );
@@ -554,8 +593,10 @@ mod tests {
     #[test]
     fn move_decoding() {
         let mv = Move::new(
-            (&Square::D4, &Square::D5),
-            (&Piece::Pawn, &Side::White),
+            &Square::D4,
+            &Square::D5,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
@@ -565,8 +606,10 @@ mod tests {
         assert_eq!(mv.piece(), Piece::Pawn);
 
         let mv = Move::new(
-            (&Square::D2, &Square::D4),
-            (&Piece::Pawn, &Side::White),
+            &Square::D2,
+            &Square::D4,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::DoublePawnPush,
         );
@@ -574,8 +617,10 @@ mod tests {
         assert!(mv.double_pawn_push());
 
         let mv = Move::new(
-            (&Square::D4, &Square::E5),
-            (&Piece::Pawn, &Side::White),
+            &Square::D4,
+            &Square::E5,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::Capture,
         );
@@ -583,8 +628,10 @@ mod tests {
         assert!(mv.capture());
 
         let mv = Move::new(
-            (&Square::D5, &Square::E6),
-            (&Piece::Pawn, &Side::White),
+            &Square::D5,
+            &Square::E6,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::EnPassant,
         );
@@ -592,8 +639,10 @@ mod tests {
         assert!(mv.en_passant());
 
         let mv = Move::new(
-            (&Square::D7, &Square::D8),
-            (&Piece::Pawn, &Side::White),
+            &Square::D7,
+            &Square::D8,
+            &Piece::Pawn,
+            &Side::White,
             Some(&Piece::Queen),
             MoveType::Quiet,
         );
@@ -601,8 +650,10 @@ mod tests {
         assert_eq!(mv.promoted_piece(), Some(Piece::Queen));
 
         let mv = Move::new(
-            (&Square::E1, &Square::G1),
-            (&Piece::King, &Side::White),
+            &Square::E1,
+            &Square::G1,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Castling,
         );
@@ -652,14 +703,18 @@ mod tests {
         );
 
         let white_pawn_push = Move::new(
-            (&Square::D3, &Square::D4),
-            (&Piece::Pawn, &Side::White),
+            &Square::D3,
+            &Square::D4,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let black_pawn_push = Move::new(
-            (&Square::D6, &Square::D5),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D6,
+            &Square::D5,
+            &Piece::Pawn,
+            &Side::Black,
             None,
             MoveType::Quiet,
         );
@@ -761,27 +816,35 @@ mod tests {
         );
 
         let white_single_pawn_push = Move::new(
-            (&Square::D2, &Square::D3),
-            (&Piece::Pawn, &Side::White),
+            &Square::D2,
+            &Square::D3,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let white_double_pawn_push = Move::new(
-            (&Square::D2, &Square::D4),
-            (&Piece::Pawn, &Side::White),
+            &Square::D2,
+            &Square::D4,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::DoublePawnPush,
         );
 
         let black_single_pawn_push = Move::new(
-            (&Square::D7, &Square::D6),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D7,
+            &Square::D6,
+            &Piece::Pawn,
+            &Side::Black,
             None,
             MoveType::Quiet,
         );
         let black_double_pawn_push = Move::new(
-            (&Square::D7, &Square::D5),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D7,
+            &Square::D5,
+            &Piece::Pawn,
+            &Side::Black,
             None,
             MoveType::DoublePawnPush,
         );
@@ -887,14 +950,18 @@ mod tests {
         );
 
         let white_capture = Move::new(
-            (&Square::D4, &Square::E5),
-            (&Piece::Pawn, &Side::White),
+            &Square::D4,
+            &Square::E5,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::Capture,
         );
         let black_capture = Move::new(
-            (&Square::D5, &Square::E4),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D5,
+            &Square::E4,
+            &Piece::Pawn,
+            &Side::Black,
             None,
             MoveType::Capture,
         );
@@ -945,51 +1012,67 @@ mod tests {
         );
 
         let white_promotion_queen = Move::new(
-            (&Square::D7, &Square::D8),
-            (&Piece::Pawn, &Side::White),
+            &Square::D7,
+            &Square::D8,
+            &Piece::Pawn,
+            &Side::White,
             Some(&Piece::Queen),
             MoveType::Quiet,
         );
         let white_promotion_rook = Move::new(
-            (&Square::D7, &Square::D8),
-            (&Piece::Pawn, &Side::White),
+            &Square::D7,
+            &Square::D8,
+            &Piece::Pawn,
+            &Side::White,
             Some(&Piece::Rook),
             MoveType::Quiet,
         );
         let white_promotion_bishop = Move::new(
-            (&Square::D7, &Square::D8),
-            (&Piece::Pawn, &Side::White),
+            &Square::D7,
+            &Square::D8,
+            &Piece::Pawn,
+            &Side::White,
             Some(&Piece::Bishop),
             MoveType::Quiet,
         );
         let white_promotion_knight = Move::new(
-            (&Square::D7, &Square::D8),
-            (&Piece::Pawn, &Side::White),
+            &Square::D7,
+            &Square::D8,
+            &Piece::Pawn,
+            &Side::White,
             Some(&Piece::Knight),
             MoveType::Quiet,
         );
 
         let black_promotion_queen = Move::new(
-            (&Square::D2, &Square::D1),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D2,
+            &Square::D1,
+            &Piece::Pawn,
+            &Side::Black,
             Some(&Piece::Queen),
             MoveType::Quiet,
         );
         let black_promotion_rook = Move::new(
-            (&Square::D2, &Square::D1),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D2,
+            &Square::D1,
+            &Piece::Pawn,
+            &Side::Black,
             Some(&Piece::Rook),
             MoveType::Quiet,
         );
         let black_promotion_bishop = Move::new(
-            (&Square::D2, &Square::D1),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D2,
+            &Square::D1,
+            &Piece::Pawn,
+            &Side::Black,
             Some(&Piece::Bishop),
             MoveType::Quiet,
         );
         let black_promotion_knight = Move::new(
-            (&Square::D2, &Square::D1),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D2,
+            &Square::D1,
+            &Piece::Pawn,
+            &Side::Black,
             Some(&Piece::Knight),
             MoveType::Quiet,
         );
@@ -1051,14 +1134,18 @@ mod tests {
         );
 
         let white_en_passant = Move::new(
-            (&Square::D5, &Square::E6),
-            (&Piece::Pawn, &Side::White),
+            &Square::D5,
+            &Square::E6,
+            &Piece::Pawn,
+            &Side::White,
             None,
             MoveType::EnPassant,
         );
         let black_en_passant = Move::new(
-            (&Square::D4, &Square::E3),
-            (&Piece::Pawn, &Side::Black),
+            &Square::D4,
+            &Square::E3,
+            &Piece::Pawn,
+            &Side::Black,
             None,
             MoveType::EnPassant,
         );
@@ -1083,38 +1170,50 @@ mod tests {
         let moves = generate_piece_moves(attacks, &game, &Square::D4);
 
         let desired_c6_move = Move::new(
-            (&Square::D4, &Square::C6),
-            (&Piece::Knight, &Side::White),
+            &Square::D4,
+            &Square::C6,
+            &Piece::Knight,
+            &Side::White,
             None,
             MoveType::Capture,
         );
         let desired_e6_move = Move::new(
-            (&Square::D4, &Square::E6),
-            (&Piece::Knight, &Side::White),
+            &Square::D4,
+            &Square::E6,
+            &Piece::Knight,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_b5_move = Move::new(
-            (&Square::D4, &Square::B5),
-            (&Piece::Knight, &Side::White),
+            &Square::D4,
+            &Square::B5,
+            &Piece::Knight,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_b3_move = Move::new(
-            (&Square::D4, &Square::B3),
-            (&Piece::Knight, &Side::White),
+            &Square::D4,
+            &Square::B3,
+            &Piece::Knight,
+            &Side::White,
             None,
             MoveType::Capture,
         );
         let desired_f3_move = Move::new(
-            (&Square::D4, &Square::F3),
-            (&Piece::Knight, &Side::White),
+            &Square::D4,
+            &Square::F3,
+            &Piece::Knight,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_c2_move = Move::new(
-            (&Square::D4, &Square::C2),
-            (&Piece::Knight, &Side::White),
+            &Square::D4,
+            &Square::C2,
+            &Piece::Knight,
+            &Side::White,
             None,
             MoveType::Capture,
         );
@@ -1143,65 +1242,85 @@ mod tests {
         let moves = generate_piece_moves(attacks, &game, &Square::D4);
 
         let desired_a7_move = Move::new(
-            (&Square::D4, &Square::A7),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::A7,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_b6_move = Move::new(
-            (&Square::D4, &Square::B6),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::B6,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_c5_move = Move::new(
-            (&Square::D4, &Square::C5),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::C5,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_g7_move = Move::new(
-            (&Square::D4, &Square::G7),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::G7,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Capture,
         );
         let desired_f6_move = Move::new(
-            (&Square::D4, &Square::F6),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::F6,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_e5_move = Move::new(
-            (&Square::D4, &Square::E5),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::E5,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_c3_move = Move::new(
-            (&Square::D4, &Square::C3),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::C3,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_b2_move = Move::new(
-            (&Square::D4, &Square::B2),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::B2,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_a1_move = Move::new(
-            (&Square::D4, &Square::A1),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::A1,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_e3_move = Move::new(
-            (&Square::D4, &Square::E3),
-            (&Piece::Bishop, &Side::White),
+            &Square::D4,
+            &Square::E3,
+            &Piece::Bishop,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
@@ -1234,71 +1353,93 @@ mod tests {
         let moves = generate_piece_moves(attacks, &game, &Square::D4);
 
         let desired_d8_move = Move::new(
-            (&Square::D4, &Square::D8),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::D8,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Capture,
         );
         let desired_d7_move = Move::new(
-            (&Square::D4, &Square::D7),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::D7,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_d6_move = Move::new(
-            (&Square::D4, &Square::D6),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::D6,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_d5_move = Move::new(
-            (&Square::D4, &Square::D5),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::D5,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_a4_move = Move::new(
-            (&Square::D4, &Square::A4),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::A4,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_b4_move = Move::new(
-            (&Square::D4, &Square::B4),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::B4,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_c4_move = Move::new(
-            (&Square::D4, &Square::C4),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::C4,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_e4_move = Move::new(
-            (&Square::D4, &Square::E4),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::E4,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_d3_move = Move::new(
-            (&Square::D4, &Square::D3),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::D3,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_d2_move = Move::new(
-            (&Square::D4, &Square::D2),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::D2,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_d1_move = Move::new(
-            (&Square::D4, &Square::D1),
-            (&Piece::Rook, &Side::White),
+            &Square::D4,
+            &Square::D1,
+            &Piece::Rook,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
@@ -1332,135 +1473,177 @@ mod tests {
         let moves = generate_piece_moves(attacks, &game, &Square::D4);
 
         let desired_a7_move = Move::new(
-            (&Square::D4, &Square::A7),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::A7,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_b6_move = Move::new(
-            (&Square::D4, &Square::B6),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::B6,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_c5_move = Move::new(
-            (&Square::D4, &Square::C5),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::C5,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_d8_move = Move::new(
-            (&Square::D4, &Square::D8),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::D8,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Capture,
         );
         let desired_d7_move = Move::new(
-            (&Square::D4, &Square::D7),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::D7,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_d6_move = Move::new(
-            (&Square::D4, &Square::D6),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::D6,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_d5_move = Move::new(
-            (&Square::D4, &Square::D5),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::D5,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_g7_move = Move::new(
-            (&Square::D4, &Square::G7),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::G7,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Capture,
         );
         let desired_f6_move = Move::new(
-            (&Square::D4, &Square::F6),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::F6,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_e5_move = Move::new(
-            (&Square::D4, &Square::E5),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::E5,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_a4_move = Move::new(
-            (&Square::D4, &Square::A4),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::A4,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_b4_move = Move::new(
-            (&Square::D4, &Square::B4),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::B4,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_c4_move = Move::new(
-            (&Square::D4, &Square::C4),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::C4,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_e4_move = Move::new(
-            (&Square::D4, &Square::E4),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::E4,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_c3_move = Move::new(
-            (&Square::D4, &Square::C3),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::C3,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_b2_move = Move::new(
-            (&Square::D4, &Square::B2),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::B2,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_a1_move = Move::new(
-            (&Square::D4, &Square::A1),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::A1,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_d3_move = Move::new(
-            (&Square::D4, &Square::D3),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::D3,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_d2_move = Move::new(
-            (&Square::D4, &Square::D2),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::D2,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_d1_move = Move::new(
-            (&Square::D4, &Square::D1),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::D1,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
 
         let desired_e3_move = Move::new(
-            (&Square::D4, &Square::E3),
-            (&Piece::Queen, &Side::White),
+            &Square::D4,
+            &Square::E3,
+            &Piece::Queen,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
@@ -1504,38 +1687,50 @@ mod tests {
         let moves = generate_piece_moves(attacks, &game, &Square::D4);
 
         let desired_c5_move = Move::new(
-            (&Square::D4, &Square::C5),
-            (&Piece::King, &Side::White),
+            &Square::D4,
+            &Square::C5,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Capture,
         );
         let desired_e5_move = Move::new(
-            (&Square::D4, &Square::E5),
-            (&Piece::King, &Side::White),
+            &Square::D4,
+            &Square::E5,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_e4_move = Move::new(
-            (&Square::D4, &Square::E4),
-            (&Piece::King, &Side::White),
+            &Square::D4,
+            &Square::E4,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_c3_move = Move::new(
-            (&Square::D4, &Square::C3),
-            (&Piece::King, &Side::White),
+            &Square::D4,
+            &Square::C3,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Capture,
         );
         let desired_d3_move = Move::new(
-            (&Square::D4, &Square::D3),
-            (&Piece::King, &Side::White),
+            &Square::D4,
+            &Square::D3,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
         let desired_e3_move = Move::new(
-            (&Square::D4, &Square::E3),
-            (&Piece::King, &Side::White),
+            &Square::D4,
+            &Square::E3,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Quiet,
         );
@@ -1560,14 +1755,18 @@ mod tests {
         let moves = generate_castling_moves(&attack_tables, &game);
 
         let desired_short_castle = Move::new(
-            (&Square::E1, &Square::G1),
-            (&Piece::King, &Side::White),
+            &Square::E1,
+            &Square::G1,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Castling,
         );
         let desired_long_castle = Move::new(
-            (&Square::E1, &Square::C1),
-            (&Piece::King, &Side::White),
+            &Square::E1,
+            &Square::C1,
+            &Piece::King,
+            &Side::White,
             None,
             MoveType::Castling,
         );
