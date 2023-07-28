@@ -81,7 +81,7 @@ impl MoveList {
         self.moves.push(mv);
     }
 
-    fn append_move_list(&mut self, move_list: &mut MoveList) {
+    fn append_moves(&mut self, move_list: &mut MoveList) {
         self.moves.append(&mut move_list.moves);
     }
 }
@@ -203,7 +203,7 @@ pub fn generate_moves(game: &Game) -> MoveList {
 
                 let attacks = generate_attacks(&attack_tables, game, piece, &source_square);
 
-                match piece {
+                let mut generated_moves = match piece {
                     Piece::Pawn => {
                         let attack_table = attack_tables.attack_table(
                             &game.board(None),
@@ -211,30 +211,26 @@ pub fn generate_moves(game: &Game) -> MoveList {
                             side,
                             &source_square,
                         );
-                        move_list.append_move_list(&mut generate_pawn_moves(
-                            attack_table,
-                            attacks,
-                            game,
-                            source_square_index,
-                        ));
+
+                        generate_pawn_moves(attack_table, attacks, game, source_square_index)
                     }
                     Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
-                        move_list.append_move_list(&mut generate_piece_moves(
-                            attacks,
-                            game,
-                            &source_square,
-                        ));
+                        generate_piece_moves(attacks, game, &source_square)
                     }
                     Piece::King => {
-                        move_list.append_move_list(&mut generate_piece_moves(
+                        let mut king_moves = MoveList::new();
+                        king_moves.append_moves(&mut generate_piece_moves(
                             attacks,
                             game,
                             &source_square,
                         ));
-                        move_list
-                            .append_move_list(&mut generate_castling_moves(&attack_tables, game));
+                        king_moves.append_moves(&mut generate_castling_moves(&attack_tables, game));
+
+                        king_moves
                     }
-                }
+                };
+
+                move_list.append_moves(&mut generated_moves);
 
                 bitboard.pop_bit(&Square::new_from_index(source_square_index));
             }
