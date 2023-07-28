@@ -100,12 +100,10 @@ impl LeaperAttackTables {
     }
 
     fn generate_attack_tables(piece: Piece, side: &Side) -> [Bitboard; 64] {
-        // Bitboards with all values initialised to 1, except for the file(s) indicated
-        // Used to prevent incorrect attack table generation for pieces on / near edge files
-        let file_a_zeroed = Bitboard::new(18374403900871474942);
-        let file_h_zeroed = Bitboard::new(9187201950435737471);
-        let file_ab_zeroed = Bitboard::new(18229723555195321596);
-        let file_gh_zeroed = Bitboard::new(4557430888798830399);
+        let not_a_file = Bitboard::new(0xFEFE_FEFE_FEFE_FEFE);
+        let not_h_file = Bitboard::new(0x7F7F_7F7F_7F7F_7F7F);
+        let not_ab_file = Bitboard::new(0xFCFC_FCFC_FCFC_FCFC);
+        let not_gh_file = Bitboard::new(0x3F3F_3F3F_3F3F_3F3F);
 
         let mut attack_tables: [Bitboard; 64] = [Bitboard::new(0); 64];
 
@@ -119,42 +117,38 @@ impl LeaperAttackTables {
                 Piece::Pawn => {
                     match side {
                         Side::White => {
-                            attack_table.bitboard |=
-                                (bitboard.bitboard >> 7) & file_a_zeroed.bitboard;
-                            attack_table.bitboard |=
-                                (bitboard.bitboard >> 9) & file_h_zeroed.bitboard;
+                            attack_table.bitboard |= (bitboard.bitboard >> 7) & not_a_file.bitboard;
+                            attack_table.bitboard |= (bitboard.bitboard >> 9) & not_h_file.bitboard;
                         }
                         Side::Black => {
-                            attack_table.bitboard |=
-                                (bitboard.bitboard << 7) & file_h_zeroed.bitboard;
-                            attack_table.bitboard |=
-                                (bitboard.bitboard << 9) & file_a_zeroed.bitboard;
+                            attack_table.bitboard |= (bitboard.bitboard << 7) & not_h_file.bitboard;
+                            attack_table.bitboard |= (bitboard.bitboard << 9) & not_a_file.bitboard;
                         }
                     }
 
                     attack_table
                 }
                 Piece::Knight => {
-                    attack_table.bitboard |= (bitboard.bitboard >> 6) & file_ab_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 10) & file_gh_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 15) & file_a_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 17) & file_h_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 6) & file_gh_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 10) & file_ab_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 15) & file_h_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 17) & file_a_zeroed.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard >> 6) & not_ab_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard >> 10) & not_gh_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard >> 15) & not_a_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard >> 17) & not_h_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 6) & not_gh_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 10) & not_ab_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 15) & not_h_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 17) & not_a_file.bitboard;
 
                     attack_table
                 }
                 Piece::King => {
-                    attack_table.bitboard |= (bitboard.bitboard >> 1) & file_h_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 7) & file_a_zeroed.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard >> 1) & not_h_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard >> 7) & not_a_file.bitboard;
                     attack_table.bitboard |= bitboard.bitboard >> 8;
-                    attack_table.bitboard |= (bitboard.bitboard >> 9) & file_h_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 1) & file_a_zeroed.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 7) & file_h_zeroed.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard >> 9) & not_h_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 1) & not_a_file.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 7) & not_h_file.bitboard;
                     attack_table.bitboard |= bitboard.bitboard << 8;
-                    attack_table.bitboard |= (bitboard.bitboard << 9) & file_a_zeroed.bitboard;
+                    attack_table.bitboard |= (bitboard.bitboard << 9) & not_a_file.bitboard;
 
                     attack_table
                 }
@@ -358,7 +352,7 @@ impl SliderAttackTables {
         let mut attack_mask_clone = attack_mask;
         let mut count = 0;
 
-        while let Some(square_index) = attack_mask_clone.get_ls1b_index() {
+        while let Some(square_index) = attack_mask_clone.get_lsb_index() {
             let ls1b_square = Square::new_from_index(square_index);
 
             if index & (1 << count) != 0 {

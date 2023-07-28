@@ -198,7 +198,7 @@ pub fn generate_moves(game: &Game) -> MoveList {
         .for_each(|bitboard_info| {
             let (mut bitboard, piece) = bitboard_info;
 
-            while let Some(source_square_index) = bitboard.get_ls1b_index() {
+            while let Some(source_square_index) = bitboard.get_lsb_index() {
                 let source_square = Square::new_from_index(source_square_index);
 
                 let attacks = generate_attacks(&attack_tables, game, piece, &source_square);
@@ -249,9 +249,8 @@ fn generate_pawn_moves(
 
     let mut move_list = MoveList::new();
 
-    // Bitboards with 2nd and 7th ranks initialised to 1
-    let second_rank = Bitboard::new(71776119061217280);
-    let seventh_rank = Bitboard::new(65280);
+    let second_rank = Bitboard::new(0xFF_0000_0000_0000);
+    let seventh_rank = Bitboard::new(0xFF00);
 
     let side = game.side_to_move();
 
@@ -317,7 +316,7 @@ fn generate_pawn_moves(
         }
     }
 
-    while let Some(target_square_index) = attacks.get_ls1b_index() {
+    while let Some(target_square_index) = attacks.get_lsb_index() {
         let target_square = Square::new_from_index(target_square_index);
 
         if (*side == Side::White && piece_on_seventh_rank)
@@ -369,7 +368,7 @@ fn generate_pawn_moves(
 fn generate_piece_moves(mut attacks: Bitboard, game: &Game, source_square: &Square) -> MoveList {
     let mut move_list = MoveList::new();
 
-    while let Some(target_square_index) = attacks.get_ls1b_index() {
+    while let Some(target_square_index) = attacks.get_lsb_index() {
         let target_square = Square::new_from_index(target_square_index);
 
         let (piece, side) = match game.piece_at_square(source_square) {

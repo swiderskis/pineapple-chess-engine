@@ -51,8 +51,8 @@ impl Bitboard {
         self.bitboard.count_ones()
     }
 
-    // ls1b = least significant 1st bit
-    fn get_ls1b_index(&self) -> Option<usize> {
+    // lsb = least significant bit
+    fn get_lsb_index(&self) -> Option<usize> {
         if self.is_empty() {
             return None;
         }
