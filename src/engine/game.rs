@@ -1,6 +1,6 @@
 use super::{
     attack_tables::AttackTables,
-    generate_moves::{Move, MoveFlag},
+    generate_moves::{Move, MoveFlag, MoveType},
     Bitboard, EnumToInt, Piece, Side, Square,
 };
 use num_derive::ToPrimitive;
@@ -156,53 +156,55 @@ impl Game {
                 .set_bit(&mv.target_square());
         }
 
-        if mv.en_passant() {
-            let capture_square = match side {
-                Side::White => Square::new_from_index(mv.target_square().as_usize() + 8),
-                Side::Black => Square::new_from_index(mv.target_square().as_usize() - 8),
-            };
-
-            self.mut_piece_bitboard(&Piece::Pawn, opponent_side)
-                .pop_bit(&capture_square);
-        }
-
-        if mv.capture() {
-            self.mut_side_bitboards(opponent_side)
-                .iter()
-                .for_each(|(&mut mut bitboard, _)| {
-                    bitboard.pop_bit(&mv.target_square());
-                });
-        }
-
-        if mv.double_pawn_push() {
-            let en_passant_square = match side {
-                Side::White => Square::new_from_index(mv.target_square().as_usize() + 8),
-                Side::Black => Square::new_from_index(mv.target_square().as_usize() - 8),
-            };
-
-            self.en_passant_square = Some(en_passant_square);
-        } else {
-            self.en_passant_square = None;
-        }
-
-        if mv.castling() {
-            let (a_file_square, c_file_square, d_file_square, f_file_square, h_file_square) =
-                match side {
-                    Side::White => (Square::A1, Square::C1, Square::D1, Square::F1, Square::H1),
-                    Side::Black => (Square::A8, Square::C8, Square::D8, Square::F8, Square::H8),
+        match mv.move_type() {
+            MoveType::Capture => {
+                self.mut_side_bitboards(opponent_side)
+                    .iter()
+                    .for_each(|(&mut mut bitboard, _)| {
+                        bitboard.pop_bit(&mv.target_square());
+                    });
+            }
+            MoveType::DoublePawnPush => {
+                let en_passant_square = match side {
+                    Side::White => Square::new_from_index(mv.target_square().as_usize() + 8),
+                    Side::Black => Square::new_from_index(mv.target_square().as_usize() - 8),
                 };
 
-            if mv.target_square() == c_file_square {
-                self.mut_piece_bitboard(&Piece::Rook, side)
-                    .pop_bit(&a_file_square);
-                self.mut_piece_bitboard(&Piece::Rook, side)
-                    .set_bit(&d_file_square);
-            } else {
-                self.mut_piece_bitboard(&Piece::Rook, side)
-                    .pop_bit(&h_file_square);
-                self.mut_piece_bitboard(&Piece::Rook, side)
-                    .set_bit(&f_file_square);
+                self.en_passant_square = Some(en_passant_square);
             }
+            MoveType::EnPassant => {
+                let capture_square = match side {
+                    Side::White => Square::new_from_index(mv.target_square().as_usize() + 8),
+                    Side::Black => Square::new_from_index(mv.target_square().as_usize() - 8),
+                };
+
+                self.mut_piece_bitboard(&Piece::Pawn, opponent_side)
+                    .pop_bit(&capture_square);
+            }
+            MoveType::Castling => {
+                let (a_file_square, c_file_square, d_file_square, f_file_square, h_file_square) =
+                    match side {
+                        Side::White => (Square::A1, Square::C1, Square::D1, Square::F1, Square::H1),
+                        Side::Black => (Square::A8, Square::C8, Square::D8, Square::F8, Square::H8),
+                    };
+
+                if mv.target_square() == c_file_square {
+                    self.mut_piece_bitboard(&Piece::Rook, side)
+                        .pop_bit(&a_file_square);
+                    self.mut_piece_bitboard(&Piece::Rook, side)
+                        .set_bit(&d_file_square);
+                } else {
+                    self.mut_piece_bitboard(&Piece::Rook, side)
+                        .pop_bit(&h_file_square);
+                    self.mut_piece_bitboard(&Piece::Rook, side)
+                        .set_bit(&f_file_square);
+                }
+            }
+            _ => {}
+        }
+
+        if !mv.double_pawn_push() {
+            self.en_passant_square = None;
         }
 
         match side {

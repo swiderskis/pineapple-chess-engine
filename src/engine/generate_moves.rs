@@ -1,20 +1,25 @@
 use super::{
     attack_tables::AttackTables,
     game::{CastlingType, Game},
-    Bitboard, EnumToInt, Piece, Side, Square,
+    Bitboard, EnumToInt, IntToEnum, Piece, Side, Square,
 };
 use core::panic;
+use num_derive::{FromPrimitive, ToPrimitive};
 
 static BLACK_PIECE_OFFSET: u32 = 6;
 static NO_PIECE_VALUE: u32 = 0b1111;
 
-enum MoveType {
-    Quiet,
-    Capture,
-    DoublePawnPush,
-    EnPassant,
-    Castling,
+#[derive(FromPrimitive, ToPrimitive)]
+pub enum MoveType {
+    Quiet = 0,
+    Capture = 1,
+    DoublePawnPush = 2,
+    EnPassant = 5,
+    Castling = 8,
 }
+
+impl EnumToInt for MoveType {}
+impl IntToEnum for MoveType {}
 
 #[derive(PartialEq)]
 pub enum MoveFlag {
@@ -126,13 +131,7 @@ impl Move {
         } else {
             NO_PIECE_VALUE
         };
-        let move_flags = match move_type {
-            MoveType::Quiet => 0b0000,
-            MoveType::Capture => 0b0001,
-            MoveType::DoublePawnPush => 0b0010,
-            MoveType::EnPassant => 0b0101,
-            MoveType::Castling => 0b1000,
-        };
+        let move_flags = move_type.as_u32();
 
         let mut move_information = source_square.as_u32();
         move_information |= target_square.as_u32() << 6;
@@ -180,6 +179,12 @@ impl Move {
         };
 
         Some(Piece::new_from_u32(promoted_piece_value))
+    }
+
+    pub fn move_type(&self) -> MoveType {
+        let move_type_index = (self.move_information & 0xF00000) >> 20;
+
+        MoveType::new_from_u32(move_type_index)
     }
 
     pub fn capture(&self) -> bool {

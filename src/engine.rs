@@ -120,6 +120,17 @@ trait EnumToInt: ToPrimitive {
     }
 }
 
+trait IntToEnum: FromPrimitive {
+    fn new_from_u32(value: u32) -> Self {
+        let enum_option = Self::from_u32(value);
+
+        match enum_option {
+            Some(piece) => piece,
+            None => panic!("Attempted to convert invalid index into enum"),
+        }
+    }
+}
+
 #[derive(Debug, Display, FromPrimitive, PartialEq, ToPrimitive)]
 pub enum Piece {
     Pawn,
@@ -131,15 +142,6 @@ pub enum Piece {
 }
 
 impl Piece {
-    fn new_from_u32(value: u32) -> Self {
-        let piece_option = Self::from_u32(value);
-
-        match piece_option {
-            Some(piece) => piece,
-            None => panic!("Attempted to convert invalid index into piece"),
-        }
-    }
-
     fn to_char(&self, side: Option<&Side>) -> char {
         match side {
             Some(Side::White) => match self {
@@ -163,6 +165,7 @@ impl Piece {
 }
 
 impl EnumToInt for Piece {}
+impl IntToEnum for Piece {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Side {
