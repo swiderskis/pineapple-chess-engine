@@ -145,8 +145,14 @@ impl Game {
 
         self.mut_piece_bitboard(&mv.piece(), side)
             .pop_bit(&mv.source_square());
-        self.mut_piece_bitboard(&mv.piece(), side)
-            .set_bit(&mv.target_square());
+
+        if let Some(promoted_piece) = mv.promoted_piece() {
+            self.mut_piece_bitboard(&promoted_piece, side)
+                .set_bit(&mv.target_square());
+        } else {
+            self.mut_piece_bitboard(&mv.piece(), side)
+                .set_bit(&mv.target_square());
+        }
 
         if mv.capture() {
             self.mut_side_bitboards(opponent_side)
