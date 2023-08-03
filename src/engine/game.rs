@@ -156,7 +156,15 @@ impl Game {
                 .set_bit(&mv.target_square());
         }
 
-        if mv.capture() {
+        if mv.en_passant() {
+            let capture_square = match side {
+                Side::White => Square::new_from_index(mv.target_square().as_usize() + 8),
+                Side::Black => Square::new_from_index(mv.target_square().as_usize() - 8),
+            };
+
+            self.mut_piece_bitboard(&Piece::Pawn, opponent_side)
+                .pop_bit(&capture_square);
+        } else if mv.capture() {
             self.mut_side_bitboards(opponent_side)
                 .iter()
                 .for_each(|(&mut mut bitboard, _)| {
