@@ -111,7 +111,10 @@ impl Move {
         let piece_value = piece.as_u32() + side_value_offset;
         let promoted_piece_value = if let Some(promoted_piece) = promoted_piece {
             match promoted_piece {
-                Piece::Pawn | Piece::King => panic!("Attempted to promote pawn to pawn or king"),
+                Piece::Pawn | Piece::King => {
+                    eprintln!("Attempted to promote pawn to pawn or king");
+                    Piece::Queen.as_u32() + side_value_offset
+                }
                 _ => promoted_piece.as_u32() + side_value_offset,
             }
         } else {
