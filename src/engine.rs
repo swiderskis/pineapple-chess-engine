@@ -13,18 +13,16 @@ static _TRICKY_POSITION: &str =
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
 
 pub fn position() {
-    let mut game =
-        Game::initialise("r3k2r/p2pqpb1/bn2pnp1/2pPN3/Pp2P3/2N2Q1p/1PPBBPPP/R3K2R b KQkq a3 0 1");
+    let mut game = Game::initialise(_TRICKY_POSITION);
 
     let moves = generate_moves::generate_moves(&game);
 
     game.print();
 
     for mv in moves.moves() {
-        if mv.en_passant() {
-            println!("{}", mv.target_square());
-
+        if mv.double_pawn_push() {
             game.make_move(mv, generate_moves::MoveFlag::All);
+            println!("{:?}", game.en_passant_square());
 
             break;
         }

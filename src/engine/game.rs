@@ -171,6 +171,17 @@ impl Game {
                     bitboard.pop_bit(&mv.target_square());
                 });
         }
+
+        if mv.double_pawn_push() {
+            let en_passant_square = match side {
+                Side::White => Square::new_from_index(mv.target_square().as_usize() + 8),
+                Side::Black => Square::new_from_index(mv.target_square().as_usize() - 8),
+            };
+
+            self.en_passant_square = Some(en_passant_square);
+        } else {
+            self.en_passant_square = None;
+        }
     }
 
     pub fn print(&self) {
