@@ -164,7 +164,9 @@ impl Game {
 
             self.mut_piece_bitboard(&Piece::Pawn, opponent_side)
                 .pop_bit(&capture_square);
-        } else if mv.capture() {
+        }
+
+        if mv.capture() {
             self.mut_side_bitboards(opponent_side)
                 .iter()
                 .for_each(|(&mut mut bitboard, _)| {
@@ -181,6 +183,59 @@ impl Game {
             self.en_passant_square = Some(en_passant_square);
         } else {
             self.en_passant_square = None;
+        }
+
+        if mv.castling() {
+            let (a_file_square, c_file_square, d_file_square, f_file_square, h_file_square) =
+                match side {
+                    Side::White => (Square::A1, Square::C1, Square::D1, Square::F1, Square::H1),
+                    Side::Black => (Square::A8, Square::C8, Square::D8, Square::F8, Square::H8),
+                };
+
+            if mv.target_square() == c_file_square {
+                self.mut_piece_bitboard(&Piece::Rook, side)
+                    .pop_bit(&a_file_square);
+                self.mut_piece_bitboard(&Piece::Rook, side)
+                    .set_bit(&d_file_square);
+            } else {
+                self.mut_piece_bitboard(&Piece::Rook, side)
+                    .pop_bit(&h_file_square);
+                self.mut_piece_bitboard(&Piece::Rook, side)
+                    .set_bit(&f_file_square);
+            }
+        }
+
+        match side {
+            Side::White => match mv.source_square() {
+                Square::A1 => self
+                    .castling_rights
+                    .remove_castling_type(CastlingType::WhiteLong),
+                Square::E1 => {
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::WhiteShort);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::WhiteLong);
+                }
+                Square::H1 => self
+                    .castling_rights
+                    .remove_castling_type(CastlingType::WhiteShort),
+                _ => {}
+            },
+            Side::Black => match mv.source_square() {
+                Square::A8 => self
+                    .castling_rights
+                    .remove_castling_type(CastlingType::BlackLong),
+                Square::E8 => {
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::BlackShort);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::BlackLong);
+                }
+                Square::H8 => self
+                    .castling_rights
+                    .remove_castling_type(CastlingType::BlackShort),
+                _ => {}
+            },
         }
     }
 
@@ -497,6 +552,10 @@ impl CastlingRights {
             });
 
         Self { castling_rights }
+    }
+
+    fn remove_castling_type(&mut self, castling_type: CastlingType) {
+        self.castling_rights &= !castling_type.as_u8();
     }
 
     fn as_string(&self) -> String {
