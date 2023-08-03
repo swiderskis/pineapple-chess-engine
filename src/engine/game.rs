@@ -1,4 +1,6 @@
-use super::{attack_tables::AttackTables, Bitboard, EnumToInt, Piece, Side, Square};
+use super::{
+    attack_tables::AttackTables, generate_moves::Move, Bitboard, EnumToInt, Piece, Side, Square,
+};
 use num_derive::ToPrimitive;
 use strum::IntoEnumIterator;
 
@@ -37,7 +39,7 @@ impl Game {
         let mut black_king = Bitboard::new(0);
 
         let fen = if fen == "startpos" {
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 "
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         } else {
             fen
         };
@@ -130,6 +132,28 @@ impl Game {
             side_to_move,
             en_passant_square,
             castling_rights,
+        }
+    }
+
+    pub fn make_move(&mut self, mv: &Move, move_flag: MoveFlag) {
+        if move_flag == MoveFlag::Capture && !mv.capture() {
+            return;
+        }
+
+        let side = &self.side_to_move.clone();
+        let opponent_side = &self.side_to_move.opponent_side().clone();
+
+        self.mut_piece_bitboard(&mv.piece(), side)
+            .pop_bit(&mv.source_square());
+        self.mut_piece_bitboard(&mv.piece(), side)
+            .set_bit(&mv.target_square());
+
+        if mv.capture() {
+            self.mut_side_bitboards(opponent_side)
+                .iter()
+                .for_each(|(&mut mut bitboard, _)| {
+                    bitboard.pop_bit(&mv.target_square());
+                });
         }
     }
 
@@ -241,8 +265,8 @@ impl Game {
         false
     }
 
-    pub fn side_to_move_bitboards(&self) -> [(Bitboard, Piece); 6] {
-        match self.side_to_move {
+    pub fn side_bitboards(&self, side: &Side) -> [(Bitboard, Piece); 6] {
+        match side {
             Side::White => [
                 (self.white_pawns, Piece::Pawn),
                 (self.white_knights, Piece::Knight),
@@ -258,6 +282,27 @@ impl Game {
                 (self.black_rooks, Piece::Rook),
                 (self.black_queens, Piece::Queen),
                 (self.black_king, Piece::King),
+            ],
+        }
+    }
+
+    pub fn mut_side_bitboards(&mut self, side: &Side) -> [(&mut Bitboard, Piece); 6] {
+        match side {
+            Side::White => [
+                (&mut self.white_pawns, Piece::Pawn),
+                (&mut self.white_knights, Piece::Knight),
+                (&mut self.white_bishops, Piece::Bishop),
+                (&mut self.white_rooks, Piece::Rook),
+                (&mut self.white_queens, Piece::Queen),
+                (&mut self.white_king, Piece::King),
+            ],
+            Side::Black => [
+                (&mut self.black_pawns, Piece::Pawn),
+                (&mut self.black_knights, Piece::Knight),
+                (&mut self.black_bishops, Piece::Bishop),
+                (&mut self.black_rooks, Piece::Rook),
+                (&mut self.black_queens, Piece::Queen),
+                (&mut self.black_king, Piece::King),
             ],
         }
     }
@@ -359,6 +404,27 @@ impl Game {
         }
     }
 
+    fn mut_piece_bitboard(&mut self, piece: &Piece, side: &Side) -> &mut Bitboard {
+        match side {
+            Side::White => match piece {
+                Piece::Pawn => &mut self.white_pawns,
+                Piece::Knight => &mut self.white_knights,
+                Piece::Bishop => &mut self.white_bishops,
+                Piece::Rook => &mut self.white_rooks,
+                Piece::Queen => &mut self.white_queens,
+                Piece::King => &mut self.white_king,
+            },
+            Side::Black => match piece {
+                Piece::Pawn => &mut self.black_pawns,
+                Piece::Knight => &mut self.black_knights,
+                Piece::Bishop => &mut self.black_bishops,
+                Piece::Rook => &mut self.black_rooks,
+                Piece::Queen => &mut self.black_queens,
+                Piece::King => &mut self.black_king,
+            },
+        }
+    }
+
     fn get_piece_character(piece: &Piece, side: &Side) -> char {
         match side {
             Side::White => match piece {
@@ -450,6 +516,12 @@ impl CastlingType {
     }
 }
 
+#[derive(PartialEq)]
+pub enum MoveFlag {
+    All,
+    Capture,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -457,7 +529,7 @@ mod tests {
     #[test]
     fn tricky_position() {
         let game = Game::initialise(
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ",
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         );
 
         let desired_white_pawns_bitboard = u64::pow(2, Square::A2 as u32)
@@ -510,9 +582,8 @@ mod tests {
 
     #[test]
     fn killer_position() {
-        let game = Game::initialise(
-            "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1 ",
-        );
+        let game =
+            Game::initialise("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1");
 
         let desired_white_pawns_bitboard = u64::pow(2, Square::A2 as u32)
             + u64::pow(2, Square::B4 as u32)

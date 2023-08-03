@@ -57,6 +57,10 @@ impl MoveList {
         });
     }
 
+    pub fn moves(&self) -> &Vec<Move> {
+        &self.moves
+    }
+
     fn add_move(
         &mut self,
         source_square: &Square,
@@ -193,11 +197,9 @@ pub fn generate_moves(game: &Game) -> MoveList {
 
     let side = game.side_to_move();
 
-    game.side_to_move_bitboards()
+    game.side_bitboards(side)
         .iter()
-        .for_each(|bitboard_info| {
-            let (mut bitboard, piece) = bitboard_info;
-
+        .for_each(|(mut bitboard, piece)| {
             while let Some(source_square_index) = bitboard.get_lsb_index() {
                 let source_square = Square::new_from_index(source_square_index);
 

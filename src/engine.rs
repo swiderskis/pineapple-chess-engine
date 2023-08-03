@@ -9,12 +9,31 @@ use std::str::FromStr;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
+static _START_POSITION: &str = "startpos";
+static TRICKY_POSITION: &str =
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ";
+static _KILLER_POSITION: &str =
+    "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1 ";
+static _CMK_POSITION: &str = "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9";
+
 pub fn position() {
-    let game = Game::initialise("startpos");
+    let mut game = Game::initialise(TRICKY_POSITION);
 
     let moves = generate_moves::generate_moves(&game);
 
-    moves.print_move_list();
+    game.print();
+
+    for mv in moves.moves() {
+        if mv.capture() {
+            println!("{}", mv.target_square());
+
+            game.make_move(mv, game::MoveFlag::All);
+
+            break;
+        }
+    }
+
+    game.print();
 }
 
 #[derive(Clone, Copy)]
@@ -151,7 +170,7 @@ impl Piece {
 
 impl EnumToInt for Piece {}
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Side {
     White,
     Black,
