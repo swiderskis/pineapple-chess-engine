@@ -1,5 +1,7 @@
 use super::{
-    attack_tables::AttackTables, generate_moves::Move, Bitboard, EnumToInt, Piece, Side, Square,
+    attack_tables::AttackTables,
+    generate_moves::{Move, MoveFlag},
+    Bitboard, EnumToInt, Piece, Side, Square,
 };
 use num_derive::ToPrimitive;
 use strum::IntoEnumIterator;
@@ -520,12 +522,6 @@ impl CastlingType {
             Self::BlackLong => "e8c8",
         }
     }
-}
-
-#[derive(PartialEq)]
-pub enum MoveFlag {
-    All,
-    Capture,
 }
 
 #[cfg(test)]

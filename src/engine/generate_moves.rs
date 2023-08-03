@@ -16,6 +16,12 @@ enum MoveType {
     Castling,
 }
 
+#[derive(PartialEq)]
+pub enum MoveFlag {
+    All,
+    Capture,
+}
+
 pub struct MoveList {
     moves: Vec<Move>,
 }

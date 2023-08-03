@@ -27,7 +27,7 @@ pub fn position() {
         if mv.capture() {
             println!("{}", mv.target_square());
 
-            game.make_move(mv, game::MoveFlag::All);
+            game.make_move(mv, generate_moves::MoveFlag::All);
 
             break;
         }
