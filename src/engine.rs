@@ -5,7 +5,10 @@ mod generate_moves;
 use self::game::Game;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
-use std::str::FromStr;
+use std::{
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign},
+    str::FromStr,
+};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
@@ -30,7 +33,7 @@ pub fn position() {
     game.print();
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Bitboard {
     bitboard: u64,
 }
@@ -94,6 +97,84 @@ impl Bitboard {
         println!("    a b c d e f g h");
         println!();
         println!("    Bitboard decimal value: {}", self.bitboard);
+    }
+}
+
+impl BitAnd for Bitboard {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Bitboard::new(self.bitboard & rhs.bitboard)
+    }
+}
+
+impl BitAnd<u64> for Bitboard {
+    type Output = Self;
+
+    fn bitand(self, rhs: u64) -> Self::Output {
+        Bitboard::new(self.bitboard & rhs)
+    }
+}
+
+impl BitAndAssign for Bitboard {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = Bitboard::new(self.bitboard & rhs.bitboard)
+    }
+}
+
+impl BitOr for Bitboard {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Bitboard::new(self.bitboard | rhs.bitboard)
+    }
+}
+
+impl BitOrAssign for Bitboard {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = Bitboard::new(self.bitboard | rhs.bitboard)
+    }
+}
+
+impl BitOrAssign<u64> for Bitboard {
+    fn bitor_assign(&mut self, rhs: u64) {
+        *self = Bitboard::new(self.bitboard | rhs)
+    }
+}
+
+impl PartialEq<u64> for Bitboard {
+    fn eq(&self, other: &u64) -> bool {
+        &self.bitboard == other
+    }
+}
+
+impl Not for Bitboard {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Bitboard::new(!self.bitboard)
+    }
+}
+
+impl Shl<usize> for Bitboard {
+    type Output = Self;
+
+    fn shl(self, rhs: usize) -> Self::Output {
+        Bitboard::new(self.bitboard << rhs)
+    }
+}
+
+impl ShrAssign<u32> for Bitboard {
+    fn shr_assign(&mut self, rhs: u32) {
+        *self = Bitboard::new(self.bitboard >> rhs)
+    }
+}
+
+impl Shr<usize> for Bitboard {
+    type Output = Self;
+
+    fn shr(self, rhs: usize) -> Self::Output {
+        Bitboard::new(self.bitboard >> rhs)
     }
 }
 

@@ -61,12 +61,10 @@ impl AttackTables {
             Piece::Queen => {
                 let mut queen_attack_table = Bitboard::new(0);
 
-                queen_attack_table.bitboard |= self.slider_attack_tables.bishop_attack_tables
-                    [square.as_usize()][bishop_magic_index]
-                    .bitboard;
-                queen_attack_table.bitboard |= self.slider_attack_tables.rook_attack_tables
-                    [square.as_usize()][rook_magic_index]
-                    .bitboard;
+                queen_attack_table |= self.slider_attack_tables.bishop_attack_tables
+                    [square.as_usize()][bishop_magic_index];
+                queen_attack_table |= self.slider_attack_tables.rook_attack_tables
+                    [square.as_usize()][rook_magic_index];
 
                 queen_attack_table
             }
@@ -117,38 +115,38 @@ impl LeaperAttackTables {
                 Piece::Pawn => {
                     match side {
                         Side::White => {
-                            attack_table.bitboard |= (bitboard.bitboard >> 7) & not_a_file.bitboard;
-                            attack_table.bitboard |= (bitboard.bitboard >> 9) & not_h_file.bitboard;
+                            attack_table |= (bitboard >> 7) & not_a_file;
+                            attack_table |= (bitboard >> 9) & not_h_file;
                         }
                         Side::Black => {
-                            attack_table.bitboard |= (bitboard.bitboard << 7) & not_h_file.bitboard;
-                            attack_table.bitboard |= (bitboard.bitboard << 9) & not_a_file.bitboard;
+                            attack_table |= (bitboard << 7) & not_h_file;
+                            attack_table |= (bitboard << 9) & not_a_file;
                         }
                     }
 
                     attack_table
                 }
                 Piece::Knight => {
-                    attack_table.bitboard |= (bitboard.bitboard >> 6) & not_ab_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 10) & not_gh_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 15) & not_a_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 17) & not_h_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 6) & not_gh_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 10) & not_ab_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 15) & not_h_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 17) & not_a_file.bitboard;
+                    attack_table |= (bitboard >> 6) & not_ab_file;
+                    attack_table |= (bitboard >> 10) & not_gh_file;
+                    attack_table |= (bitboard >> 15) & not_a_file;
+                    attack_table |= (bitboard >> 17) & not_h_file;
+                    attack_table |= (bitboard << 6) & not_gh_file;
+                    attack_table |= (bitboard << 10) & not_ab_file;
+                    attack_table |= (bitboard << 15) & not_h_file;
+                    attack_table |= (bitboard << 17) & not_a_file;
 
                     attack_table
                 }
                 Piece::King => {
-                    attack_table.bitboard |= (bitboard.bitboard >> 1) & not_h_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard >> 7) & not_a_file.bitboard;
-                    attack_table.bitboard |= bitboard.bitboard >> 8;
-                    attack_table.bitboard |= (bitboard.bitboard >> 9) & not_h_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 1) & not_a_file.bitboard;
-                    attack_table.bitboard |= (bitboard.bitboard << 7) & not_h_file.bitboard;
-                    attack_table.bitboard |= bitboard.bitboard << 8;
-                    attack_table.bitboard |= (bitboard.bitboard << 9) & not_a_file.bitboard;
+                    attack_table |= (bitboard >> 1) & not_h_file;
+                    attack_table |= (bitboard >> 7) & not_a_file;
+                    attack_table |= bitboard >> 8;
+                    attack_table |= (bitboard >> 9) & not_h_file;
+                    attack_table |= (bitboard << 1) & not_a_file;
+                    attack_table |= (bitboard << 7) & not_h_file;
+                    attack_table |= bitboard << 8;
+                    attack_table |= (bitboard << 9) & not_a_file;
 
                     attack_table
                 }
@@ -224,38 +222,38 @@ impl SliderAttackTables {
             match piece {
                 Piece::Bishop => {
                     for (rank, file) in ((piece_rank + 1)..7).zip((piece_file + 1)..7) {
-                        attack_mask.bitboard |= 1 << (rank * 8 + file);
+                        attack_mask |= 1 << (rank * 8 + file);
                     }
 
                     for (rank, file) in ((1..piece_rank).rev()).zip((piece_file + 1)..7) {
-                        attack_mask.bitboard |= 1 << (rank * 8 + file);
+                        attack_mask |= 1 << (rank * 8 + file);
                     }
 
                     for (rank, file) in ((piece_rank + 1)..7).zip((1..piece_file).rev()) {
-                        attack_mask.bitboard |= 1 << (rank * 8 + file);
+                        attack_mask |= 1 << (rank * 8 + file);
                     }
 
                     for (rank, file) in ((1..piece_rank).rev()).zip((1..piece_file).rev()) {
-                        attack_mask.bitboard |= 1 << (rank * 8 + file);
+                        attack_mask |= 1 << (rank * 8 + file);
                     }
 
                     attack_masks[square.as_usize()] = attack_mask;
                 }
                 Piece::Rook => {
                     for rank in (piece_rank + 1)..7 {
-                        attack_mask.bitboard |= 1 << (rank * 8 + piece_file);
+                        attack_mask |= 1 << (rank * 8 + piece_file);
                     }
 
                     for rank in (1..piece_rank).rev() {
-                        attack_mask.bitboard |= 1 << (rank * 8 + piece_file);
+                        attack_mask |= 1 << (rank * 8 + piece_file);
                     }
 
                     for file in (piece_file + 1)..7 {
-                        attack_mask.bitboard |= 1 << (piece_rank * 8 + file);
+                        attack_mask |= 1 << (piece_rank * 8 + file);
                     }
 
                     for file in (1..piece_file).rev() {
-                        attack_mask.bitboard |= 1 << (piece_rank * 8 + file);
+                        attack_mask |= 1 << (piece_rank * 8 + file);
                     }
 
                     attack_masks[square.as_usize()] = attack_mask;
@@ -276,66 +274,66 @@ impl SliderAttackTables {
         match piece {
             Piece::Bishop => {
                 for (rank, file) in ((piece_rank + 1)..8).zip((piece_file + 1)..8) {
-                    attack_table.bitboard |= 1 << (rank * 8 + file);
+                    attack_table |= 1 << (rank * 8 + file);
 
-                    if (1 << (rank * 8 + file)) & board.bitboard != 0 {
+                    if *board & (1 << (rank * 8 + file)) != 0 {
                         break;
                     }
                 }
 
                 for (rank, file) in ((0..piece_rank).rev()).zip((piece_file + 1)..8) {
-                    attack_table.bitboard |= 1 << (rank * 8 + file);
+                    attack_table |= 1 << (rank * 8 + file);
 
-                    if (1 << (rank * 8 + file)) & board.bitboard != 0 {
+                    if *board & (1 << (rank * 8 + file)) != 0 {
                         break;
                     }
                 }
 
                 for (rank, file) in ((piece_rank + 1)..8).zip((0..piece_file).rev()) {
-                    attack_table.bitboard |= 1 << (rank * 8 + file);
+                    attack_table |= 1 << (rank * 8 + file);
 
-                    if (1 << (rank * 8 + file)) & board.bitboard != 0 {
+                    if *board & (1 << (rank * 8 + file)) != 0 {
                         break;
                     }
                 }
 
                 for (rank, file) in ((0..piece_rank).rev()).zip((0..piece_file).rev()) {
-                    attack_table.bitboard |= 1 << (rank * 8 + file);
+                    attack_table |= 1 << (rank * 8 + file);
 
-                    if (1 << (rank * 8 + file)) & board.bitboard != 0 {
+                    if *board & (1 << (rank * 8 + file)) != 0 {
                         break;
                     }
                 }
             }
             Piece::Rook => {
                 for rank in (piece_rank + 1)..8 {
-                    attack_table.bitboard |= 1 << (rank * 8 + piece_file);
+                    attack_table |= 1 << (rank * 8 + piece_file);
 
-                    if (1 << (rank * 8 + piece_file)) & board.bitboard != 0 {
+                    if *board & (1 << (rank * 8 + piece_file)) != 0 {
                         break;
                     }
                 }
 
                 for rank in (0..piece_rank).rev() {
-                    attack_table.bitboard |= 1 << (rank * 8 + piece_file);
+                    attack_table |= 1 << (rank * 8 + piece_file);
 
-                    if (1 << (rank * 8 + piece_file)) & board.bitboard != 0 {
+                    if *board & (1 << (rank * 8 + piece_file)) != 0 {
                         break;
                     }
                 }
 
                 for file in (piece_file + 1)..8 {
-                    attack_table.bitboard |= 1 << (piece_rank * 8 + file);
+                    attack_table |= 1 << (piece_rank * 8 + file);
 
-                    if (1 << (piece_rank * 8 + file)) & board.bitboard != 0 {
+                    if *board & (1 << (piece_rank * 8 + file)) != 0 {
                         break;
                     }
                 }
 
                 for file in (0..piece_file).rev() {
-                    attack_table.bitboard |= 1 << (piece_rank * 8 + file);
+                    attack_table |= 1 << (piece_rank * 8 + file);
 
-                    if (1 << (piece_rank * 8 + file)) & board.bitboard != 0 {
+                    if *board & (1 << (piece_rank * 8 + file)) != 0 {
                         break;
                     }
                 }
@@ -356,7 +354,7 @@ impl SliderAttackTables {
             let ls1b_square = Square::new_from_index(square_index);
 
             if index & (1 << count) != 0 {
-                occupancy.bitboard |= 1 << ls1b_square.as_usize();
+                occupancy |= 1 << ls1b_square.as_usize();
             }
 
             attack_mask_clone.pop_bit(&ls1b_square);
@@ -570,12 +568,14 @@ impl MagicNumbers {
     ) -> usize {
         let mut magic_index = *board;
 
-        magic_index.bitboard &= slider_attack_tables.attack_mask(piece, square).bitboard;
-        magic_index.bitboard = magic_index
-            .bitboard
-            .overflowing_mul(magic_numbers.magic_number(piece, square))
-            .0;
-        magic_index.bitboard >>= 64 - slider_attack_tables.attack_mask(piece, square).count_bits();
+        magic_index &= slider_attack_tables.attack_mask(piece, square);
+        magic_index = Bitboard::new(
+            magic_index
+                .bitboard
+                .overflowing_mul(magic_numbers.magic_number(piece, square))
+                .0,
+        );
+        magic_index >>= 64 - slider_attack_tables.attack_mask(piece, square).count_bits();
 
         magic_index.bitboard as usize
     }
@@ -657,9 +657,9 @@ impl MagicNumbers {
                     .0)
                     >> (64 - occupancy_count)) as usize;
 
-                if used_attacks[magic_index].bitboard == 0 {
-                    used_attacks[magic_index].bitboard = attacks[i].bitboard;
-                } else if used_attacks[magic_index].bitboard != attacks[i].bitboard {
+                if used_attacks[magic_index] == 0 {
+                    used_attacks[magic_index] = attacks[i];
+                } else if used_attacks[magic_index] != attacks[i] {
                     continue 'outer;
                 }
             }

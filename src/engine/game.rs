@@ -273,10 +273,12 @@ impl Game {
     ) -> bool {
         match attacking_side {
             Side::White => {
-                let pawn_attacks_square = attack_tables
-                    .attack_table(&self.board(None), &Piece::Pawn, &Side::Black, square)
-                    .bitboard
-                    & self.piece_bitboard(&Piece::Pawn, attacking_side).bitboard
+                let pawn_attacks_square = attack_tables.attack_table(
+                    &self.board(None),
+                    &Piece::Pawn,
+                    &Side::Black,
+                    square,
+                ) & self.piece_bitboard(&Piece::Pawn, attacking_side)
                     != 0;
 
                 if pawn_attacks_square {
@@ -284,10 +286,12 @@ impl Game {
                 }
             }
             Side::Black => {
-                let pawn_attacks_square = attack_tables
-                    .attack_table(&self.board(None), &Piece::Pawn, &Side::White, square)
-                    .bitboard
-                    & self.piece_bitboard(&Piece::Pawn, attacking_side).bitboard
+                let pawn_attacks_square = attack_tables.attack_table(
+                    &self.board(None),
+                    &Piece::Pawn,
+                    &Side::White,
+                    square,
+                ) & self.piece_bitboard(&Piece::Pawn, attacking_side)
                     != 0;
 
                 if pawn_attacks_square {
@@ -296,51 +300,46 @@ impl Game {
             }
         }
 
-        let knight_attacks_square = attack_tables
-            .attack_table(&self.board(None), &Piece::Knight, attacking_side, square)
-            .bitboard
-            & self.piece_bitboard(&Piece::Knight, attacking_side).bitboard
-            != 0;
+        let knight_attacks_square =
+            attack_tables.attack_table(&self.board(None), &Piece::Knight, attacking_side, square)
+                & self.piece_bitboard(&Piece::Knight, attacking_side)
+                != 0;
 
         if knight_attacks_square {
             return true;
         }
 
-        let bishop_attacks_square = attack_tables
-            .attack_table(&self.board(None), &Piece::Bishop, attacking_side, square)
-            .bitboard
-            & self.piece_bitboard(&Piece::Bishop, attacking_side).bitboard
-            != 0;
+        let bishop_attacks_square =
+            attack_tables.attack_table(&self.board(None), &Piece::Bishop, attacking_side, square)
+                & self.piece_bitboard(&Piece::Bishop, attacking_side)
+                != 0;
 
         if bishop_attacks_square {
             return true;
         }
 
-        let rook_attacks_square = attack_tables
-            .attack_table(&self.board(None), &Piece::Rook, attacking_side, square)
-            .bitboard
-            & self.piece_bitboard(&Piece::Rook, attacking_side).bitboard
-            != 0;
+        let rook_attacks_square =
+            attack_tables.attack_table(&self.board(None), &Piece::Rook, attacking_side, square)
+                & self.piece_bitboard(&Piece::Rook, attacking_side)
+                != 0;
 
         if rook_attacks_square {
             return true;
         }
 
-        let queen_attacks_square = attack_tables
-            .attack_table(&self.board(None), &Piece::Queen, attacking_side, square)
-            .bitboard
-            & self.piece_bitboard(&Piece::Queen, attacking_side).bitboard
-            != 0;
+        let queen_attacks_square =
+            attack_tables.attack_table(&self.board(None), &Piece::Queen, attacking_side, square)
+                & self.piece_bitboard(&Piece::Queen, attacking_side)
+                != 0;
 
         if queen_attacks_square {
             return true;
         }
 
-        let king_attacks_square = attack_tables
-            .attack_table(&self.board(None), &Piece::King, attacking_side, square)
-            .bitboard
-            & self.piece_bitboard(&Piece::King, attacking_side).bitboard
-            != 0;
+        let king_attacks_square =
+            attack_tables.attack_table(&self.board(None), &Piece::King, attacking_side, square)
+                & self.piece_bitboard(&Piece::King, attacking_side)
+                != 0;
 
         if king_attacks_square {
             return true;
@@ -394,37 +393,37 @@ impl Game {
     pub fn board(&self, side: Option<&Side>) -> Bitboard {
         match side {
             Some(side) => match side {
-                Side::White => Bitboard::new(
-                    self.white_pawns.bitboard
-                        | self.white_knights.bitboard
-                        | self.white_bishops.bitboard
-                        | self.white_rooks.bitboard
-                        | self.white_queens.bitboard
-                        | self.white_king.bitboard,
-                ),
-                Side::Black => Bitboard::new(
-                    self.black_pawns.bitboard
-                        | self.black_knights.bitboard
-                        | self.black_bishops.bitboard
-                        | self.black_rooks.bitboard
-                        | self.black_queens.bitboard
-                        | self.black_king.bitboard,
-                ),
+                Side::White => {
+                    self.white_pawns
+                        | self.white_knights
+                        | self.white_bishops
+                        | self.white_rooks
+                        | self.white_queens
+                        | self.white_king
+                }
+                Side::Black => {
+                    self.black_pawns
+                        | self.black_knights
+                        | self.black_bishops
+                        | self.black_rooks
+                        | self.black_queens
+                        | self.black_king
+                }
             },
-            None => Bitboard::new(
-                self.white_pawns.bitboard
-                    | self.white_knights.bitboard
-                    | self.white_bishops.bitboard
-                    | self.white_rooks.bitboard
-                    | self.white_queens.bitboard
-                    | self.white_king.bitboard
-                    | self.black_pawns.bitboard
-                    | self.black_knights.bitboard
-                    | self.black_bishops.bitboard
-                    | self.black_rooks.bitboard
-                    | self.black_queens.bitboard
-                    | self.black_king.bitboard,
-            ),
+            None => {
+                self.white_pawns
+                    | self.white_knights
+                    | self.white_bishops
+                    | self.white_rooks
+                    | self.white_queens
+                    | self.white_king
+                    | self.black_pawns
+                    | self.black_knights
+                    | self.black_bishops
+                    | self.black_rooks
+                    | self.black_queens
+                    | self.black_king
+            }
         }
     }
 

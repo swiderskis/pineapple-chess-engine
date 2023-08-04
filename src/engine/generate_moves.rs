@@ -278,8 +278,8 @@ fn generate_pawn_moves(
 
     let single_piece = Bitboard::from_square(&source_square);
 
-    let piece_on_second_rank = second_rank.bitboard & single_piece.bitboard != 0;
-    let piece_on_seventh_rank = seventh_rank.bitboard & single_piece.bitboard != 0;
+    let piece_on_second_rank = second_rank & single_piece != 0;
+    let piece_on_seventh_rank = seventh_rank & single_piece != 0;
 
     if ((*side == Side::White && piece_on_seventh_rank)
         || (*side == Side::Black && piece_on_second_rank))
@@ -363,8 +363,7 @@ fn generate_pawn_moves(
     }
 
     if let Some(target_square) = game.en_passant_square() {
-        let en_passant_square_attacked =
-            attack_table.bitboard & Bitboard::from_square(target_square).bitboard != 0;
+        let en_passant_square_attacked = attack_table & Bitboard::from_square(target_square) != 0;
 
         if en_passant_square_attacked {
             move_list.add_move(
@@ -498,14 +497,12 @@ fn generate_attacks(
                 attack_tables.attack_table(&game.board(None), piece, side, source_square);
             let opponent_board = game.board(Some(&side.opponent_side()));
 
-            Bitboard::new(attack_table.bitboard & opponent_board.bitboard)
+            attack_table & opponent_board
         }
-        _ => Bitboard::new(
-            attack_tables
-                .attack_table(&game.board(None), piece, side, source_square)
-                .bitboard
-                & !game.board(Some(side)).bitboard,
-        ),
+        _ => {
+            attack_tables.attack_table(&game.board(None), piece, side, source_square)
+                & !game.board(Some(side))
+        }
     }
 }
 
