@@ -3,6 +3,7 @@ mod game;
 mod generate_moves;
 
 use self::game::Game;
+use num::Integer;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive};
 use std::{
@@ -108,7 +109,7 @@ impl BitAnd for Bitboard {
     }
 }
 
-impl<T: AsPrimitive<u64>> BitAnd<T> for Bitboard {
+impl<T: Integer + AsPrimitive<u64>> BitAnd<T> for Bitboard {
     type Output = Self;
 
     fn bitand(self, rhs: T) -> Self::Output {
@@ -136,7 +137,7 @@ impl BitOrAssign for Bitboard {
     }
 }
 
-impl<T: AsPrimitive<u64>> BitOrAssign<T> for Bitboard {
+impl<T: Integer + AsPrimitive<u64>> BitOrAssign<T> for Bitboard {
     fn bitor_assign(&mut self, rhs: T) {
         *self = Bitboard::new(self.bitboard | rhs.as_())
     }
@@ -150,13 +151,13 @@ impl Not for Bitboard {
     }
 }
 
-impl<T: AsPrimitive<u64>> PartialEq<T> for Bitboard {
+impl<T: Integer + AsPrimitive<u64>> PartialEq<T> for Bitboard {
     fn eq(&self, other: &T) -> bool {
         self.bitboard == other.as_()
     }
 }
 
-impl<T: AsPrimitive<u64>> Shl<T> for Bitboard {
+impl<T: Integer + AsPrimitive<u64>> Shl<T> for Bitboard {
     type Output = Self;
 
     fn shl(self, rhs: T) -> Self::Output {
@@ -164,7 +165,7 @@ impl<T: AsPrimitive<u64>> Shl<T> for Bitboard {
     }
 }
 
-impl<T: AsPrimitive<u64>> Shr<T> for Bitboard {
+impl<T: Integer + AsPrimitive<u64>> Shr<T> for Bitboard {
     type Output = Self;
 
     fn shr(self, rhs: T) -> Self::Output {
@@ -172,7 +173,7 @@ impl<T: AsPrimitive<u64>> Shr<T> for Bitboard {
     }
 }
 
-impl<T: AsPrimitive<u64>> ShrAssign<T> for Bitboard {
+impl<T: Integer + AsPrimitive<u64>> ShrAssign<T> for Bitboard {
     fn shr_assign(&mut self, rhs: T) {
         *self = Bitboard::new(self.bitboard >> rhs.as_())
     }
