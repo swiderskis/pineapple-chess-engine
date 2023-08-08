@@ -204,10 +204,8 @@ impl Move {
     }
 }
 
-pub fn generate_moves(game: &Game) -> MoveList {
+pub fn generate_moves(attack_tables: &AttackTables, game: &Game) -> MoveList {
     let mut move_list = MoveList::new();
-
-    let attack_tables = AttackTables::initialise();
 
     let side = game.side_to_move();
 
@@ -217,7 +215,7 @@ pub fn generate_moves(game: &Game) -> MoveList {
             while let Some(source_square_index) = bitboard.get_lsb_index() {
                 let source_square = Square::new_from_index(source_square_index);
 
-                let attacks = generate_attacks(&attack_tables, game, piece, &source_square);
+                let attacks = generate_attacks(attack_tables, game, piece, &source_square);
 
                 let mut generated_moves = match piece {
                     Piece::Pawn => {
@@ -240,7 +238,7 @@ pub fn generate_moves(game: &Game) -> MoveList {
                             game,
                             &source_square,
                         ));
-                        king_moves.append_moves(&mut generate_castling_moves(&attack_tables, game));
+                        king_moves.append_moves(&mut generate_castling_moves(attack_tables, game));
 
                         king_moves
                     }

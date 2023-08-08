@@ -6,6 +6,7 @@ use super::{
 use num_derive::ToPrimitive;
 use strum::IntoEnumIterator;
 
+#[derive(Clone)]
 pub struct Game {
     white_pawns: Bitboard,
     white_knights: Bitboard,
@@ -137,10 +138,12 @@ impl Game {
         }
     }
 
-    pub fn make_move(&mut self, mv: &Move, move_flag: MoveFlag) {
+    pub fn make_move(&mut self, attack_tables: &AttackTables, mv: &Move, move_flag: MoveFlag) {
         if move_flag == MoveFlag::Capture && !mv.capture() {
             return;
         }
+
+        let game_clone = self.clone();
 
         let side = &self.side_to_move.clone();
         let opponent_side = &self.side_to_move.opponent_side().clone();
@@ -239,6 +242,22 @@ impl Game {
                 _ => {}
             },
         }
+
+        let king_square = self.piece_bitboard(&Piece::King, side).get_lsb_index();
+        let king_square = match king_square {
+            Some(index) => Square::new_from_index(index),
+            None => panic!("No king on the board for {}", side),
+        };
+
+        let own_king_in_check =
+            self.is_square_attacked(attack_tables, &side.opponent_side(), &king_square);
+
+        if own_king_in_check {
+            *self = game_clone;
+            return;
+        }
+
+        self.side_to_move = side.opponent_side();
     }
 
     pub fn print(&self) {
@@ -530,6 +549,7 @@ impl Game {
     }
 }
 
+#[derive(Clone)]
 struct CastlingRights {
     castling_rights: u8,
 }

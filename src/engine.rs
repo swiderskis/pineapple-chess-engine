@@ -2,7 +2,7 @@ mod attack_tables;
 mod game;
 mod generate_moves;
 
-use self::game::Game;
+use self::{attack_tables::AttackTables, game::Game};
 use num::Integer;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive};
@@ -19,13 +19,15 @@ static TRICKY_POSITION: &str =
 pub fn position() {
     let mut game = Game::initialise(TRICKY_POSITION);
 
-    let moves = generate_moves::generate_moves(&game);
+    let attack_tables = AttackTables::initialise();
+
+    let moves = generate_moves::generate_moves(&attack_tables, &game);
 
     game.print();
 
     for mv in moves.moves() {
         if mv.piece() == Piece::Rook {
-            game.make_move(mv, generate_moves::MoveFlag::All);
+            game.make_move(&attack_tables, mv, generate_moves::MoveFlag::All);
 
             break;
         }
@@ -249,7 +251,7 @@ impl Piece {
 impl EnumToInt for Piece {}
 impl IntToEnum for Piece {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Display, PartialEq)]
 pub enum Side {
     White,
     Black,
@@ -264,7 +266,7 @@ impl Side {
     }
 }
 
-#[derive(Debug, Display, EnumIter, EnumString, FromPrimitive, PartialEq, ToPrimitive)]
+#[derive(Clone, Debug, Display, EnumIter, EnumString, FromPrimitive, PartialEq, ToPrimitive)]
 pub enum Square {
     A8,
     B8,
