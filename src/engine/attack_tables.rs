@@ -222,38 +222,38 @@ impl SliderAttackTables {
             match piece {
                 Piece::Bishop => {
                     for (rank, file) in ((piece_rank + 1)..7).zip((piece_file + 1)..7) {
-                        attack_mask |= 1 << (rank * 8 + file);
+                        attack_mask |= 1u64 << (rank * 8 + file);
                     }
 
                     for (rank, file) in ((1..piece_rank).rev()).zip((piece_file + 1)..7) {
-                        attack_mask |= 1 << (rank * 8 + file);
+                        attack_mask |= 1u64 << (rank * 8 + file);
                     }
 
                     for (rank, file) in ((piece_rank + 1)..7).zip((1..piece_file).rev()) {
-                        attack_mask |= 1 << (rank * 8 + file);
+                        attack_mask |= 1u64 << (rank * 8 + file);
                     }
 
                     for (rank, file) in ((1..piece_rank).rev()).zip((1..piece_file).rev()) {
-                        attack_mask |= 1 << (rank * 8 + file);
+                        attack_mask |= 1u64 << (rank * 8 + file);
                     }
 
                     attack_masks[square.as_usize()] = attack_mask;
                 }
                 Piece::Rook => {
                     for rank in (piece_rank + 1)..7 {
-                        attack_mask |= 1 << (rank * 8 + piece_file);
+                        attack_mask |= 1u64 << (rank * 8 + piece_file);
                     }
 
                     for rank in (1..piece_rank).rev() {
-                        attack_mask |= 1 << (rank * 8 + piece_file);
+                        attack_mask |= 1u64 << (rank * 8 + piece_file);
                     }
 
                     for file in (piece_file + 1)..7 {
-                        attack_mask |= 1 << (piece_rank * 8 + file);
+                        attack_mask |= 1u64 << (piece_rank * 8 + file);
                     }
 
                     for file in (1..piece_file).rev() {
-                        attack_mask |= 1 << (piece_rank * 8 + file);
+                        attack_mask |= 1u64 << (piece_rank * 8 + file);
                     }
 
                     attack_masks[square.as_usize()] = attack_mask;
@@ -274,66 +274,66 @@ impl SliderAttackTables {
         match piece {
             Piece::Bishop => {
                 for (rank, file) in ((piece_rank + 1)..8).zip((piece_file + 1)..8) {
-                    attack_table |= 1 << (rank * 8 + file);
+                    attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1 << (rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + file)) != 0 {
                         break;
                     }
                 }
 
                 for (rank, file) in ((0..piece_rank).rev()).zip((piece_file + 1)..8) {
-                    attack_table |= 1 << (rank * 8 + file);
+                    attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1 << (rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + file)) != 0 {
                         break;
                     }
                 }
 
                 for (rank, file) in ((piece_rank + 1)..8).zip((0..piece_file).rev()) {
-                    attack_table |= 1 << (rank * 8 + file);
+                    attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1 << (rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + file)) != 0 {
                         break;
                     }
                 }
 
                 for (rank, file) in ((0..piece_rank).rev()).zip((0..piece_file).rev()) {
-                    attack_table |= 1 << (rank * 8 + file);
+                    attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1 << (rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + file)) != 0 {
                         break;
                     }
                 }
             }
             Piece::Rook => {
                 for rank in (piece_rank + 1)..8 {
-                    attack_table |= 1 << (rank * 8 + piece_file);
+                    attack_table |= 1u64 << (rank * 8 + piece_file);
 
-                    if *board & (1 << (rank * 8 + piece_file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + piece_file)) != 0 {
                         break;
                     }
                 }
 
                 for rank in (0..piece_rank).rev() {
-                    attack_table |= 1 << (rank * 8 + piece_file);
+                    attack_table |= 1u64 << (rank * 8 + piece_file);
 
-                    if *board & (1 << (rank * 8 + piece_file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + piece_file)) != 0 {
                         break;
                     }
                 }
 
                 for file in (piece_file + 1)..8 {
-                    attack_table |= 1 << (piece_rank * 8 + file);
+                    attack_table |= 1u64 << (piece_rank * 8 + file);
 
-                    if *board & (1 << (piece_rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (piece_rank * 8 + file)) != 0 {
                         break;
                     }
                 }
 
                 for file in (0..piece_file).rev() {
-                    attack_table |= 1 << (piece_rank * 8 + file);
+                    attack_table |= 1u64 << (piece_rank * 8 + file);
 
-                    if *board & (1 << (piece_rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (piece_rank * 8 + file)) != 0 {
                         break;
                     }
                 }
@@ -354,7 +354,7 @@ impl SliderAttackTables {
             let ls1b_square = Square::new_from_index(square_index);
 
             if index & (1 << count) != 0 {
-                occupancy |= 1 << ls1b_square.as_usize();
+                occupancy |= 1u64 << ls1b_square.as_usize();
             }
 
             attack_mask_clone.pop_bit(&ls1b_square);
