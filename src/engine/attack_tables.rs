@@ -1,6 +1,17 @@
 use super::{Bitboard, EnumToInt, Piece, Side, Square};
 use strum::IntoEnumIterator;
 
+enum LeaperPiece {
+    Pawn = 0,
+    Knight = 1,
+    King = 5,
+}
+
+enum SliderPiece {
+    Bishop = 2,
+    Rook = 3,
+}
+
 pub struct AttackTables {
     leaper_attack_tables: LeaperAttackTables,
     slider_attack_tables: SliderAttackTables,
@@ -28,14 +39,14 @@ impl AttackTables {
 
         let bishop_magic_index = magic_numbers.get_magic_index(
             board,
-            &Piece::Bishop,
+            &SliderPiece::Bishop,
             &magic_numbers,
             &self.slider_attack_tables,
             square,
         );
         let rook_magic_index = magic_numbers.get_magic_index(
             board,
-            &Piece::Rook,
+            &SliderPiece::Rook,
             &magic_numbers,
             &self.slider_attack_tables,
             square,
@@ -90,14 +101,14 @@ struct SliderAttackTables {
 impl LeaperAttackTables {
     fn initialise() -> Self {
         Self {
-            white_pawn_attack_tables: Self::generate_attack_tables(Piece::Pawn, &Side::White),
-            black_pawn_attack_tables: Self::generate_attack_tables(Piece::Pawn, &Side::Black),
-            knight_attack_tables: Self::generate_attack_tables(Piece::Knight, &Side::White),
-            king_attack_tables: Self::generate_attack_tables(Piece::King, &Side::White),
+            white_pawn_attack_tables: Self::generate_attack_tables(LeaperPiece::Pawn, &Side::White),
+            black_pawn_attack_tables: Self::generate_attack_tables(LeaperPiece::Pawn, &Side::Black),
+            knight_attack_tables: Self::generate_attack_tables(LeaperPiece::Knight, &Side::White),
+            king_attack_tables: Self::generate_attack_tables(LeaperPiece::King, &Side::White),
         }
     }
 
-    fn generate_attack_tables(piece: Piece, side: &Side) -> [Bitboard; 64] {
+    fn generate_attack_tables(piece: LeaperPiece, side: &Side) -> [Bitboard; 64] {
         let not_a_file = Bitboard::new(0xFEFE_FEFE_FEFE_FEFE);
         let not_h_file = Bitboard::new(0x7F7F_7F7F_7F7F_7F7F);
         let not_ab_file = Bitboard::new(0xFCFC_FCFC_FCFC_FCFC);
@@ -112,7 +123,7 @@ impl LeaperAttackTables {
             bitboard.set_bit(&square);
 
             attack_tables[square.as_usize()] = match piece {
-                Piece::Pawn => {
+                LeaperPiece::Pawn => {
                     match side {
                         Side::White => {
                             attack_table |= (bitboard >> 7) & not_a_file;
@@ -126,7 +137,7 @@ impl LeaperAttackTables {
 
                     attack_table
                 }
-                Piece::Knight => {
+                LeaperPiece::Knight => {
                     attack_table |= (bitboard >> 6) & not_ab_file;
                     attack_table |= (bitboard >> 10) & not_gh_file;
                     attack_table |= (bitboard >> 15) & not_a_file;
@@ -138,7 +149,7 @@ impl LeaperAttackTables {
 
                     attack_table
                 }
-                Piece::King => {
+                LeaperPiece::King => {
                     attack_table |= (bitboard >> 1) & not_h_file;
                     attack_table |= (bitboard >> 7) & not_a_file;
                     attack_table |= bitboard >> 8;
@@ -150,7 +161,6 @@ impl LeaperAttackTables {
 
                     attack_table
                 }
-                _ => panic!("Attempted to initialise leaper piece attack mask for slider piece"),
             }
         });
 
@@ -160,8 +170,8 @@ impl LeaperAttackTables {
 
 impl SliderAttackTables {
     fn initialise() -> Self {
-        let bishop_attack_masks = Self::generate_attack_masks(Piece::Bishop);
-        let rook_attack_masks = Self::generate_attack_masks(Piece::Rook);
+        let bishop_attack_masks = Self::generate_attack_masks(SliderPiece::Bishop);
+        let rook_attack_masks = Self::generate_attack_masks(SliderPiece::Rook);
 
         let mut bishop_attack_tables = vec![[Bitboard::new(0); 512]; 64];
         let mut rook_attack_tables = vec![[Bitboard::new(0); 4096]; 64];
@@ -178,11 +188,11 @@ impl SliderAttackTables {
                     &occupancy,
                     &bishop_attack_masks[square.as_usize()],
                     &square,
-                    &Piece::Bishop,
+                    &SliderPiece::Bishop,
                 );
 
                 bishop_attack_tables[square.as_usize()][magic_index] =
-                    Self::generate_attack_table(&occupancy, &Piece::Bishop, &square);
+                    Self::generate_attack_table(&occupancy, &SliderPiece::Bishop, &square);
             }
 
             let rook_occupancy_indices = 1 << rook_attack_masks[square.as_usize()].count_bits();
@@ -194,11 +204,11 @@ impl SliderAttackTables {
                     &occupancy,
                     &rook_attack_masks[square.as_usize()],
                     &square,
-                    &Piece::Rook,
+                    &SliderPiece::Rook,
                 );
 
                 rook_attack_tables[square.as_usize()][magic_index] =
-                    Self::generate_attack_table(&occupancy, &Piece::Rook, &square);
+                    Self::generate_attack_table(&occupancy, &SliderPiece::Rook, &square);
             }
         });
 
@@ -210,7 +220,7 @@ impl SliderAttackTables {
         }
     }
 
-    fn generate_attack_masks(piece: Piece) -> [Bitboard; 64] {
+    fn generate_attack_masks(piece: SliderPiece) -> [Bitboard; 64] {
         let mut attack_masks: [Bitboard; 64] = [Bitboard::new(0); 64];
 
         Square::iter().for_each(|square| {
@@ -220,7 +230,7 @@ impl SliderAttackTables {
             let piece_file = square.file();
 
             match piece {
-                Piece::Bishop => {
+                SliderPiece::Bishop => {
                     for (rank, file) in ((piece_rank + 1)..7).zip((piece_file + 1)..7) {
                         attack_mask |= 1u64 << (rank * 8 + file);
                     }
@@ -239,7 +249,7 @@ impl SliderAttackTables {
 
                     attack_masks[square.as_usize()] = attack_mask;
                 }
-                Piece::Rook => {
+                SliderPiece::Rook => {
                     for rank in (piece_rank + 1)..7 {
                         attack_mask |= 1u64 << (rank * 8 + piece_file);
                     }
@@ -258,21 +268,20 @@ impl SliderAttackTables {
 
                     attack_masks[square.as_usize()] = attack_mask;
                 }
-                _ => panic!("Attempted to initialise slide piece attack mask for leaper piece"),
             }
         });
 
         attack_masks
     }
 
-    fn generate_attack_table(board: &Bitboard, piece: &Piece, square: &Square) -> Bitboard {
+    fn generate_attack_table(board: &Bitboard, piece: &SliderPiece, square: &Square) -> Bitboard {
         let mut attack_table = Bitboard::new(0);
 
         let piece_rank = square.rank();
         let piece_file = square.file();
 
         match piece {
-            Piece::Bishop => {
+            SliderPiece::Bishop => {
                 for (rank, file) in ((piece_rank + 1)..8).zip((piece_file + 1)..8) {
                     attack_table |= 1u64 << (rank * 8 + file);
 
@@ -305,7 +314,7 @@ impl SliderAttackTables {
                     }
                 }
             }
-            Piece::Rook => {
+            SliderPiece::Rook => {
                 for rank in (piece_rank + 1)..8 {
                     attack_table |= 1u64 << (rank * 8 + piece_file);
 
@@ -338,7 +347,6 @@ impl SliderAttackTables {
                     }
                 }
             }
-            _ => panic!("Attempted to generate attack table for non-slider piece"),
         }
 
         attack_table
@@ -364,13 +372,10 @@ impl SliderAttackTables {
         occupancy
     }
 
-    fn attack_mask(&self, piece: &Piece, square: &Square) -> Bitboard {
+    fn attack_mask(&self, piece: &SliderPiece, square: &Square) -> Bitboard {
         match piece {
-            Piece::Bishop => self.bishop_attack_masks[square.as_usize()],
-            Piece::Rook => self.rook_attack_masks[square.as_usize()],
-            _ => {
-                panic!("Attempted to access leaper attack mask on slider attack masks")
-            }
+            SliderPiece::Bishop => self.bishop_attack_masks[square.as_usize()],
+            SliderPiece::Rook => self.rook_attack_masks[square.as_usize()],
         }
     }
 }
@@ -525,10 +530,10 @@ impl MagicNumbers {
         occupancy: &Bitboard,
         attack_mask: &Bitboard,
         square: &Square,
-        piece: &Piece,
+        piece: &SliderPiece,
     ) -> usize {
         match piece {
-            Piece::Bishop => {
+            SliderPiece::Bishop => {
                 let magic_index = occupancy
                     .bitboard
                     .overflowing_mul(self.magic_number(piece, square))
@@ -537,7 +542,7 @@ impl MagicNumbers {
 
                 magic_index as usize
             }
-            Piece::Rook => {
+            SliderPiece::Rook => {
                 let magic_index = occupancy
                     .bitboard
                     .overflowing_mul(self.magic_number(piece, square))
@@ -546,22 +551,20 @@ impl MagicNumbers {
 
                 magic_index as usize
             }
-            _ => panic!("Attempted to generate magic index for non-slider piece"),
         }
     }
 
-    fn magic_number(&self, piece: &Piece, square: &Square) -> u64 {
+    fn magic_number(&self, piece: &SliderPiece, square: &Square) -> u64 {
         match piece {
-            Piece::Bishop => self.bishop_magic_numbers[square.as_usize()],
-            Piece::Rook => self.rook_magic_numbers[square.as_usize()],
-            _ => panic!("Attempted to access magic number for non-slider piece"),
+            SliderPiece::Bishop => self.bishop_magic_numbers[square.as_usize()],
+            SliderPiece::Rook => self.rook_magic_numbers[square.as_usize()],
         }
     }
 
     fn get_magic_index(
         &self,
         board: &Bitboard,
-        piece: &Piece,
+        piece: &SliderPiece,
         magic_numbers: &MagicNumbers,
         slider_attack_tables: &SliderAttackTables,
         square: &Square,
@@ -593,8 +596,8 @@ impl MagicNumbers {
         Square::iter().for_each(|square| {
             rook_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
                 random_state,
-                slider_attack_tables.attack_mask(&Piece::Rook, &square),
-                Piece::Rook,
+                slider_attack_tables.attack_mask(&SliderPiece::Rook, &square),
+                &SliderPiece::Rook,
                 &square,
             )
         });
@@ -602,8 +605,8 @@ impl MagicNumbers {
         Square::iter().for_each(|square| {
             bishop_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
                 random_state,
-                slider_attack_tables.attack_mask(&Piece::Bishop, &square),
-                Piece::Bishop,
+                slider_attack_tables.attack_mask(&SliderPiece::Bishop, &square),
+                &SliderPiece::Bishop,
                 &square,
             )
         });
@@ -617,7 +620,7 @@ impl MagicNumbers {
     fn _generate_magic_number(
         random_state: &mut u32,
         attack_mask: Bitboard,
-        piece: Piece,
+        piece: &SliderPiece,
         square: &Square,
     ) -> u64 {
         let mut occupancies: [Bitboard; 4096] = [Bitboard::new(0); 4096];
@@ -628,7 +631,7 @@ impl MagicNumbers {
 
         for i in 0..occupancy_indices {
             occupancies[i] = SliderAttackTables::set_occupancy(i, attack_mask);
-            attacks[i] = SliderAttackTables::generate_attack_table(&occupancies[i], &piece, square);
+            attacks[i] = SliderAttackTables::generate_attack_table(&occupancies[i], piece, square);
         }
 
         'outer: loop {
@@ -858,21 +861,21 @@ mod tests {
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Bishop, &Square::A5)
+                .attack_mask(&SliderPiece::Bishop, &Square::A5)
                 .bitboard,
             desired_a5_attack_mask
         );
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Bishop, &Square::G7)
+                .attack_mask(&SliderPiece::Bishop, &Square::G7)
                 .bitboard,
             desired_g7_attack_mask
         );
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Bishop, &Square::D6)
+                .attack_mask(&SliderPiece::Bishop, &Square::D6)
                 .bitboard,
             desired_d6_attack_mask
         );
@@ -1003,21 +1006,21 @@ mod tests {
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Rook, &Square::D5)
+                .attack_mask(&SliderPiece::Rook, &Square::D5)
                 .bitboard,
             desired_d5_attack_mask
         );
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Rook, &Square::B3)
+                .attack_mask(&SliderPiece::Rook, &Square::B3)
                 .bitboard,
             desired_b3_attack_mask
         );
         assert_eq!(
             attack_tables
                 .slider_attack_tables
-                .attack_mask(&Piece::Rook, &Square::E1)
+                .attack_mask(&SliderPiece::Rook, &Square::E1)
                 .bitboard,
             desired_e1_attack_mask
         );

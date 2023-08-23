@@ -100,9 +100,8 @@ impl Game {
                 black_king.set_bit(&Square::new_from_index(square_index));
                 square_index += 1;
             }
-            '/' => {}
             '0'..='9' => square_index += character as usize - '0' as usize,
-            _ => panic!("Attempted to use invalid character in FEN string"),
+            _ => {}
         });
 
         let side_to_move = if fen[1] == "w" {
@@ -244,17 +243,16 @@ impl Game {
         }
 
         let king_square = self.piece_bitboard(&Piece::King, side).get_lsb_index();
-        let king_square = match king_square {
-            Some(index) => Square::new_from_index(index),
-            None => panic!("No king on the board for {}", side),
-        };
 
-        let own_king_in_check =
-            self.is_square_attacked(attack_tables, &side.opponent_side(), &king_square);
+        if let Some(index) = king_square {
+            let king_square = Square::new_from_index(index);
+            let own_king_in_check =
+                self.is_square_attacked(attack_tables, &side.opponent_side(), &king_square);
 
-        if own_king_in_check {
-            *self = game_clone;
-            return;
+            if own_king_in_check {
+                *self = game_clone;
+                return;
+            }
         }
 
         self.side_to_move = side.opponent_side();
@@ -569,7 +567,7 @@ impl CastlingRights {
                 'Q' => castling_rights |= CastlingType::WhiteLong.as_u8(),
                 'k' => castling_rights |= CastlingType::BlackShort.as_u8(),
                 'q' => castling_rights |= CastlingType::BlackLong.as_u8(),
-                _ => panic!("Invalid character used when attempting to initialise castling rights"),
+                _ => {}
             });
 
         Self { castling_rights }

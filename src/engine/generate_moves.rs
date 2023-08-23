@@ -3,7 +3,6 @@ use super::{
     game::{CastlingType, Game},
     Bitboard, EnumToInt, IntToEnum, Piece, Side, Square,
 };
-use core::panic;
 use num_derive::{FromPrimitive, ToPrimitive};
 
 static BLACK_PIECE_OFFSET: u32 = 6;
@@ -229,13 +228,15 @@ pub fn generate_moves(attack_tables: &AttackTables, game: &Game) -> MoveList {
                         generate_pawn_moves(attack_table, attacks, game, source_square_index)
                     }
                     Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
-                        generate_piece_moves(attacks, game, &source_square)
+                        generate_piece_moves(attacks, game, piece, side, &source_square)
                     }
                     Piece::King => {
                         let mut king_moves = MoveList::new();
                         king_moves.append_moves(&mut generate_piece_moves(
                             attacks,
                             game,
+                            piece,
+                            side,
                             &source_square,
                         ));
                         king_moves.append_moves(&mut generate_castling_moves(attack_tables, game));
@@ -378,30 +379,24 @@ fn generate_pawn_moves(
     move_list
 }
 
-fn generate_piece_moves(mut attacks: Bitboard, game: &Game, source_square: &Square) -> MoveList {
+fn generate_piece_moves(
+    mut attacks: Bitboard,
+    game: &Game,
+    piece: &Piece,
+    side: &Side,
+    source_square: &Square,
+) -> MoveList {
     let mut move_list = MoveList::new();
 
     while let Some(target_square_index) = attacks.get_lsb_index() {
         let target_square = Square::new_from_index(target_square_index);
-
-        let (piece, side) = match game.piece_at_square(source_square) {
-            Some((piece, side)) => (piece, side),
-            None => panic!("Attempting to generate piece moves for empty source square"),
-        };
 
         let move_type = match game.piece_at_square(&target_square) {
             Some(_) => MoveType::Capture,
             None => MoveType::Quiet,
         };
 
-        move_list.add_move(
-            source_square,
-            &target_square,
-            &piece,
-            &side,
-            None,
-            move_type,
-        );
+        move_list.add_move(source_square, &target_square, piece, side, None, move_type);
 
         attacks.pop_bit(&target_square);
     }
@@ -1173,7 +1168,7 @@ mod tests {
 
         let attacks = generate_attacks(&attack_tables, &game, &Piece::Knight, &source_square);
 
-        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+        let moves = generate_piece_moves(attacks, &game, &Piece::Knight, &Side::White, &Square::D4);
 
         let desired_c6_move = Move::new(
             &Square::D4,
@@ -1245,7 +1240,7 @@ mod tests {
 
         let attacks = generate_attacks(&attack_tables, &game, &Piece::Bishop, &source_square);
 
-        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+        let moves = generate_piece_moves(attacks, &game, &Piece::Bishop, &Side::White, &Square::D4);
 
         let desired_a7_move = Move::new(
             &Square::D4,
@@ -1356,7 +1351,7 @@ mod tests {
 
         let attacks = generate_attacks(&attack_tables, &game, &Piece::Rook, &source_square);
 
-        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+        let moves = generate_piece_moves(attacks, &game, &Piece::Rook, &Side::White, &Square::D4);
 
         let desired_d8_move = Move::new(
             &Square::D4,
@@ -1476,7 +1471,7 @@ mod tests {
 
         let attacks = generate_attacks(&attack_tables, &game, &Piece::Queen, &source_square);
 
-        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+        let moves = generate_piece_moves(attacks, &game, &Piece::Queen, &Side::White, &Square::D4);
 
         let desired_a7_move = Move::new(
             &Square::D4,
@@ -1690,7 +1685,7 @@ mod tests {
 
         let attacks = generate_attacks(&attack_tables, &game, &Piece::King, &source_square);
 
-        let moves = generate_piece_moves(attacks, &game, &Square::D4);
+        let moves = generate_piece_moves(attacks, &game, &Piece::King, &Side::White, &Square::D4);
 
         let desired_c5_move = Move::new(
             &Square::D4,
