@@ -126,38 +126,38 @@ impl LeaperAttackTables {
                 LeaperPiece::Pawn => {
                     match side {
                         Side::White => {
-                            attack_table |= (bitboard >> 7) & not_a_file;
-                            attack_table |= (bitboard >> 9) & not_h_file;
+                            attack_table |= (bitboard >> 7u64) & not_a_file;
+                            attack_table |= (bitboard >> 9u64) & not_h_file;
                         }
                         Side::Black => {
-                            attack_table |= (bitboard << 7) & not_h_file;
-                            attack_table |= (bitboard << 9) & not_a_file;
+                            attack_table |= (bitboard << 7u64) & not_h_file;
+                            attack_table |= (bitboard << 9u64) & not_a_file;
                         }
                     }
 
                     attack_table
                 }
                 LeaperPiece::Knight => {
-                    attack_table |= (bitboard >> 6) & not_ab_file;
-                    attack_table |= (bitboard >> 10) & not_gh_file;
-                    attack_table |= (bitboard >> 15) & not_a_file;
-                    attack_table |= (bitboard >> 17) & not_h_file;
-                    attack_table |= (bitboard << 6) & not_gh_file;
-                    attack_table |= (bitboard << 10) & not_ab_file;
-                    attack_table |= (bitboard << 15) & not_h_file;
-                    attack_table |= (bitboard << 17) & not_a_file;
+                    attack_table |= (bitboard >> 6u64) & not_ab_file;
+                    attack_table |= (bitboard >> 10u64) & not_gh_file;
+                    attack_table |= (bitboard >> 15u64) & not_a_file;
+                    attack_table |= (bitboard >> 17u64) & not_h_file;
+                    attack_table |= (bitboard << 6u64) & not_gh_file;
+                    attack_table |= (bitboard << 10u64) & not_ab_file;
+                    attack_table |= (bitboard << 15u64) & not_h_file;
+                    attack_table |= (bitboard << 17u64) & not_a_file;
 
                     attack_table
                 }
                 LeaperPiece::King => {
-                    attack_table |= (bitboard >> 1) & not_h_file;
-                    attack_table |= (bitboard >> 7) & not_a_file;
-                    attack_table |= bitboard >> 8;
-                    attack_table |= (bitboard >> 9) & not_h_file;
-                    attack_table |= (bitboard << 1) & not_a_file;
-                    attack_table |= (bitboard << 7) & not_h_file;
-                    attack_table |= bitboard << 8;
-                    attack_table |= (bitboard << 9) & not_a_file;
+                    attack_table |= (bitboard >> 1u64) & not_h_file;
+                    attack_table |= (bitboard >> 7u64) & not_a_file;
+                    attack_table |= bitboard >> 8u64;
+                    attack_table |= (bitboard >> 9u64) & not_h_file;
+                    attack_table |= (bitboard << 1u64) & not_a_file;
+                    attack_table |= (bitboard << 7u64) & not_h_file;
+                    attack_table |= bitboard << 8u64;
+                    attack_table |= (bitboard << 9u64) & not_a_file;
 
                     attack_table
                 }
@@ -285,7 +285,7 @@ impl SliderAttackTables {
                 for (rank, file) in ((piece_rank + 1)..8).zip((piece_file + 1)..8) {
                     attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1u64 << (rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -293,7 +293,7 @@ impl SliderAttackTables {
                 for (rank, file) in ((0..piece_rank).rev()).zip((piece_file + 1)..8) {
                     attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1u64 << (rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -301,7 +301,7 @@ impl SliderAttackTables {
                 for (rank, file) in ((piece_rank + 1)..8).zip((0..piece_file).rev()) {
                     attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1u64 << (rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -309,7 +309,7 @@ impl SliderAttackTables {
                 for (rank, file) in ((0..piece_rank).rev()).zip((0..piece_file).rev()) {
                     attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1u64 << (rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -318,7 +318,7 @@ impl SliderAttackTables {
                 for rank in (piece_rank + 1)..8 {
                     attack_table |= 1u64 << (rank * 8 + piece_file);
 
-                    if *board & (1u64 << (rank * 8 + piece_file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + piece_file)) != 0u64 {
                         break;
                     }
                 }
@@ -326,7 +326,7 @@ impl SliderAttackTables {
                 for rank in (0..piece_rank).rev() {
                     attack_table |= 1u64 << (rank * 8 + piece_file);
 
-                    if *board & (1u64 << (rank * 8 + piece_file)) != 0 {
+                    if *board & (1u64 << (rank * 8 + piece_file)) != 0u64 {
                         break;
                     }
                 }
@@ -334,7 +334,7 @@ impl SliderAttackTables {
                 for file in (piece_file + 1)..8 {
                     attack_table |= 1u64 << (piece_rank * 8 + file);
 
-                    if *board & (1u64 << (piece_rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (piece_rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -342,7 +342,7 @@ impl SliderAttackTables {
                 for file in (0..piece_file).rev() {
                     attack_table |= 1u64 << (piece_rank * 8 + file);
 
-                    if *board & (1u64 << (piece_rank * 8 + file)) != 0 {
+                    if *board & (1u64 << (piece_rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -660,7 +660,7 @@ impl MagicNumbers {
                     .0)
                     >> (64 - occupancy_count)) as usize;
 
-                if used_attacks[magic_index] == 0 {
+                if used_attacks[magic_index] == 0u64 {
                     used_attacks[magic_index] = attacks[i];
                 } else if used_attacks[magic_index] != attacks[i] {
                     continue 'outer;

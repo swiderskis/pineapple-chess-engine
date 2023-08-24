@@ -296,7 +296,7 @@ impl Game {
                     &Side::Black,
                     square,
                 ) & self.piece_bitboard(&Piece::Pawn, attacking_side)
-                    != 0;
+                    != 0u64;
 
                 if pawn_attacks_square {
                     return true;
@@ -309,7 +309,7 @@ impl Game {
                     &Side::White,
                     square,
                 ) & self.piece_bitboard(&Piece::Pawn, attacking_side)
-                    != 0;
+                    != 0u64;
 
                 if pawn_attacks_square {
                     return true;
@@ -320,7 +320,7 @@ impl Game {
         let knight_attacks_square =
             attack_tables.attack_table(&self.board(None), &Piece::Knight, attacking_side, square)
                 & self.piece_bitboard(&Piece::Knight, attacking_side)
-                != 0;
+                != 0u64;
 
         if knight_attacks_square {
             return true;
@@ -329,7 +329,7 @@ impl Game {
         let bishop_attacks_square =
             attack_tables.attack_table(&self.board(None), &Piece::Bishop, attacking_side, square)
                 & self.piece_bitboard(&Piece::Bishop, attacking_side)
-                != 0;
+                != 0u64;
 
         if bishop_attacks_square {
             return true;
@@ -338,7 +338,7 @@ impl Game {
         let rook_attacks_square =
             attack_tables.attack_table(&self.board(None), &Piece::Rook, attacking_side, square)
                 & self.piece_bitboard(&Piece::Rook, attacking_side)
-                != 0;
+                != 0u64;
 
         if rook_attacks_square {
             return true;
@@ -347,7 +347,7 @@ impl Game {
         let queen_attacks_square =
             attack_tables.attack_table(&self.board(None), &Piece::Queen, attacking_side, square)
                 & self.piece_bitboard(&Piece::Queen, attacking_side)
-                != 0;
+                != 0u64;
 
         if queen_attacks_square {
             return true;
@@ -356,7 +356,7 @@ impl Game {
         let king_attacks_square =
             attack_tables.attack_table(&self.board(None), &Piece::King, attacking_side, square)
                 & self.piece_bitboard(&Piece::King, attacking_side)
-                != 0;
+                != 0u64;
 
         if king_attacks_square {
             return true;

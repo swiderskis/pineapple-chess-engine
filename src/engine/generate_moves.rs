@@ -277,8 +277,8 @@ fn generate_pawn_moves(
 
     let single_piece = Bitboard::from_square(&source_square);
 
-    let piece_on_second_rank = second_rank & single_piece != 0;
-    let piece_on_seventh_rank = seventh_rank & single_piece != 0;
+    let piece_on_second_rank = second_rank & single_piece != 0u64;
+    let piece_on_seventh_rank = seventh_rank & single_piece != 0u64;
 
     if ((*side == Side::White && piece_on_seventh_rank)
         || (*side == Side::Black && piece_on_second_rank))
@@ -362,7 +362,8 @@ fn generate_pawn_moves(
     }
 
     if let Some(target_square) = game.en_passant_square() {
-        let en_passant_square_attacked = attack_table & Bitboard::from_square(target_square) != 0;
+        let en_passant_square_attacked =
+            attack_table & Bitboard::from_square(target_square) != 0u64;
 
         if en_passant_square_attacked {
             move_list.add_move(
