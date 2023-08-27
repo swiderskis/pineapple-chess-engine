@@ -352,20 +352,19 @@ impl SliderAttackTables {
         attack_table
     }
 
-    fn set_occupancy(index: usize, attack_mask: Bitboard) -> Bitboard {
+    fn set_occupancy(index: usize, mut attack_mask: Bitboard) -> Bitboard {
         let mut occupancy = Bitboard::new(0);
 
-        let mut attack_mask_clone = attack_mask;
         let mut count = 0;
 
-        while let Some(square_index) = attack_mask_clone.get_lsb_index() {
+        while let Some(square_index) = attack_mask.get_lsb_index() {
             let ls1b_square = Square::new_from_index(square_index);
 
             if index & (1 << count) != 0 {
                 occupancy |= 1u64 << ls1b_square.as_usize();
             }
 
-            attack_mask_clone.pop_bit(&ls1b_square);
+            attack_mask.pop_bit(&ls1b_square);
             count += 1;
         }
 

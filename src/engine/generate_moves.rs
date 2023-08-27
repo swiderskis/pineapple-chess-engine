@@ -10,11 +10,11 @@ static NO_PIECE_VALUE: u32 = 0b1111;
 
 #[derive(FromPrimitive, ToPrimitive)]
 pub enum MoveType {
-    Quiet = 0,
-    Capture = 1,
-    DoublePawnPush = 2,
-    EnPassant = 5,
-    Castling = 8,
+    Quiet = 0b0000,
+    Capture = 0b0001,
+    DoublePawnPush = 0b0010,
+    EnPassant = 0b0101,
+    Castling = 0b1000,
 }
 
 impl EnumToInt for MoveType {}
