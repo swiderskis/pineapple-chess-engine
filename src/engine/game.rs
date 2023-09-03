@@ -1,6 +1,6 @@
 use super::{
     attack_tables::AttackTables,
-    generate_moves::{Move, MoveFlag, MoveType},
+    moves::{Move, MoveFlag, MoveType},
     Bitboard, EnumToInt, Piece, Side, Square,
 };
 use num_derive::ToPrimitive;

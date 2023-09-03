@@ -1,8 +1,8 @@
 mod attack_tables;
 mod game;
-mod generate_moves;
+mod moves;
 
-use self::{attack_tables::AttackTables, game::Game};
+use self::{attack_tables::AttackTables, game::Game, moves::MoveFlag};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive, Unsigned};
 use std::{
@@ -20,13 +20,13 @@ pub fn position() {
 
     let attack_tables = AttackTables::initialise();
 
-    let moves = generate_moves::generate_moves(&attack_tables, &game);
+    let moves = moves::generate_moves(&attack_tables, &game);
 
     game.print();
 
     for mv in moves.moves() {
         if mv.piece() == Piece::Rook {
-            game.make_move(&attack_tables, mv, generate_moves::MoveFlag::All);
+            game.make_move(&attack_tables, mv, MoveFlag::All);
 
             break;
         }
