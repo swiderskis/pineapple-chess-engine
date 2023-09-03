@@ -30,7 +30,7 @@ impl AttackTables {
 
     pub fn attack_table(
         &self,
-        board: &Bitboard,
+        board: Bitboard,
         piece: &Piece,
         side: &Side,
         square: &Square,
@@ -185,14 +185,14 @@ impl SliderAttackTables {
                 let occupancy = Self::set_occupancy(i, bishop_attack_masks[square.as_usize()]);
 
                 let magic_index = magic_numbers.generate_magic_index(
-                    &occupancy,
-                    &bishop_attack_masks[square.as_usize()],
+                    occupancy,
+                    bishop_attack_masks[square.as_usize()],
                     &square,
                     &SliderPiece::Bishop,
                 );
 
                 bishop_attack_tables[square.as_usize()][magic_index] =
-                    Self::generate_attack_table(&occupancy, &SliderPiece::Bishop, &square);
+                    Self::generate_attack_table(occupancy, &SliderPiece::Bishop, &square);
             }
 
             let rook_occupancy_indices = 1 << rook_attack_masks[square.as_usize()].count_bits();
@@ -201,14 +201,14 @@ impl SliderAttackTables {
                 let occupancy = Self::set_occupancy(i, rook_attack_masks[square.as_usize()]);
 
                 let magic_index = magic_numbers.generate_magic_index(
-                    &occupancy,
-                    &rook_attack_masks[square.as_usize()],
+                    occupancy,
+                    rook_attack_masks[square.as_usize()],
                     &square,
                     &SliderPiece::Rook,
                 );
 
                 rook_attack_tables[square.as_usize()][magic_index] =
-                    Self::generate_attack_table(&occupancy, &SliderPiece::Rook, &square);
+                    Self::generate_attack_table(occupancy, &SliderPiece::Rook, &square);
             }
         });
 
@@ -274,7 +274,7 @@ impl SliderAttackTables {
         attack_masks
     }
 
-    fn generate_attack_table(board: &Bitboard, piece: &SliderPiece, square: &Square) -> Bitboard {
+    fn generate_attack_table(board: Bitboard, piece: &SliderPiece, square: &Square) -> Bitboard {
         let mut attack_table = Bitboard::new(0);
 
         let piece_rank = square.rank();
@@ -285,7 +285,7 @@ impl SliderAttackTables {
                 for (rank, file) in ((piece_rank + 1)..8).zip((piece_file + 1)..8) {
                     attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1u64 << (rank * 8 + file)) != 0u64 {
+                    if board & (1u64 << (rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -293,7 +293,7 @@ impl SliderAttackTables {
                 for (rank, file) in ((0..piece_rank).rev()).zip((piece_file + 1)..8) {
                     attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1u64 << (rank * 8 + file)) != 0u64 {
+                    if board & (1u64 << (rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -301,7 +301,7 @@ impl SliderAttackTables {
                 for (rank, file) in ((piece_rank + 1)..8).zip((0..piece_file).rev()) {
                     attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1u64 << (rank * 8 + file)) != 0u64 {
+                    if board & (1u64 << (rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -309,7 +309,7 @@ impl SliderAttackTables {
                 for (rank, file) in ((0..piece_rank).rev()).zip((0..piece_file).rev()) {
                     attack_table |= 1u64 << (rank * 8 + file);
 
-                    if *board & (1u64 << (rank * 8 + file)) != 0u64 {
+                    if board & (1u64 << (rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -318,7 +318,7 @@ impl SliderAttackTables {
                 for rank in (piece_rank + 1)..8 {
                     attack_table |= 1u64 << (rank * 8 + piece_file);
 
-                    if *board & (1u64 << (rank * 8 + piece_file)) != 0u64 {
+                    if board & (1u64 << (rank * 8 + piece_file)) != 0u64 {
                         break;
                     }
                 }
@@ -326,7 +326,7 @@ impl SliderAttackTables {
                 for rank in (0..piece_rank).rev() {
                     attack_table |= 1u64 << (rank * 8 + piece_file);
 
-                    if *board & (1u64 << (rank * 8 + piece_file)) != 0u64 {
+                    if board & (1u64 << (rank * 8 + piece_file)) != 0u64 {
                         break;
                     }
                 }
@@ -334,7 +334,7 @@ impl SliderAttackTables {
                 for file in (piece_file + 1)..8 {
                     attack_table |= 1u64 << (piece_rank * 8 + file);
 
-                    if *board & (1u64 << (piece_rank * 8 + file)) != 0u64 {
+                    if board & (1u64 << (piece_rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -342,7 +342,7 @@ impl SliderAttackTables {
                 for file in (0..piece_file).rev() {
                     attack_table |= 1u64 << (piece_rank * 8 + file);
 
-                    if *board & (1u64 << (piece_rank * 8 + file)) != 0u64 {
+                    if board & (1u64 << (piece_rank * 8 + file)) != 0u64 {
                         break;
                     }
                 }
@@ -526,8 +526,8 @@ impl MagicNumbers {
 
     fn generate_magic_index(
         &self,
-        occupancy: &Bitboard,
-        attack_mask: &Bitboard,
+        occupancy: Bitboard,
+        attack_mask: Bitboard,
         square: &Square,
         piece: &SliderPiece,
     ) -> usize {
@@ -562,13 +562,13 @@ impl MagicNumbers {
 
     fn get_magic_index(
         &self,
-        board: &Bitboard,
+        board: Bitboard,
         piece: &SliderPiece,
         magic_numbers: &MagicNumbers,
         slider_attack_tables: &SliderAttackTables,
         square: &Square,
     ) -> usize {
-        let mut magic_index = *board;
+        let mut magic_index = board;
 
         magic_index &= slider_attack_tables.attack_mask(piece, square);
         magic_index = Bitboard::new(
@@ -630,7 +630,7 @@ impl MagicNumbers {
 
         for i in 0..occupancy_indices {
             occupancies[i] = SliderAttackTables::set_occupancy(i, attack_mask);
-            attacks[i] = SliderAttackTables::generate_attack_table(&occupancies[i], piece, square);
+            attacks[i] = SliderAttackTables::generate_attack_table(occupancies[i], piece, square);
         }
 
         'outer: loop {
@@ -713,19 +713,19 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Pawn, &Side::White, &Square::H3)
+                .attack_table(Bitboard::new(0), &Piece::Pawn, &Side::White, &Square::H3)
                 .bitboard,
             desired_h3_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Pawn, &Side::White, &Square::F5)
+                .attack_table(Bitboard::new(0), &Piece::Pawn, &Side::White, &Square::F5)
                 .bitboard,
             desired_f5_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Pawn, &Side::White, &Square::A4)
+                .attack_table(Bitboard::new(0), &Piece::Pawn, &Side::White, &Square::A4)
                 .bitboard,
             desired_a4_attack_table
         );
@@ -742,19 +742,19 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Pawn, &Side::Black, &Square::B4)
+                .attack_table(Bitboard::new(0), &Piece::Pawn, &Side::Black, &Square::B4)
                 .bitboard,
             desired_b4_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Pawn, &Side::Black, &Square::H4)
+                .attack_table(Bitboard::new(0), &Piece::Pawn, &Side::Black, &Square::H4)
                 .bitboard,
             desired_h4_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Pawn, &Side::Black, &Square::A5)
+                .attack_table(Bitboard::new(0), &Piece::Pawn, &Side::Black, &Square::A5)
                 .bitboard,
             desired_a5_attack_table
         );
@@ -799,37 +799,37 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Knight, &Side::White, &Square::G5)
+                .attack_table(Bitboard::new(0), &Piece::Knight, &Side::White, &Square::G5)
                 .bitboard,
             desired_g5_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Knight, &Side::White, &Square::E2)
+                .attack_table(Bitboard::new(0), &Piece::Knight, &Side::White, &Square::E2)
                 .bitboard,
             desired_e2_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Knight, &Side::White, &Square::F4)
+                .attack_table(Bitboard::new(0), &Piece::Knight, &Side::White, &Square::F4)
                 .bitboard,
             desired_f4_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Knight, &Side::White, &Square::B4)
+                .attack_table(Bitboard::new(0), &Piece::Knight, &Side::White, &Square::B4)
                 .bitboard,
             desired_b4_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Knight, &Side::White, &Square::A4)
+                .attack_table(Bitboard::new(0), &Piece::Knight, &Side::White, &Square::A4)
                 .bitboard,
             desired_a4_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::Knight, &Side::White, &Square::H8)
+                .attack_table(Bitboard::new(0), &Piece::Knight, &Side::White, &Square::H8)
                 .bitboard,
             desired_h8_attack_table
         );
@@ -902,7 +902,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Bishop, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Bishop, &Side::White, &Square::D4)
                 .bitboard,
             desired_attack_table
         );
@@ -914,7 +914,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Bishop, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Bishop, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -926,7 +926,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Bishop, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Bishop, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -938,7 +938,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Bishop, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Bishop, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -951,7 +951,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Bishop, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Bishop, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -960,7 +960,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Bishop, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Bishop, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1048,7 +1048,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Rook, &Side::White, &Square::E5)
+                .attack_table(board, &Piece::Rook, &Side::White, &Square::E5)
                 .bitboard,
             desired_attack_table
         );
@@ -1059,7 +1059,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Rook, &Side::White, &Square::E5)
+                .attack_table(board, &Piece::Rook, &Side::White, &Square::E5)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1071,7 +1071,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Rook, &Side::White, &Square::E5)
+                .attack_table(board, &Piece::Rook, &Side::White, &Square::E5)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1084,7 +1084,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Rook, &Side::White, &Square::E5)
+                .attack_table(board, &Piece::Rook, &Side::White, &Square::E5)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1096,7 +1096,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Rook, &Side::White, &Square::E5)
+                .attack_table(board, &Piece::Rook, &Side::White, &Square::E5)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1109,7 +1109,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Rook, &Side::White, &Square::E5)
+                .attack_table(board, &Piece::Rook, &Side::White, &Square::E5)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1118,7 +1118,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Rook, &Side::White, &Square::E5)
+                .attack_table(board, &Piece::Rook, &Side::White, &Square::E5)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1160,7 +1160,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Queen, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Queen, &Side::White, &Square::D4)
                 .bitboard,
             desired_attack_table
         );
@@ -1171,7 +1171,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Queen, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Queen, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1184,7 +1184,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Queen, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Queen, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1197,7 +1197,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Queen, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Queen, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1209,7 +1209,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Queen, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Queen, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1221,7 +1221,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Queen, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Queen, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1234,7 +1234,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Queen, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Queen, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1247,7 +1247,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Queen, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Queen, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1260,7 +1260,7 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&board, &Piece::Queen, &Side::White, &Square::D4)
+                .attack_table(board, &Piece::Queen, &Side::White, &Square::D4)
                 .bitboard,
             blocked_desired_attack_table
         );
@@ -1289,19 +1289,19 @@ mod tests {
 
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::King, &Side::White, &Square::B2)
+                .attack_table(Bitboard::new(0), &Piece::King, &Side::White, &Square::B2)
                 .bitboard,
             desired_b2_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::King, &Side::White, &Square::A1)
+                .attack_table(Bitboard::new(0), &Piece::King, &Side::White, &Square::A1)
                 .bitboard,
             desired_a1_attack_table
         );
         assert_eq!(
             attack_tables
-                .attack_table(&Bitboard::new(0), &Piece::King, &Side::White, &Square::H4)
+                .attack_table(Bitboard::new(0), &Piece::King, &Side::White, &Square::H4)
                 .bitboard,
             desired_h4_attack_table
         );

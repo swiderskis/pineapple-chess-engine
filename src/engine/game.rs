@@ -291,7 +291,7 @@ impl Game {
         match attacking_side {
             Side::White => {
                 let pawn_attacks_square = attack_tables.attack_table(
-                    &self.board(None),
+                    self.board(None),
                     &Piece::Pawn,
                     &Side::Black,
                     square,
@@ -304,7 +304,7 @@ impl Game {
             }
             Side::Black => {
                 let pawn_attacks_square = attack_tables.attack_table(
-                    &self.board(None),
+                    self.board(None),
                     &Piece::Pawn,
                     &Side::White,
                     square,
@@ -318,7 +318,7 @@ impl Game {
         }
 
         let knight_attacks_square =
-            attack_tables.attack_table(&self.board(None), &Piece::Knight, attacking_side, square)
+            attack_tables.attack_table(self.board(None), &Piece::Knight, attacking_side, square)
                 & self.piece_bitboard(&Piece::Knight, attacking_side)
                 != 0u64;
 
@@ -327,7 +327,7 @@ impl Game {
         }
 
         let bishop_attacks_square =
-            attack_tables.attack_table(&self.board(None), &Piece::Bishop, attacking_side, square)
+            attack_tables.attack_table(self.board(None), &Piece::Bishop, attacking_side, square)
                 & self.piece_bitboard(&Piece::Bishop, attacking_side)
                 != 0u64;
 
@@ -336,7 +336,7 @@ impl Game {
         }
 
         let rook_attacks_square =
-            attack_tables.attack_table(&self.board(None), &Piece::Rook, attacking_side, square)
+            attack_tables.attack_table(self.board(None), &Piece::Rook, attacking_side, square)
                 & self.piece_bitboard(&Piece::Rook, attacking_side)
                 != 0u64;
 
@@ -345,7 +345,7 @@ impl Game {
         }
 
         let queen_attacks_square =
-            attack_tables.attack_table(&self.board(None), &Piece::Queen, attacking_side, square)
+            attack_tables.attack_table(self.board(None), &Piece::Queen, attacking_side, square)
                 & self.piece_bitboard(&Piece::Queen, attacking_side)
                 != 0u64;
 
@@ -354,7 +354,7 @@ impl Game {
         }
 
         let king_attacks_square =
-            attack_tables.attack_table(&self.board(None), &Piece::King, attacking_side, square)
+            attack_tables.attack_table(self.board(None), &Piece::King, attacking_side, square)
                 & self.piece_bitboard(&Piece::King, attacking_side)
                 != 0u64;
 

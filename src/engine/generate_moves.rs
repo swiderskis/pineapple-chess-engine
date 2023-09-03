@@ -219,7 +219,7 @@ pub fn generate_moves(attack_tables: &AttackTables, game: &Game) -> MoveList {
                 let mut generated_moves = match piece {
                     Piece::Pawn => {
                         let attack_table = attack_tables.attack_table(
-                            &game.board(None),
+                            game.board(None),
                             piece,
                             side,
                             &source_square,
@@ -488,13 +488,13 @@ fn generate_attacks(
     match piece {
         Piece::Pawn => {
             let attack_table =
-                attack_tables.attack_table(&game.board(None), piece, side, source_square);
+                attack_tables.attack_table(game.board(None), piece, side, source_square);
             let opponent_board = game.board(Some(&side.opponent_side()));
 
             attack_table & opponent_board
         }
         _ => {
-            attack_tables.attack_table(&game.board(None), piece, side, source_square)
+            attack_tables.attack_table(game.board(None), piece, side, source_square)
                 & !game.board(Some(side))
         }
     }
@@ -674,13 +674,13 @@ mod tests {
         let attack_tables = AttackTables::initialise();
 
         let white_attack_table = attack_tables.attack_table(
-            &white_game.board(None),
+            white_game.board(None),
             &Piece::Pawn,
             &Side::White,
             &white_square,
         );
         let black_attack_table = attack_tables.attack_table(
-            &black_game.board(None),
+            black_game.board(None),
             &Piece::Pawn,
             &Side::Black,
             &black_square,
@@ -739,13 +739,13 @@ mod tests {
         let attack_tables = AttackTables::initialise();
 
         let white_attack_table = attack_tables.attack_table(
-            &white_game.board(None),
+            white_game.board(None),
             &Piece::Pawn,
             &Side::White,
             &white_square,
         );
         let black_attack_table = attack_tables.attack_table(
-            &black_game.board(None),
+            black_game.board(None),
             &Piece::Pawn,
             &Side::Black,
             &black_square,
@@ -787,13 +787,13 @@ mod tests {
         let attack_tables = AttackTables::initialise();
 
         let white_attack_table = attack_tables.attack_table(
-            &white_game.board(None),
+            white_game.board(None),
             &Piece::Pawn,
             &Side::White,
             &white_square,
         );
         let black_attack_table = attack_tables.attack_table(
-            &black_game.board(None),
+            black_game.board(None),
             &Piece::Pawn,
             &Side::Black,
             &black_square,
@@ -921,13 +921,13 @@ mod tests {
         let attack_tables = AttackTables::initialise();
 
         let white_attack_table = attack_tables.attack_table(
-            &white_game.board(None),
+            white_game.board(None),
             &Piece::Pawn,
             &Side::White,
             &white_square,
         );
         let black_attack_table = attack_tables.attack_table(
-            &black_game.board(None),
+            black_game.board(None),
             &Piece::Pawn,
             &Side::Black,
             &black_square,
@@ -983,13 +983,13 @@ mod tests {
         let attack_tables = AttackTables::initialise();
 
         let white_attack_table = attack_tables.attack_table(
-            &white_game.board(None),
+            white_game.board(None),
             &Piece::Pawn,
             &Side::White,
             &white_square,
         );
         let black_attack_table = attack_tables.attack_table(
-            &black_game.board(None),
+            black_game.board(None),
             &Piece::Pawn,
             &Side::Black,
             &black_square,
@@ -1105,13 +1105,13 @@ mod tests {
         let attack_tables = AttackTables::initialise();
 
         let white_attack_table = attack_tables.attack_table(
-            &white_game.board(None),
+            white_game.board(None),
             &Piece::Pawn,
             &Side::White,
             &white_square,
         );
         let black_attack_table = attack_tables.attack_table(
-            &black_game.board(None),
+            black_game.board(None),
             &Piece::Pawn,
             &Side::Black,
             &black_square,
