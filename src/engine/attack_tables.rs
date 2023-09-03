@@ -114,7 +114,7 @@ impl LeaperAttackTables {
         let not_ab_file = Bitboard::new(0xFCFC_FCFC_FCFC_FCFC);
         let not_gh_file = Bitboard::new(0x3F3F_3F3F_3F3F_3F3F);
 
-        let mut attack_tables: [Bitboard; 64] = [Bitboard::new(0); 64];
+        let mut attack_tables = [Bitboard::new(0); 64];
 
         Square::iter().for_each(|square| {
             let mut bitboard = Bitboard::new(0);
@@ -221,7 +221,7 @@ impl SliderAttackTables {
     }
 
     fn generate_attack_masks(piece: SliderPiece) -> [Bitboard; 64] {
-        let mut attack_masks: [Bitboard; 64] = [Bitboard::new(0); 64];
+        let mut attack_masks = [Bitboard::new(0); 64];
 
         Square::iter().for_each(|square| {
             let mut attack_mask = Bitboard::new(0);
@@ -587,8 +587,8 @@ impl MagicNumbers {
     // NB this seems to take much longer for me - no clue why, must be some problem in the code I can't see
     // Not too important as magic numbers are hard coded anyway
     pub fn _new(random_state: &mut u32) -> Self {
-        let mut bishop_magic_numbers: [u64; 64] = [0; 64];
-        let mut rook_magic_numbers: [u64; 64] = [0; 64];
+        let mut bishop_magic_numbers = [0; 64];
+        let mut rook_magic_numbers = [0; 64];
 
         let slider_attack_tables = SliderAttackTables::initialise();
 
@@ -622,8 +622,8 @@ impl MagicNumbers {
         piece: &SliderPiece,
         square: &Square,
     ) -> u64 {
-        let mut occupancies: [Bitboard; 4096] = [Bitboard::new(0); 4096];
-        let mut attacks: [Bitboard; 4096] = [Bitboard::new(0); 4096];
+        let mut occupancies = [Bitboard::new(0); 4096];
+        let mut attacks = [Bitboard::new(0); 4096];
 
         let occupancy_count = attack_mask.count_bits();
         let occupancy_indices = 1 << occupancy_count;
@@ -650,7 +650,7 @@ impl MagicNumbers {
                 continue;
             };
 
-            let mut used_attacks: [Bitboard; 4096] = [Bitboard::new(0); 4096];
+            let mut used_attacks = [Bitboard::new(0); 4096];
 
             for i in 0..occupancy_indices {
                 let magic_index = ((occupancies[i]
