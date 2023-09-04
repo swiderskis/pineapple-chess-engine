@@ -51,58 +51,60 @@ impl Game {
 
         let mut square_index = 0;
 
-        fen[0].chars().for_each(|character| match character {
-            'P' => {
-                white_pawns.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
+        for character in fen[0].chars() {
+            match character {
+                'P' => {
+                    white_pawns.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'N' => {
+                    white_knights.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'B' => {
+                    white_bishops.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'R' => {
+                    white_rooks.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'Q' => {
+                    white_queens.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'K' => {
+                    white_king.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'p' => {
+                    black_pawns.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'n' => {
+                    black_knights.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'b' => {
+                    black_bishops.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'r' => {
+                    black_rooks.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'q' => {
+                    black_queens.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                'k' => {
+                    black_king.set_bit(&Square::new_from_index(square_index));
+                    square_index += 1;
+                }
+                '0'..='9' => square_index += character as usize - '0' as usize,
+                _ => {}
             }
-            'N' => {
-                white_knights.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'B' => {
-                white_bishops.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'R' => {
-                white_rooks.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'Q' => {
-                white_queens.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'K' => {
-                white_king.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'p' => {
-                black_pawns.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'n' => {
-                black_knights.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'b' => {
-                black_bishops.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'r' => {
-                black_rooks.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'q' => {
-                black_queens.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            'k' => {
-                black_king.set_bit(&Square::new_from_index(square_index));
-                square_index += 1;
-            }
-            '0'..='9' => square_index += character as usize - '0' as usize,
-            _ => {}
-        });
+        }
 
         let side_to_move = if fen[1] == "w" {
             Side::White
@@ -160,11 +162,9 @@ impl Game {
 
         match mv.move_type() {
             MoveType::Capture => {
-                self.mut_side_bitboards(opponent_side)
-                    .iter()
-                    .for_each(|(&mut mut bitboard, _)| {
-                        bitboard.pop_bit(&mv.target_square());
-                    });
+                for (&mut mut bitboard, _) in self.mut_side_bitboards(opponent_side).iter() {
+                    bitboard.pop_bit(&mv.target_square());
+                }
             }
             MoveType::DoublePawnPush => {
                 let en_passant_square = match side {
@@ -259,7 +259,7 @@ impl Game {
     }
 
     pub fn print(&self) {
-        Square::iter().for_each(|square| {
+        for square in Square::iter() {
             if square.file() == 0 {
                 print!("{}   ", (64 - square.as_usize()) / 8);
             }
@@ -272,7 +272,7 @@ impl Game {
             if square.file() == 7 {
                 println!();
             }
-        });
+        }
 
         println!();
         println!("    a b c d e f g h");
@@ -560,15 +560,15 @@ impl CastlingRights {
 
         let mut castling_rights = 0;
 
-        castling_rights_string
-            .chars()
-            .for_each(|character| match character {
+        for character in castling_rights_string.chars() {
+            match character {
                 'K' => castling_rights |= CastlingType::WhiteShort.as_u8(),
                 'Q' => castling_rights |= CastlingType::WhiteLong.as_u8(),
                 'k' => castling_rights |= CastlingType::BlackShort.as_u8(),
                 'q' => castling_rights |= CastlingType::BlackLong.as_u8(),
                 _ => {}
-            });
+            }
+        }
 
         Self { castling_rights }
     }

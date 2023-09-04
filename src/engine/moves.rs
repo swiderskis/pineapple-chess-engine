@@ -48,7 +48,7 @@ impl MoveList {
     }
 
     pub fn print_move_list(&self) {
-        self.moves.iter().for_each(|mv| {
+        for mv in self.moves.iter() {
             print!(
                 "Move: {}{}",
                 mv.source_square().to_lowercase_string(),
@@ -64,7 +64,7 @@ impl MoveList {
             print!("En passant: {} | ", mv.en_passant());
             println!("Castling: {}", mv.castling());
             println!("---");
-        });
+        }
     }
 
     pub fn moves(&self) -> &Vec<Move> {
@@ -208,48 +208,42 @@ pub fn generate_moves(attack_tables: &AttackTables, game: &Game) -> MoveList {
 
     let side = game.side_to_move();
 
-    game.side_bitboards(side)
-        .iter()
-        .for_each(|(mut bitboard, piece)| {
-            while let Some(source_square_index) = bitboard.get_lsb_index() {
-                let source_square = Square::new_from_index(source_square_index);
+    for (mut bitboard, piece) in game.side_bitboards(side).iter() {
+        while let Some(source_square_index) = bitboard.get_lsb_index() {
+            let source_square = Square::new_from_index(source_square_index);
 
-                let attacks = generate_attacks(attack_tables, game, piece, &source_square);
+            let attacks = generate_attacks(attack_tables, game, piece, &source_square);
 
-                let mut generated_moves = match piece {
-                    Piece::Pawn => {
-                        let attack_table = attack_tables.attack_table(
-                            game.board(None),
-                            piece,
-                            side,
-                            &source_square,
-                        );
+            let mut generated_moves = match piece {
+                Piece::Pawn => {
+                    let attack_table =
+                        attack_tables.attack_table(game.board(None), piece, side, &source_square);
 
-                        generate_pawn_moves(attack_table, attacks, game, source_square_index)
-                    }
-                    Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
-                        generate_piece_moves(attacks, game, piece, side, &source_square)
-                    }
-                    Piece::King => {
-                        let mut king_moves = MoveList::new();
-                        king_moves.append_moves(&mut generate_piece_moves(
-                            attacks,
-                            game,
-                            piece,
-                            side,
-                            &source_square,
-                        ));
-                        king_moves.append_moves(&mut generate_castling_moves(attack_tables, game));
+                    generate_pawn_moves(attack_table, attacks, game, source_square_index)
+                }
+                Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen => {
+                    generate_piece_moves(attacks, game, piece, side, &source_square)
+                }
+                Piece::King => {
+                    let mut king_moves = MoveList::new();
+                    king_moves.append_moves(&mut generate_piece_moves(
+                        attacks,
+                        game,
+                        piece,
+                        side,
+                        &source_square,
+                    ));
+                    king_moves.append_moves(&mut generate_castling_moves(attack_tables, game));
 
-                        king_moves
-                    }
-                };
+                    king_moves
+                }
+            };
 
-                move_list.append_moves(&mut generated_moves);
+            move_list.append_moves(&mut generated_moves);
 
-                bitboard.pop_bit(&Square::new_from_index(source_square_index));
-            }
-        });
+            bitboard.pop_bit(&Square::new_from_index(source_square_index));
+        }
+    }
 
     move_list
 }
@@ -284,7 +278,7 @@ fn generate_pawn_moves(
         || (*side == Side::Black && piece_on_second_rank))
         && game.piece_at_square(&target_square).is_none()
     {
-        promotion_pieces.iter().for_each(|promoted_piece| {
+        for promoted_piece in promotion_pieces.iter() {
             move_list.add_move(
                 &source_square,
                 &target_square,
@@ -293,7 +287,7 @@ fn generate_pawn_moves(
                 Some(promoted_piece),
                 MoveType::Quiet,
             );
-        });
+        }
     } else if game.piece_at_square(&target_square).is_none() {
         move_list.add_move(
             &source_square,
@@ -337,7 +331,7 @@ fn generate_pawn_moves(
         if (*side == Side::White && piece_on_seventh_rank)
             || (*side == Side::Black && piece_on_second_rank)
         {
-            promotion_pieces.iter().for_each(|promoted_piece| {
+            for promoted_piece in promotion_pieces.iter() {
                 move_list.add_move(
                     &source_square,
                     &target_square,
@@ -346,7 +340,7 @@ fn generate_pawn_moves(
                     Some(promoted_piece),
                     MoveType::Capture,
                 );
-            });
+            }
         } else {
             move_list.add_move(
                 &source_square,

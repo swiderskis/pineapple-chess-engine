@@ -116,7 +116,7 @@ impl LeaperAttackTables {
 
         let mut attack_tables = [Bitboard::new(0); 64];
 
-        Square::iter().for_each(|square| {
+        for square in Square::iter() {
             let mut bitboard = Bitboard::new(0);
             let mut attack_table = Bitboard::new(0);
 
@@ -162,7 +162,7 @@ impl LeaperAttackTables {
                     attack_table
                 }
             }
-        });
+        }
 
         attack_tables
     }
@@ -178,7 +178,7 @@ impl SliderAttackTables {
 
         let magic_numbers = MagicNumbers::initialise();
 
-        Square::iter().for_each(|square| {
+        for square in Square::iter() {
             let bishop_occupancy_indices = 1 << bishop_attack_masks[square.as_usize()].count_bits();
 
             for i in 0..bishop_occupancy_indices {
@@ -210,7 +210,7 @@ impl SliderAttackTables {
                 rook_attack_tables[square.as_usize()][magic_index] =
                     Self::generate_attack_table(occupancy, &SliderPiece::Rook, &square);
             }
-        });
+        }
 
         Self {
             bishop_attack_masks,
@@ -223,7 +223,7 @@ impl SliderAttackTables {
     fn generate_attack_masks(piece: SliderPiece) -> [Bitboard; 64] {
         let mut attack_masks = [Bitboard::new(0); 64];
 
-        Square::iter().for_each(|square| {
+        for square in Square::iter() {
             let mut attack_mask = Bitboard::new(0);
 
             let piece_rank = square.rank();
@@ -269,7 +269,7 @@ impl SliderAttackTables {
                     attack_masks[square.as_usize()] = attack_mask;
                 }
             }
-        });
+        }
 
         attack_masks
     }
@@ -592,23 +592,23 @@ impl MagicNumbers {
 
         let slider_attack_tables = SliderAttackTables::initialise();
 
-        Square::iter().for_each(|square| {
+        for square in Square::iter() {
             rook_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
                 random_state,
                 slider_attack_tables.attack_mask(&SliderPiece::Rook, &square),
                 &SliderPiece::Rook,
                 &square,
             )
-        });
+        }
 
-        Square::iter().for_each(|square| {
+        for square in Square::iter() {
             bishop_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
                 random_state,
                 slider_attack_tables.attack_mask(&SliderPiece::Bishop, &square),
                 &SliderPiece::Bishop,
                 &square,
             )
-        });
+        }
 
         Self {
             bishop_magic_numbers,

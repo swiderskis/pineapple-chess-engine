@@ -83,7 +83,7 @@ impl Bitboard {
     }
 
     fn _print(&self) {
-        Square::iter().for_each(|square| {
+        for square in Square::iter() {
             if square.file() == 0 {
                 print!("{}   ", (64 - square.as_usize() / 8));
             }
@@ -93,7 +93,7 @@ impl Bitboard {
             if square.file() == 7 {
                 println!();
             }
-        });
+        }
 
         println!();
         println!("    a b c d e f g h");
