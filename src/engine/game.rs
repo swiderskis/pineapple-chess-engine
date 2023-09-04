@@ -139,9 +139,14 @@ impl Game {
         }
     }
 
-    pub fn make_move(&mut self, attack_tables: &AttackTables, mv: &Move, move_flag: MoveFlag) {
+    pub fn make_move(
+        &mut self,
+        attack_tables: &AttackTables,
+        mv: &Move,
+        move_flag: MoveFlag,
+    ) -> Result<(), ()> {
         if move_flag == MoveFlag::Capture && !mv.capture() {
-            return;
+            return Err(());
         }
 
         let game_clone = self.clone();
@@ -162,8 +167,9 @@ impl Game {
 
         match mv.move_type() {
             MoveType::Capture => {
-                for (&mut mut bitboard, _) in self.mut_side_bitboards(opponent_side).iter() {
-                    bitboard.pop_bit(&mv.target_square());
+                for piece in Piece::iter() {
+                    self.mut_piece_bitboard(&piece, opponent_side)
+                        .pop_bit(&mv.target_square());
                 }
             }
             MoveType::DoublePawnPush => {
@@ -247,15 +253,18 @@ impl Game {
         if let Some(index) = king_square {
             let king_square = Square::new_from_index(index);
             let own_king_in_check =
-                self.is_square_attacked(attack_tables, &side.opponent_side(), &king_square);
+                self.is_square_attacked(attack_tables, opponent_side, &king_square);
 
             if own_king_in_check {
                 self.revert(game_clone);
-                return;
+
+                return Err(());
             }
         }
 
         self.side_to_move = side.opponent_side();
+
+        Ok(())
     }
 
     pub fn print(&self) {
@@ -326,27 +335,6 @@ impl Game {
         }
     }
 
-    pub fn mut_side_bitboards(&mut self, side: &Side) -> [(&mut Bitboard, Piece); 6] {
-        match side {
-            Side::White => [
-                (&mut self.white_pawns, Piece::Pawn),
-                (&mut self.white_knights, Piece::Knight),
-                (&mut self.white_bishops, Piece::Bishop),
-                (&mut self.white_rooks, Piece::Rook),
-                (&mut self.white_queens, Piece::Queen),
-                (&mut self.white_king, Piece::King),
-            ],
-            Side::Black => [
-                (&mut self.black_pawns, Piece::Pawn),
-                (&mut self.black_knights, Piece::Knight),
-                (&mut self.black_bishops, Piece::Bishop),
-                (&mut self.black_rooks, Piece::Rook),
-                (&mut self.black_queens, Piece::Queen),
-                (&mut self.black_king, Piece::King),
-            ],
-        }
-    }
-
     pub fn board(&self, side: Option<&Side>) -> Bitboard {
         match side {
             Some(side) => match side {
@@ -382,6 +370,10 @@ impl Game {
                     | self.black_king
             }
         }
+    }
+
+    pub fn revert(&mut self, game_clone: Game) {
+        *self = game_clone;
     }
 
     pub fn piece_at_square(&self, square: &Square) -> Option<(Piece, Side)> {
@@ -463,10 +455,6 @@ impl Game {
                 Piece::King => &mut self.black_king,
             },
         }
-    }
-
-    fn revert(&mut self, game_clone: Game) {
-        *self = game_clone;
     }
 }
 

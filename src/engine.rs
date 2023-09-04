@@ -12,11 +12,13 @@ use std::{
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
-static TRICKY_POSITION: &str =
+static _TRICKY_POSITION: &str =
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+static CUSTOM_POSITION: &str =
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBqPPP/R3K2R w KQkq - 0 1";
 
 pub fn position() {
-    let mut game = Game::initialise(TRICKY_POSITION);
+    let mut game = Game::initialise(CUSTOM_POSITION);
 
     let attack_tables = AttackTables::initialise();
 
@@ -25,14 +27,14 @@ pub fn position() {
     game.print();
 
     for mv in moves.moves() {
-        if mv.piece() == Piece::Rook {
-            game.make_move(&attack_tables, mv, MoveFlag::All);
+        let game_clone = game.clone();
 
-            break;
+        if game.make_move(&attack_tables, mv, MoveFlag::All).is_ok() {
+            game.print();
         }
-    }
 
-    game.print();
+        game.revert(game_clone);
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -85,7 +87,7 @@ impl Bitboard {
     fn _print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
-                print!("{}   ", (64 - square.as_usize() / 8));
+                print!("{}   ", ((64 - square.as_usize()) / 8));
             }
 
             print!("{} ", if self.bit_occupied(&square) { 1 } else { 0 });

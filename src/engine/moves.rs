@@ -100,7 +100,7 @@ impl MoveList {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Move {
     move_information: u32,
 }
