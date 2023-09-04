@@ -177,8 +177,8 @@ impl SliderAttackTables {
         for square in Square::iter() {
             let bishop_occupancy_indices = 1 << bishop_attack_masks[square.as_usize()].count_bits();
 
-            for i in 0..bishop_occupancy_indices {
-                let occupancy = Self::set_occupancy(i, bishop_attack_masks[square.as_usize()]);
+            for index in 0..bishop_occupancy_indices {
+                let occupancy = Self::set_occupancy(index, bishop_attack_masks[square.as_usize()]);
 
                 let magic_index = magic_numbers.generate_magic_index(
                     occupancy,
@@ -193,8 +193,8 @@ impl SliderAttackTables {
 
             let rook_occupancy_indices = 1 << rook_attack_masks[square.as_usize()].count_bits();
 
-            for i in 0..rook_occupancy_indices {
-                let occupancy = Self::set_occupancy(i, rook_attack_masks[square.as_usize()]);
+            for index in 0..rook_occupancy_indices {
+                let occupancy = Self::set_occupancy(index, rook_attack_masks[square.as_usize()]);
 
                 let magic_index = magic_numbers.generate_magic_index(
                     occupancy,
@@ -366,17 +366,16 @@ impl SliderAttackTables {
 
     fn set_occupancy(index: usize, mut attack_mask: Bitboard) -> Bitboard {
         let mut occupancy = Bitboard::new(0);
-
         let mut count = 0;
 
         while let Some(square_index) = attack_mask.get_lsb_index() {
-            let ls1b_square = Square::new_from_index(square_index);
+            let lsb_square = Square::new_from_index(square_index);
 
             if index & (1 << count) != 0 {
-                occupancy.set_bit(&Square::new_from_index(ls1b_square.as_usize()));
+                occupancy.set_bit(&lsb_square);
             }
 
-            attack_mask.pop_bit(&ls1b_square);
+            attack_mask.pop_bit(&lsb_square);
             count += 1;
         }
 
@@ -640,9 +639,10 @@ impl MagicNumbers {
         let occupancy_count = attack_mask.count_bits();
         let occupancy_indices = 1 << occupancy_count;
 
-        for i in 0..occupancy_indices {
-            occupancies[i] = SliderAttackTables::set_occupancy(i, attack_mask);
-            attacks[i] = SliderAttackTables::generate_attack_table(occupancies[i], piece, square);
+        for index in 0..occupancy_indices {
+            occupancies[index] = SliderAttackTables::set_occupancy(index, attack_mask);
+            attacks[index] =
+                SliderAttackTables::generate_attack_table(occupancies[index], piece, square);
         }
 
         'outer: loop {
