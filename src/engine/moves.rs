@@ -42,7 +42,7 @@ impl MoveList {
             self.moves[index].target_square().to_lowercase_string(),
         );
         if let Some(promoted_piece) = self.moves[index].promoted_piece() {
-            print!("{}", promoted_piece.to_char(None))
+            print!("{}", promoted_piece.to_char(&Side::Black))
         }
         println!();
     }
@@ -55,7 +55,7 @@ impl MoveList {
                 mv.target_square().to_lowercase_string(),
             );
             if let Some(promoted_piece) = mv.promoted_piece() {
-                print!("{}", promoted_piece.to_char(None))
+                print!("{}", promoted_piece.to_char(&Side::Black))
             }
             println!();
             print!("Piece: {} | ", mv.piece());

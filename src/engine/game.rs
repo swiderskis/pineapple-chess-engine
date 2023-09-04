@@ -250,7 +250,7 @@ impl Game {
                 self.is_square_attacked(attack_tables, &side.opponent_side(), &king_square);
 
             if own_king_in_check {
-                *self = game_clone;
+                self.revert(game_clone);
                 return;
             }
         }
@@ -265,7 +265,7 @@ impl Game {
             }
 
             match self.piece_at_square(&square) {
-                Some((piece, side)) => print!("{} ", Self::get_piece_character(&piece, &side)),
+                Some((piece, side)) => print!("{} ", piece.to_char(&side)),
                 None => print!(". "),
             }
 
@@ -288,78 +288,18 @@ impl Game {
         attacking_side: &Side,
         square: &Square,
     ) -> bool {
-        match attacking_side {
-            Side::White => {
-                let pawn_attacks_square = attack_tables.attack_table(
-                    self.board(None),
-                    &Piece::Pawn,
-                    &Side::Black,
-                    square,
-                ) & self.piece_bitboard(&Piece::Pawn, attacking_side)
-                    != 0u64;
+        for piece in Piece::iter() {
+            let piece_attacks_square = attack_tables.attack_table(
+                self.board(None),
+                &piece,
+                &attacking_side.opponent_side(),
+                square,
+            ) & self.piece_bitboard(&piece, attacking_side)
+                != 0u64;
 
-                if pawn_attacks_square {
-                    return true;
-                }
+            if piece_attacks_square {
+                return true;
             }
-            Side::Black => {
-                let pawn_attacks_square = attack_tables.attack_table(
-                    self.board(None),
-                    &Piece::Pawn,
-                    &Side::White,
-                    square,
-                ) & self.piece_bitboard(&Piece::Pawn, attacking_side)
-                    != 0u64;
-
-                if pawn_attacks_square {
-                    return true;
-                }
-            }
-        }
-
-        let knight_attacks_square =
-            attack_tables.attack_table(self.board(None), &Piece::Knight, attacking_side, square)
-                & self.piece_bitboard(&Piece::Knight, attacking_side)
-                != 0u64;
-
-        if knight_attacks_square {
-            return true;
-        }
-
-        let bishop_attacks_square =
-            attack_tables.attack_table(self.board(None), &Piece::Bishop, attacking_side, square)
-                & self.piece_bitboard(&Piece::Bishop, attacking_side)
-                != 0u64;
-
-        if bishop_attacks_square {
-            return true;
-        }
-
-        let rook_attacks_square =
-            attack_tables.attack_table(self.board(None), &Piece::Rook, attacking_side, square)
-                & self.piece_bitboard(&Piece::Rook, attacking_side)
-                != 0u64;
-
-        if rook_attacks_square {
-            return true;
-        }
-
-        let queen_attacks_square =
-            attack_tables.attack_table(self.board(None), &Piece::Queen, attacking_side, square)
-                & self.piece_bitboard(&Piece::Queen, attacking_side)
-                != 0u64;
-
-        if queen_attacks_square {
-            return true;
-        }
-
-        let king_attacks_square =
-            attack_tables.attack_table(self.board(None), &Piece::King, attacking_side, square)
-                & self.piece_bitboard(&Piece::King, attacking_side)
-                != 0u64;
-
-        if king_attacks_square {
-            return true;
         }
 
         false
@@ -445,9 +385,9 @@ impl Game {
     }
 
     pub fn piece_at_square(&self, square: &Square) -> Option<(Piece, Side)> {
-        for bitboard in self.piece_bitboards() {
-            if bitboard.0.bit_occupied(square) {
-                return Some((bitboard.1, bitboard.2));
+        for (bitboard, piece, side) in self.piece_bitboards() {
+            if bitboard.bit_occupied(square) {
+                return Some((piece, side));
             }
         }
 
@@ -525,25 +465,8 @@ impl Game {
         }
     }
 
-    fn get_piece_character(piece: &Piece, side: &Side) -> char {
-        match side {
-            Side::White => match piece {
-                Piece::Pawn => 'P',
-                Piece::Knight => 'N',
-                Piece::Bishop => 'B',
-                Piece::Rook => 'R',
-                Piece::Queen => 'Q',
-                Piece::King => 'K',
-            },
-            Side::Black => match piece {
-                Piece::Pawn => 'p',
-                Piece::Knight => 'n',
-                Piece::Bishop => 'b',
-                Piece::Rook => 'r',
-                Piece::Queen => 'q',
-                Piece::King => 'k',
-            },
-        }
+    fn revert(&mut self, game_clone: Game) {
+        *self = game_clone;
     }
 }
 

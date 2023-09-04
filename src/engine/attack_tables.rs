@@ -70,14 +70,10 @@ impl AttackTables {
                 self.slider_attack_tables.rook_attack_tables[square.as_usize()][rook_magic_index]
             }
             Piece::Queen => {
-                let mut queen_attack_table = Bitboard::new(0);
-
-                queen_attack_table |= self.slider_attack_tables.bishop_attack_tables
-                    [square.as_usize()][bishop_magic_index];
-                queen_attack_table |= self.slider_attack_tables.rook_attack_tables
-                    [square.as_usize()][rook_magic_index];
-
-                queen_attack_table
+                self.slider_attack_tables.bishop_attack_tables[square.as_usize()]
+                    [bishop_magic_index]
+                    | self.slider_attack_tables.rook_attack_tables[square.as_usize()]
+                        [rook_magic_index]
             }
             Piece::King => self.leaper_attack_tables.king_attack_tables[square.as_usize()],
         }
@@ -232,38 +228,38 @@ impl SliderAttackTables {
             match piece {
                 SliderPiece::Bishop => {
                     for (rank, file) in ((piece_rank + 1)..7).zip((piece_file + 1)..7) {
-                        attack_mask |= 1u64 << (rank * 8 + file);
+                        attack_mask.set_bit(&Square::new_from_rf(rank, file));
                     }
 
                     for (rank, file) in ((1..piece_rank).rev()).zip((piece_file + 1)..7) {
-                        attack_mask |= 1u64 << (rank * 8 + file);
+                        attack_mask.set_bit(&Square::new_from_rf(rank, file));
                     }
 
                     for (rank, file) in ((piece_rank + 1)..7).zip((1..piece_file).rev()) {
-                        attack_mask |= 1u64 << (rank * 8 + file);
+                        attack_mask.set_bit(&Square::new_from_rf(rank, file));
                     }
 
                     for (rank, file) in ((1..piece_rank).rev()).zip((1..piece_file).rev()) {
-                        attack_mask |= 1u64 << (rank * 8 + file);
+                        attack_mask.set_bit(&Square::new_from_rf(rank, file));
                     }
 
                     attack_masks[square.as_usize()] = attack_mask;
                 }
                 SliderPiece::Rook => {
                     for rank in (piece_rank + 1)..7 {
-                        attack_mask |= 1u64 << (rank * 8 + piece_file);
+                        attack_mask.set_bit(&Square::new_from_rf(rank, piece_file));
                     }
 
                     for rank in (1..piece_rank).rev() {
-                        attack_mask |= 1u64 << (rank * 8 + piece_file);
+                        attack_mask.set_bit(&Square::new_from_rf(rank, piece_file));
                     }
 
                     for file in (piece_file + 1)..7 {
-                        attack_mask |= 1u64 << (piece_rank * 8 + file);
+                        attack_mask.set_bit(&Square::new_from_rf(piece_rank, file));
                     }
 
                     for file in (1..piece_file).rev() {
-                        attack_mask |= 1u64 << (piece_rank * 8 + file);
+                        attack_mask.set_bit(&Square::new_from_rf(piece_rank, file));
                     }
 
                     attack_masks[square.as_usize()] = attack_mask;
@@ -283,66 +279,82 @@ impl SliderAttackTables {
         match piece {
             SliderPiece::Bishop => {
                 for (rank, file) in ((piece_rank + 1)..8).zip((piece_file + 1)..8) {
-                    attack_table |= 1u64 << (rank * 8 + file);
+                    let square = &Square::new_from_rf(rank, file);
 
-                    if board & (1u64 << (rank * 8 + file)) != 0u64 {
+                    attack_table.set_bit(square);
+
+                    if board.bit_occupied(square) {
                         break;
                     }
                 }
 
                 for (rank, file) in ((0..piece_rank).rev()).zip((piece_file + 1)..8) {
-                    attack_table |= 1u64 << (rank * 8 + file);
+                    let square = &Square::new_from_rf(rank, file);
 
-                    if board & (1u64 << (rank * 8 + file)) != 0u64 {
+                    attack_table.set_bit(square);
+
+                    if board.bit_occupied(square) {
                         break;
                     }
                 }
 
                 for (rank, file) in ((piece_rank + 1)..8).zip((0..piece_file).rev()) {
-                    attack_table |= 1u64 << (rank * 8 + file);
+                    let square = &Square::new_from_rf(rank, file);
 
-                    if board & (1u64 << (rank * 8 + file)) != 0u64 {
+                    attack_table.set_bit(square);
+
+                    if board.bit_occupied(square) {
                         break;
                     }
                 }
 
                 for (rank, file) in ((0..piece_rank).rev()).zip((0..piece_file).rev()) {
-                    attack_table |= 1u64 << (rank * 8 + file);
+                    let square = &Square::new_from_rf(rank, file);
 
-                    if board & (1u64 << (rank * 8 + file)) != 0u64 {
+                    attack_table.set_bit(square);
+
+                    if board.bit_occupied(square) {
                         break;
                     }
                 }
             }
             SliderPiece::Rook => {
                 for rank in (piece_rank + 1)..8 {
-                    attack_table |= 1u64 << (rank * 8 + piece_file);
+                    let square = &Square::new_from_rf(rank, piece_file);
 
-                    if board & (1u64 << (rank * 8 + piece_file)) != 0u64 {
+                    attack_table.set_bit(square);
+
+                    if board.bit_occupied(square) {
                         break;
                     }
                 }
 
                 for rank in (0..piece_rank).rev() {
-                    attack_table |= 1u64 << (rank * 8 + piece_file);
+                    let square = &Square::new_from_rf(rank, piece_file);
 
-                    if board & (1u64 << (rank * 8 + piece_file)) != 0u64 {
+                    attack_table.set_bit(square);
+
+                    if board.bit_occupied(square) {
                         break;
                     }
                 }
 
                 for file in (piece_file + 1)..8 {
-                    attack_table |= 1u64 << (piece_rank * 8 + file);
+                    let square = &Square::new_from_rf(piece_rank, file);
 
-                    if board & (1u64 << (piece_rank * 8 + file)) != 0u64 {
+                    attack_table.set_bit(square);
+
+                    if board.bit_occupied(square) {
                         break;
                     }
                 }
 
                 for file in (0..piece_file).rev() {
-                    attack_table |= 1u64 << (piece_rank * 8 + file);
+                    let square = &Square::new_from_rf(piece_rank, file);
 
-                    if board & (1u64 << (piece_rank * 8 + file)) != 0u64 {
+                    attack_table.set_bit(square);
+
+                    if board.bit_occupied(square) {
                         break;
                     }
                 }
@@ -361,7 +373,7 @@ impl SliderAttackTables {
             let ls1b_square = Square::new_from_index(square_index);
 
             if index & (1 << count) != 0 {
-                occupancy |= 1u64 << ls1b_square.as_usize();
+                occupancy.set_bit(&Square::new_from_index(ls1b_square.as_usize()));
             }
 
             attack_mask.pop_bit(&ls1b_square);

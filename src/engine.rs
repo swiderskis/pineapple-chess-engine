@@ -184,21 +184,21 @@ trait EnumToInt: ToPrimitive {
     fn as_usize(&self) -> usize {
         match self.to_usize() {
             Some(value) => value,
-            None => panic!("Failed to convert enum to usize type"),
+            None => panic!("Failed to convert enum to usize"),
         }
     }
 
     fn as_u32(&self) -> u32 {
         match self.to_u32() {
             Some(value) => value,
-            None => panic!("Failed to convert enum to u32 type"),
+            None => panic!("Failed to convert enum to u32"),
         }
     }
 
     fn as_u8(&self) -> u8 {
         match self.to_u8() {
             Some(value) => value,
-            None => panic!("Failed to convert enum to u8 type"),
+            None => panic!("Failed to convert enum to u8"),
         }
     }
 }
@@ -209,12 +209,12 @@ trait IntToEnum: FromPrimitive {
 
         match enum_option {
             Some(piece) => piece,
-            None => panic!("Attempted to convert invalid index into enum"),
+            None => panic!("Failed to convert u32 to enum"),
         }
     }
 }
 
-#[derive(Debug, Display, FromPrimitive, PartialEq, ToPrimitive)]
+#[derive(Debug, Display, EnumIter, FromPrimitive, PartialEq, ToPrimitive)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -224,10 +224,13 @@ pub enum Piece {
     King,
 }
 
+impl EnumToInt for Piece {}
+impl IntToEnum for Piece {}
+
 impl Piece {
-    fn to_char(&self, side: Option<&Side>) -> char {
+    fn to_char(&self, side: &Side) -> char {
         match side {
-            Some(Side::White) => match self {
+            Side::White => match self {
                 Self::Pawn => 'P',
                 Self::Knight => 'N',
                 Self::Bishop => 'B',
@@ -235,7 +238,7 @@ impl Piece {
                 Self::Queen => 'Q',
                 Self::King => 'K',
             },
-            _ => match self {
+            Side::Black => match self {
                 Self::Pawn => 'p',
                 Self::Knight => 'n',
                 Self::Bishop => 'b',
@@ -246,9 +249,6 @@ impl Piece {
         }
     }
 }
-
-impl EnumToInt for Piece {}
-impl IntToEnum for Piece {}
 
 #[derive(Clone, Debug, Display, PartialEq)]
 pub enum Side {
@@ -341,15 +341,19 @@ impl Square {
 
         match square_option {
             Some(square) => square,
-            None => panic!("Attempted to convert invalid index into board square"),
+            None => panic!("Failed to convert index to square"),
         }
     }
 
     fn new_from_string(square: &str) -> Self {
         match Square::from_str(&square.to_uppercase()) {
             Ok(square) => square,
-            Err(_) => panic!("Attempted to convert invalid string slice into board square"),
+            Err(_) => panic!("Failed to convert string slice to square"),
         }
+    }
+
+    fn new_from_rf(rank: usize, file: usize) -> Self {
+        Self::new_from_index(rank * 8 + file)
     }
 
     fn rank(&self) -> usize {
