@@ -23,15 +23,7 @@ pub fn position() {
 
     game.print();
 
-    for mv in moves.moves() {
-        let game_clone = game.clone();
-
-        if game.make_move(&attack_tables, mv, MoveFlag::All).is_ok() {
-            game.print();
-        }
-
-        game.revert(game_clone);
-    }
+    let _ = game.make_move(&attack_tables, &moves.moves()[0], MoveFlag::All);
 }
 
 #[derive(Clone, Copy, PartialEq)]

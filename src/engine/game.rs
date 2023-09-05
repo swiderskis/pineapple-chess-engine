@@ -151,19 +151,22 @@ impl Game {
             return Err(());
         }
 
-        let game_clone = self.clone();
+        let mut game_clone = self.clone();
 
-        let side = &self.side_to_move.clone();
-        let opponent_side = &self.side_to_move.opponent_side().clone();
+        let side = &game_clone.side_to_move.clone();
+        let opponent_side = &game_clone.side_to_move.opponent_side().clone();
 
-        self.mut_piece_bitboard(&mv.piece(), side)
+        game_clone
+            .mut_piece_bitboard(&mv.piece(), side)
             .pop_bit(&mv.source_square());
 
         if let Some(promoted_piece) = mv.promoted_piece() {
-            self.mut_piece_bitboard(&promoted_piece, side)
+            game_clone
+                .mut_piece_bitboard(&promoted_piece, side)
                 .set_bit(&mv.target_square());
         } else {
-            self.mut_piece_bitboard(&mv.piece(), side)
+            game_clone
+                .mut_piece_bitboard(&mv.piece(), side)
                 .set_bit(&mv.target_square());
         }
 
@@ -172,7 +175,8 @@ impl Game {
         match mv.move_type() {
             MoveType::Capture => {
                 for piece in Piece::iter() {
-                    self.mut_piece_bitboard(&piece, opponent_side)
+                    game_clone
+                        .mut_piece_bitboard(&piece, opponent_side)
                         .pop_bit(&mv.target_square());
                 }
             }
@@ -183,7 +187,7 @@ impl Game {
                 }
                 .unwrap();
 
-                self.en_passant_square = Some(en_passant_square);
+                game_clone.en_passant_square = Some(en_passant_square);
             }
             MoveType::EnPassant => {
                 let capture_square = match side {
@@ -192,7 +196,8 @@ impl Game {
                 }
                 .unwrap();
 
-                self.mut_piece_bitboard(&Piece::Pawn, opponent_side)
+                game_clone
+                    .mut_piece_bitboard(&Piece::Pawn, opponent_side)
                     .pop_bit(&capture_square);
             }
             MoveType::Castling => {
@@ -203,14 +208,18 @@ impl Game {
                     };
 
                 if mv.target_square() == c_file_square {
-                    self.mut_piece_bitboard(&Piece::Rook, side)
+                    game_clone
+                        .mut_piece_bitboard(&Piece::Rook, side)
                         .pop_bit(&a_file_square);
-                    self.mut_piece_bitboard(&Piece::Rook, side)
+                    game_clone
+                        .mut_piece_bitboard(&Piece::Rook, side)
                         .set_bit(&d_file_square);
                 } else {
-                    self.mut_piece_bitboard(&Piece::Rook, side)
+                    game_clone
+                        .mut_piece_bitboard(&Piece::Rook, side)
                         .pop_bit(&h_file_square);
-                    self.mut_piece_bitboard(&Piece::Rook, side)
+                    game_clone
+                        .mut_piece_bitboard(&Piece::Rook, side)
                         .set_bit(&f_file_square);
                 }
             }
@@ -218,56 +227,61 @@ impl Game {
         }
 
         if !mv.double_pawn_push() {
-            self.en_passant_square = None;
+            game_clone.en_passant_square = None;
         }
 
         match side {
             Side::White => match mv.source_square() {
-                Square::A1 => self
+                Square::A1 => game_clone
                     .castling_rights
                     .remove_castling_type(CastlingType::WhiteLong),
                 Square::E1 => {
-                    self.castling_rights
+                    game_clone
+                        .castling_rights
                         .remove_castling_type(CastlingType::WhiteShort);
-                    self.castling_rights
+                    game_clone
+                        .castling_rights
                         .remove_castling_type(CastlingType::WhiteLong);
                 }
-                Square::H1 => self
+                Square::H1 => game_clone
                     .castling_rights
                     .remove_castling_type(CastlingType::WhiteShort),
                 _ => {}
             },
             Side::Black => match mv.source_square() {
-                Square::A8 => self
+                Square::A8 => game_clone
                     .castling_rights
                     .remove_castling_type(CastlingType::BlackLong),
                 Square::E8 => {
-                    self.castling_rights
+                    game_clone
+                        .castling_rights
                         .remove_castling_type(CastlingType::BlackShort);
-                    self.castling_rights
+                    game_clone
+                        .castling_rights
                         .remove_castling_type(CastlingType::BlackLong);
                 }
-                Square::H8 => self
+                Square::H8 => game_clone
                     .castling_rights
                     .remove_castling_type(CastlingType::BlackShort),
                 _ => {}
             },
         }
 
-        let king_square = self.piece_bitboard(&Piece::King, side).get_lsb_index();
+        let king_square = game_clone
+            .piece_bitboard(&Piece::King, side)
+            .get_lsb_index();
 
         if let Some(index) = king_square {
             let king_square = Square::from_usize(index).unwrap();
             let own_king_in_check =
-                self.is_square_attacked(attack_tables, opponent_side, &king_square);
+                game_clone.is_square_attacked(attack_tables, opponent_side, &king_square);
 
             if own_king_in_check {
-                self.revert(game_clone);
-
                 return Err(());
             }
         }
 
+        *self = game_clone;
         self.side_to_move = side.opponent_side();
 
         Ok(())
@@ -376,10 +390,6 @@ impl Game {
                     | self.black_king
             }
         }
-    }
-
-    pub fn revert(&mut self, game_clone: Game) {
-        *self = game_clone;
     }
 
     pub fn piece_at_square(&self, square: &Square) -> Option<(Piece, Side)> {
