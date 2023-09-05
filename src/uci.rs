@@ -8,7 +8,7 @@ struct Input<'a> {
 
 impl<'a> Input<'a> {
     fn new(input_vec: Vec<&'a str>) -> Self {
-        Input {
+        Self {
             command: input_vec[0],
             arguments: input_vec[1..].to_vec(),
         }

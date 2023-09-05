@@ -1,9 +1,11 @@
 use super::{
     attack_tables::AttackTables,
     moves::{Move, MoveFlag, MoveType},
-    Bitboard, EnumToInt, Piece, Side, Square,
+    Bitboard, Piece, Side, Square,
 };
 use num_derive::ToPrimitive;
+use num_traits::{FromPrimitive, ToPrimitive};
+use std::str::FromStr;
 use strum::IntoEnumIterator;
 
 #[derive(Clone)]
@@ -54,51 +56,51 @@ impl Game {
         for character in fen[0].chars() {
             match character {
                 'P' => {
-                    white_pawns.set_bit(&Square::new_from_index(square_index));
+                    white_pawns.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'N' => {
-                    white_knights.set_bit(&Square::new_from_index(square_index));
+                    white_knights.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'B' => {
-                    white_bishops.set_bit(&Square::new_from_index(square_index));
+                    white_bishops.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'R' => {
-                    white_rooks.set_bit(&Square::new_from_index(square_index));
+                    white_rooks.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'Q' => {
-                    white_queens.set_bit(&Square::new_from_index(square_index));
+                    white_queens.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'K' => {
-                    white_king.set_bit(&Square::new_from_index(square_index));
+                    white_king.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'p' => {
-                    black_pawns.set_bit(&Square::new_from_index(square_index));
+                    black_pawns.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'n' => {
-                    black_knights.set_bit(&Square::new_from_index(square_index));
+                    black_knights.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'b' => {
-                    black_bishops.set_bit(&Square::new_from_index(square_index));
+                    black_bishops.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'r' => {
-                    black_rooks.set_bit(&Square::new_from_index(square_index));
+                    black_rooks.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'q' => {
-                    black_queens.set_bit(&Square::new_from_index(square_index));
+                    black_queens.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'k' => {
-                    black_king.set_bit(&Square::new_from_index(square_index));
+                    black_king.set_bit(&Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 '0'..='9' => square_index += character as usize - '0' as usize,
@@ -113,7 +115,7 @@ impl Game {
         };
 
         let en_passant_square = if fen[3] != "-" {
-            Some(Square::new_from_string(fen[3]))
+            Some(Square::from_str(fen[3].to_uppercase().as_str()).unwrap())
         } else {
             None
         };
@@ -165,6 +167,8 @@ impl Game {
                 .set_bit(&mv.target_square());
         }
 
+        let target_square_index = mv.target_square().to_usize().unwrap();
+
         match mv.move_type() {
             MoveType::Capture => {
                 for piece in Piece::iter() {
@@ -174,17 +178,19 @@ impl Game {
             }
             MoveType::DoublePawnPush => {
                 let en_passant_square = match side {
-                    Side::White => Square::new_from_index(mv.target_square().as_usize() + 8),
-                    Side::Black => Square::new_from_index(mv.target_square().as_usize() - 8),
-                };
+                    Side::White => Square::from_usize(target_square_index + 8),
+                    Side::Black => Square::from_usize(target_square_index - 8),
+                }
+                .unwrap();
 
                 self.en_passant_square = Some(en_passant_square);
             }
             MoveType::EnPassant => {
                 let capture_square = match side {
-                    Side::White => Square::new_from_index(mv.target_square().as_usize() + 8),
-                    Side::Black => Square::new_from_index(mv.target_square().as_usize() - 8),
-                };
+                    Side::White => Square::from_usize(target_square_index + 8),
+                    Side::Black => Square::from_usize(target_square_index - 8),
+                }
+                .unwrap();
 
                 self.mut_piece_bitboard(&Piece::Pawn, opponent_side)
                     .pop_bit(&capture_square);
@@ -251,7 +257,7 @@ impl Game {
         let king_square = self.piece_bitboard(&Piece::King, side).get_lsb_index();
 
         if let Some(index) = king_square {
-            let king_square = Square::new_from_index(index);
+            let king_square = Square::from_usize(index).unwrap();
             let own_king_in_check =
                 self.is_square_attacked(attack_tables, opponent_side, &king_square);
 
@@ -270,7 +276,7 @@ impl Game {
     pub fn print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
-                print!("{}   ", (64 - square.as_usize()) / 8);
+                print!("{}   ", (64 - square.to_usize().unwrap()) / 8);
             }
 
             match self.piece_at_square(&square) {
@@ -395,7 +401,7 @@ impl Game {
     }
 
     pub fn castling_type_allowed(&self, castling_type: &CastlingType) -> bool {
-        self.castling_rights.castling_rights & castling_type.as_u8() != 0
+        self.castling_rights.castling_rights & castling_type.to_u8().unwrap() != 0
     }
 
     fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
@@ -473,10 +479,10 @@ impl CastlingRights {
 
         for character in castling_rights_string.chars() {
             match character {
-                'K' => castling_rights |= CastlingType::WhiteShort.as_u8(),
-                'Q' => castling_rights |= CastlingType::WhiteLong.as_u8(),
-                'k' => castling_rights |= CastlingType::BlackShort.as_u8(),
-                'q' => castling_rights |= CastlingType::BlackLong.as_u8(),
+                'K' => castling_rights |= CastlingType::WhiteShort.to_u8().unwrap(),
+                'Q' => castling_rights |= CastlingType::WhiteLong.to_u8().unwrap(),
+                'k' => castling_rights |= CastlingType::BlackShort.to_u8().unwrap(),
+                'q' => castling_rights |= CastlingType::BlackLong.to_u8().unwrap(),
                 _ => {}
             }
         }
@@ -485,25 +491,25 @@ impl CastlingRights {
     }
 
     fn remove_castling_type(&mut self, castling_type: CastlingType) {
-        self.castling_rights &= !castling_type.as_u8();
+        self.castling_rights &= !castling_type.to_u8().unwrap();
     }
 
     fn as_string(&self) -> String {
         let mut castling_rights_string = String::new();
 
-        if self.castling_rights & CastlingType::WhiteShort.as_u8() != 0 {
+        if self.castling_rights & CastlingType::WhiteShort.to_u8().unwrap() != 0 {
             castling_rights_string.push('K');
         }
 
-        if self.castling_rights & CastlingType::WhiteLong.as_u8() != 0 {
+        if self.castling_rights & CastlingType::WhiteLong.to_u8().unwrap() != 0 {
             castling_rights_string.push('Q');
         }
 
-        if self.castling_rights & CastlingType::BlackShort.as_u8() != 0 {
+        if self.castling_rights & CastlingType::BlackShort.to_u8().unwrap() != 0 {
             castling_rights_string.push('k');
         }
 
-        if self.castling_rights & CastlingType::BlackLong.as_u8() != 0 {
+        if self.castling_rights & CastlingType::BlackLong.to_u8().unwrap() != 0 {
             castling_rights_string.push('q');
         }
 
@@ -519,8 +525,6 @@ pub enum CastlingType {
     BlackLong = 0b0001,
 }
 
-impl EnumToInt for CastlingType {}
-
 impl CastlingType {
     pub fn move_string(&self) -> &str {
         match self {
@@ -535,6 +539,62 @@ impl CastlingType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::moves::{self, MoveList};
+
+    fn perft(
+        attack_tables: &AttackTables,
+        game: &mut Game,
+        moves: &MoveList,
+        nodes: &mut i32,
+        depth: i32,
+    ) {
+        if depth == 0 {
+            *nodes += 1;
+            return;
+        }
+
+        for mv in moves.moves() {
+            let mut game_clone = game.clone();
+
+            if game_clone
+                .make_move(attack_tables, mv, MoveFlag::All)
+                .is_ok()
+            {
+                let moves = &moves::generate_moves(attack_tables, &game_clone);
+                perft(attack_tables, &mut game_clone, moves, nodes, depth - 1);
+            }
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn perft_start_position() {
+        let mut game = Game::initialise("startpos");
+        let attack_tables = AttackTables::initialise();
+        let moves = moves::generate_moves(&attack_tables, &game);
+
+        let mut nodes = 0;
+
+        perft(&attack_tables, &mut game, &moves, &mut nodes, 6);
+
+        assert_eq!(nodes, 119_060_324);
+    }
+
+    #[test]
+    #[ignore]
+    fn perft_tricky_position() {
+        let mut game = Game::initialise(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        );
+        let attack_tables = AttackTables::initialise();
+        let moves = moves::generate_moves(&attack_tables, &game);
+
+        let mut nodes = 0;
+
+        perft(&attack_tables, &mut game, &moves, &mut nodes, 5);
+
+        assert_eq!(nodes, 193_690_690);
+    }
 
     #[test]
     fn tricky_position() {

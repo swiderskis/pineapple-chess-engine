@@ -5,10 +5,7 @@ mod moves;
 use self::{attack_tables::AttackTables, game::Game, moves::MoveFlag};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive, Unsigned};
-use std::{
-    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign},
-    str::FromStr,
-};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
@@ -44,11 +41,11 @@ pub struct Bitboard {
 
 impl Bitboard {
     fn new(bitboard: u64) -> Self {
-        Bitboard { bitboard }
+        Self { bitboard }
     }
 
     fn from_square(square: &Square) -> Self {
-        let mut bitboard = Bitboard::new(0);
+        let mut bitboard = Self::new(0);
 
         bitboard.set_bit(square);
 
@@ -56,15 +53,15 @@ impl Bitboard {
     }
 
     fn bit_occupied(&self, square: &Square) -> bool {
-        self.bitboard & (1 << square.as_usize()) != 0
+        self.bitboard & (1 << square.to_usize().unwrap()) != 0
     }
 
     fn set_bit(&mut self, square: &Square) {
-        self.bitboard |= 1 << square.as_usize();
+        self.bitboard |= 1 << square.to_usize().unwrap()
     }
 
     fn pop_bit(&mut self, square: &Square) {
-        self.bitboard &= !(1 << square.as_usize());
+        self.bitboard &= !(1 << square.to_usize().unwrap());
     }
 
     fn count_bits(&self) -> u32 {
@@ -87,7 +84,7 @@ impl Bitboard {
     fn _print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
-                print!("{}   ", ((64 - square.as_usize()) / 8));
+                print!("{}   ", ((64 - square.to_usize().unwrap()) / 8));
             }
 
             print!("{} ", if self.bit_occupied(&square) { 1 } else { 0 });
@@ -108,7 +105,7 @@ impl BitAnd for Bitboard {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        Bitboard::new(self.bitboard & rhs.bitboard)
+        Self::new(self.bitboard & rhs.bitboard)
     }
 }
 
@@ -116,13 +113,13 @@ impl<T: Unsigned + AsPrimitive<u64>> BitAnd<T> for Bitboard {
     type Output = Self;
 
     fn bitand(self, rhs: T) -> Self::Output {
-        Bitboard::new(self.bitboard & rhs.as_())
+        Self::new(self.bitboard & rhs.as_())
     }
 }
 
 impl BitAndAssign for Bitboard {
     fn bitand_assign(&mut self, rhs: Self) {
-        *self = Bitboard::new(self.bitboard & rhs.bitboard)
+        *self = Self::new(self.bitboard & rhs.bitboard)
     }
 }
 
@@ -130,19 +127,19 @@ impl BitOr for Bitboard {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        Bitboard::new(self.bitboard | rhs.bitboard)
+        Self::new(self.bitboard | rhs.bitboard)
     }
 }
 
 impl BitOrAssign for Bitboard {
     fn bitor_assign(&mut self, rhs: Self) {
-        *self = Bitboard::new(self.bitboard | rhs.bitboard)
+        *self = Self::new(self.bitboard | rhs.bitboard)
     }
 }
 
 impl<T: Unsigned + AsPrimitive<u64>> BitOrAssign<T> for Bitboard {
     fn bitor_assign(&mut self, rhs: T) {
-        *self = Bitboard::new(self.bitboard | rhs.as_())
+        *self = Self::new(self.bitboard | rhs.as_())
     }
 }
 
@@ -150,7 +147,7 @@ impl Not for Bitboard {
     type Output = Self;
 
     fn not(self) -> Self::Output {
-        Bitboard::new(!self.bitboard)
+        Self::new(!self.bitboard)
     }
 }
 
@@ -164,7 +161,7 @@ impl<T: Unsigned + AsPrimitive<u64>> Shl<T> for Bitboard {
     type Output = Self;
 
     fn shl(self, rhs: T) -> Self::Output {
-        Bitboard::new(self.bitboard << rhs.as_())
+        Self::new(self.bitboard << rhs.as_())
     }
 }
 
@@ -172,47 +169,13 @@ impl<T: Unsigned + AsPrimitive<u64>> Shr<T> for Bitboard {
     type Output = Self;
 
     fn shr(self, rhs: T) -> Self::Output {
-        Bitboard::new(self.bitboard >> rhs.as_())
+        Self::new(self.bitboard >> rhs.as_())
     }
 }
 
 impl<T: Unsigned + AsPrimitive<u64>> ShrAssign<T> for Bitboard {
     fn shr_assign(&mut self, rhs: T) {
-        *self = Bitboard::new(self.bitboard >> rhs.as_())
-    }
-}
-
-trait EnumToInt: ToPrimitive {
-    fn as_usize(&self) -> usize {
-        match self.to_usize() {
-            Some(value) => value,
-            None => panic!("Failed to convert enum to usize"),
-        }
-    }
-
-    fn as_u32(&self) -> u32 {
-        match self.to_u32() {
-            Some(value) => value,
-            None => panic!("Failed to convert enum to u32"),
-        }
-    }
-
-    fn as_u8(&self) -> u8 {
-        match self.to_u8() {
-            Some(value) => value,
-            None => panic!("Failed to convert enum to u8"),
-        }
-    }
-}
-
-trait IntToEnum: FromPrimitive {
-    fn new_from_u32(value: u32) -> Self {
-        let enum_option = Self::from_u32(value);
-
-        match enum_option {
-            Some(piece) => piece,
-            None => panic!("Failed to convert u32 to enum"),
-        }
+        *self = Self::new(self.bitboard >> rhs.as_())
     }
 }
 
@@ -225,9 +188,6 @@ pub enum Piece {
     Queen,
     King,
 }
-
-impl EnumToInt for Piece {}
-impl IntToEnum for Piece {}
 
 impl Piece {
     fn to_char(&self, side: &Side) -> char {
@@ -259,10 +219,10 @@ pub enum Side {
 }
 
 impl Side {
-    fn opponent_side(&self) -> Side {
+    fn opponent_side(&self) -> Self {
         match self {
-            Self::White => Side::Black,
-            Self::Black => Side::White,
+            Self::White => Self::Black,
+            Self::Black => Self::White,
         }
     }
 }
@@ -335,35 +295,17 @@ pub enum Square {
     H1,
 }
 
-impl EnumToInt for Square {}
-
 impl Square {
-    fn new_from_index(index: usize) -> Self {
-        let square_option = Self::from_usize(index);
-
-        match square_option {
-            Some(square) => square,
-            None => panic!("Failed to convert index to square"),
-        }
-    }
-
-    fn new_from_string(square: &str) -> Self {
-        match Square::from_str(&square.to_uppercase()) {
-            Ok(square) => square,
-            Err(_) => panic!("Failed to convert string slice to square"),
-        }
-    }
-
-    fn new_from_rf(rank: usize, file: usize) -> Self {
-        Self::new_from_index(rank * 8 + file)
+    fn from_rank_file(rank: usize, file: usize) -> Self {
+        Self::from_usize(rank * 8 + file).unwrap()
     }
 
     fn rank(&self) -> usize {
-        self.as_usize() / 8
+        self.to_usize().unwrap() / 8
     }
 
     fn file(&self) -> usize {
-        self.as_usize() % 8
+        self.to_usize().unwrap() % 8
     }
 
     fn to_lowercase_string(&self) -> String {
@@ -387,15 +329,15 @@ mod tests {
 
         assert_eq!(
             bitboard1.bitboard,
-            u64::pow(2, Square::H2.as_usize() as u32)
+            u64::pow(2, Square::H2.to_usize().unwrap() as u32)
         );
         assert_eq!(
             bitboard2.bitboard,
-            u64::pow(2, Square::G6.as_usize() as u32)
+            u64::pow(2, Square::G6.to_usize().unwrap() as u32)
         );
         assert_eq!(
             bitboard3.bitboard,
-            u64::pow(2, Square::B4.as_usize() as u32)
+            u64::pow(2, Square::B4.to_usize().unwrap() as u32)
         );
     }
 
@@ -419,15 +361,15 @@ mod tests {
 
         assert_eq!(
             bitboard1.bitboard,
-            u64::pow(2, Square::A8.as_usize() as u32)
+            u64::pow(2, Square::A8.to_usize().unwrap() as u32)
         );
         assert_eq!(
             bitboard2.bitboard,
-            u64::pow(2, Square::A7.as_usize() as u32)
+            u64::pow(2, Square::A7.to_usize().unwrap() as u32)
         );
         assert_eq!(
             bitboard3.bitboard,
-            u64::pow(2, Square::B8.as_usize() as u32)
+            u64::pow(2, Square::B8.to_usize().unwrap() as u32)
         );
     }
 

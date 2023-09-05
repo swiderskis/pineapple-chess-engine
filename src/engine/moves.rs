@@ -1,9 +1,10 @@
 use super::{
     attack_tables::AttackTables,
     game::{CastlingType, Game},
-    Bitboard, EnumToInt, IntToEnum, Piece, Side, Square,
+    Bitboard, Piece, Side, Square,
 };
 use num_derive::{FromPrimitive, ToPrimitive};
+use num_traits::{FromPrimitive, ToPrimitive};
 
 static BLACK_PIECE_OFFSET: u32 = 6;
 static NO_PIECE_VALUE: u32 = 0b1111;
@@ -17,9 +18,6 @@ pub enum MoveType {
     Castling = 0b1000,
 }
 
-impl EnumToInt for MoveType {}
-impl IntToEnum for MoveType {}
-
 #[derive(PartialEq)]
 pub enum MoveFlag {
     All,
@@ -32,7 +30,7 @@ pub struct MoveList {
 
 impl MoveList {
     pub fn new() -> Self {
-        MoveList { moves: Vec::new() }
+        Self { moves: Vec::new() }
     }
 
     pub fn print_move(&self, index: usize) {
@@ -118,39 +116,39 @@ impl Move {
             Side::White => 0,
             Side::Black => BLACK_PIECE_OFFSET,
         };
-        let piece_value = piece.as_u32() + side_value_offset;
+        let piece_value = piece.to_u32().unwrap() + side_value_offset;
         let promoted_piece_value = if let Some(promoted_piece) = promoted_piece {
             match promoted_piece {
                 Piece::Pawn | Piece::King => {
                     eprintln!("Attempted to promote pawn to pawn or king");
-                    Piece::Queen.as_u32() + side_value_offset
+                    Piece::Queen.to_u32().unwrap() + side_value_offset
                 }
-                _ => promoted_piece.as_u32() + side_value_offset,
+                _ => promoted_piece.to_u32().unwrap() + side_value_offset,
             }
         } else {
             NO_PIECE_VALUE
         };
-        let move_flags = move_type.as_u32();
+        let move_flags = move_type.to_u32().unwrap();
 
-        let mut move_information = source_square.as_u32();
-        move_information |= target_square.as_u32() << 6;
+        let mut move_information = source_square.to_u32().unwrap();
+        move_information |= target_square.to_u32().unwrap() << 6;
         move_information |= piece_value << 12;
         move_information |= promoted_piece_value << 16;
         move_information |= move_flags << 20;
 
-        Move { move_information }
+        Self { move_information }
     }
 
     pub fn source_square(&self) -> Square {
         let source_square_index = self.move_information & 0x3F;
 
-        Square::new_from_index(source_square_index as usize)
+        Square::from_usize(source_square_index as usize).unwrap()
     }
 
     pub fn target_square(&self) -> Square {
         let target_square_index = (self.move_information & 0xFC0) >> 6;
 
-        Square::new_from_index(target_square_index as usize)
+        Square::from_usize(target_square_index as usize).unwrap()
     }
 
     pub fn piece(&self) -> Piece {
@@ -161,7 +159,7 @@ impl Move {
             piece_value
         };
 
-        Piece::new_from_u32(piece_value)
+        Piece::from_u32(piece_value).unwrap()
     }
 
     pub fn promoted_piece(&self) -> Option<Piece> {
@@ -177,13 +175,13 @@ impl Move {
             promoted_piece_value
         };
 
-        Some(Piece::new_from_u32(promoted_piece_value))
+        Some(Piece::from_u32(promoted_piece_value).unwrap())
     }
 
     pub fn move_type(&self) -> MoveType {
         let move_type_index = (self.move_information & 0xF00000) >> 20;
 
-        MoveType::new_from_u32(move_type_index)
+        MoveType::from_u32(move_type_index).unwrap()
     }
 
     pub fn capture(&self) -> bool {
@@ -210,7 +208,7 @@ pub fn generate_moves(attack_tables: &AttackTables, game: &Game) -> MoveList {
 
     for (mut bitboard, piece) in game.side_bitboards(side).iter() {
         while let Some(source_square_index) = bitboard.get_lsb_index() {
-            let source_square = Square::new_from_index(source_square_index);
+            let source_square = Square::from_usize(source_square_index).unwrap();
 
             let attacks = generate_attacks(attack_tables, game, piece, &source_square);
 
@@ -241,7 +239,7 @@ pub fn generate_moves(attack_tables: &AttackTables, game: &Game) -> MoveList {
 
             move_list.append_moves(&mut generated_moves);
 
-            bitboard.pop_bit(&Square::new_from_index(source_square_index));
+            bitboard.pop_bit(&Square::from_usize(source_square_index).unwrap());
         }
     }
 
@@ -263,11 +261,12 @@ fn generate_pawn_moves(
 
     let side = game.side_to_move();
 
-    let source_square = Square::new_from_index(source_square_index);
+    let source_square = Square::from_usize(source_square_index).unwrap();
     let target_square = match side {
-        Side::White => Square::new_from_index(source_square_index - 8),
-        Side::Black => Square::new_from_index(source_square_index + 8),
-    };
+        Side::White => Square::from_usize(source_square_index - 8),
+        Side::Black => Square::from_usize(source_square_index + 8),
+    }
+    .unwrap();
 
     let single_piece = Bitboard::from_square(&source_square);
 
@@ -301,9 +300,9 @@ fn generate_pawn_moves(
 
     let single_push_target_square = target_square;
     let double_push_target_square = if *side == Side::White && piece_on_second_rank {
-        Some(Square::new_from_index(source_square_index - 16))
+        Some(Square::from_usize(source_square_index - 16).unwrap())
     } else if *side == Side::Black && piece_on_seventh_rank {
-        Some(Square::new_from_index(source_square_index + 16))
+        Some(Square::from_usize(source_square_index + 16).unwrap())
     } else {
         None
     };
@@ -326,7 +325,7 @@ fn generate_pawn_moves(
     }
 
     while let Some(target_square_index) = attacks.get_lsb_index() {
-        let target_square = Square::new_from_index(target_square_index);
+        let target_square = Square::from_usize(target_square_index).unwrap();
 
         if (*side == Side::White && piece_on_seventh_rank)
             || (*side == Side::Black && piece_on_second_rank)
@@ -384,7 +383,7 @@ fn generate_piece_moves(
     let mut move_list = MoveList::new();
 
     while let Some(target_square_index) = attacks.get_lsb_index() {
-        let target_square = Square::new_from_index(target_square_index);
+        let target_square = Square::from_usize(target_square_index).unwrap();
 
         let move_type = match game.piece_at_square(&target_square) {
             Some(_) => MoveType::Capture,
@@ -689,13 +688,13 @@ mod tests {
             white_attack_table,
             white_attacks,
             &white_game,
-            white_square.as_usize(),
+            white_square.to_usize().unwrap(),
         );
         let black_moves = generate_pawn_moves(
             black_attack_table,
             black_attacks,
             &black_game,
-            black_square.as_usize(),
+            black_square.to_usize().unwrap(),
         );
 
         let white_pawn_push = Move::new(
@@ -754,13 +753,13 @@ mod tests {
             white_attack_table,
             white_attacks,
             &white_game,
-            white_square.as_usize(),
+            white_square.to_usize().unwrap(),
         );
         let black_moves = generate_pawn_moves(
             black_attack_table,
             black_attacks,
             &black_game,
-            black_square.as_usize(),
+            black_square.to_usize().unwrap(),
         );
 
         let white_moves_correct = white_moves.moves.is_empty();
@@ -802,13 +801,13 @@ mod tests {
             white_attack_table,
             white_attacks,
             &white_game,
-            white_square.as_usize(),
+            white_square.to_usize().unwrap(),
         );
         let black_moves = generate_pawn_moves(
             black_attack_table,
             black_attacks,
             &black_game,
-            black_square.as_usize(),
+            black_square.to_usize().unwrap(),
         );
 
         let white_single_pawn_push = Move::new(
@@ -863,13 +862,13 @@ mod tests {
             white_attack_table,
             white_attacks,
             &white_game,
-            white_square.as_usize(),
+            white_square.to_usize().unwrap(),
         );
         let black_moves = generate_pawn_moves(
             black_attack_table,
             black_attacks,
             &black_game,
-            black_square.as_usize(),
+            black_square.to_usize().unwrap(),
         );
 
         let white_moves_correct =
@@ -888,13 +887,13 @@ mod tests {
             white_attack_table,
             white_attacks,
             &white_game,
-            white_square.as_usize(),
+            white_square.to_usize().unwrap(),
         );
         let black_moves = generate_pawn_moves(
             black_attack_table,
             black_attacks,
             &black_game,
-            black_square.as_usize(),
+            black_square.to_usize().unwrap(),
         );
 
         let white_moves_correct = white_moves.moves.is_empty();
@@ -936,13 +935,13 @@ mod tests {
             white_attack_table,
             white_attacks,
             &white_game,
-            white_square.as_usize(),
+            white_square.to_usize().unwrap(),
         );
         let black_moves = generate_pawn_moves(
             black_attack_table,
             black_attacks,
             &black_game,
-            black_square.as_usize(),
+            black_square.to_usize().unwrap(),
         );
 
         let white_capture = Move::new(
@@ -998,13 +997,13 @@ mod tests {
             white_attack_table,
             white_attacks,
             &white_game,
-            white_square.as_usize(),
+            white_square.to_usize().unwrap(),
         );
         let black_moves = generate_pawn_moves(
             black_attack_table,
             black_attacks,
             &black_game,
-            black_square.as_usize(),
+            black_square.to_usize().unwrap(),
         );
 
         let white_promotion_queen = Move::new(
@@ -1120,13 +1119,13 @@ mod tests {
             white_attack_table,
             white_attacks,
             &white_game,
-            white_square.as_usize(),
+            white_square.to_usize().unwrap(),
         );
         let black_moves = generate_pawn_moves(
             black_attack_table,
             black_attacks,
             &black_game,
-            black_square.as_usize(),
+            black_square.to_usize().unwrap(),
         );
 
         let white_en_passant = Move::new(

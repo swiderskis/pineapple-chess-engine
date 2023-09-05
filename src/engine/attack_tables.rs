@@ -1,4 +1,5 @@
-use super::{Bitboard, EnumToInt, Piece, Side, Square};
+use super::{Bitboard, Piece, Side, Square};
+use num_traits::{FromPrimitive, ToPrimitive};
 use strum::IntoEnumIterator;
 
 enum LeaperPiece {
@@ -22,7 +23,7 @@ impl AttackTables {
         let leaper_attack_tables = LeaperAttackTables::initialise();
         let slider_attack_tables = SliderAttackTables::initialise();
 
-        AttackTables {
+        Self {
             leaper_attack_tables,
             slider_attack_tables,
         }
@@ -55,27 +56,30 @@ impl AttackTables {
         match piece {
             Piece::Pawn => match side {
                 Side::White => {
-                    self.leaper_attack_tables.white_pawn_attack_tables[square.as_usize()]
+                    self.leaper_attack_tables.white_pawn_attack_tables[square.to_usize().unwrap()]
                 }
                 Side::Black => {
-                    self.leaper_attack_tables.black_pawn_attack_tables[square.as_usize()]
+                    self.leaper_attack_tables.black_pawn_attack_tables[square.to_usize().unwrap()]
                 }
             },
-            Piece::Knight => self.leaper_attack_tables.knight_attack_tables[square.as_usize()],
+            Piece::Knight => {
+                self.leaper_attack_tables.knight_attack_tables[square.to_usize().unwrap()]
+            }
             Piece::Bishop => {
-                self.slider_attack_tables.bishop_attack_tables[square.as_usize()]
+                self.slider_attack_tables.bishop_attack_tables[square.to_usize().unwrap()]
                     [bishop_magic_index]
             }
             Piece::Rook => {
-                self.slider_attack_tables.rook_attack_tables[square.as_usize()][rook_magic_index]
+                self.slider_attack_tables.rook_attack_tables[square.to_usize().unwrap()]
+                    [rook_magic_index]
             }
             Piece::Queen => {
-                self.slider_attack_tables.bishop_attack_tables[square.as_usize()]
+                self.slider_attack_tables.bishop_attack_tables[square.to_usize().unwrap()]
                     [bishop_magic_index]
-                    | self.slider_attack_tables.rook_attack_tables[square.as_usize()]
+                    | self.slider_attack_tables.rook_attack_tables[square.to_usize().unwrap()]
                         [rook_magic_index]
             }
-            Piece::King => self.leaper_attack_tables.king_attack_tables[square.as_usize()],
+            Piece::King => self.leaper_attack_tables.king_attack_tables[square.to_usize().unwrap()],
         }
     }
 }
@@ -118,7 +122,7 @@ impl LeaperAttackTables {
 
             bitboard.set_bit(&square);
 
-            attack_tables[square.as_usize()] = match piece {
+            attack_tables[square.to_usize().unwrap()] = match piece {
                 LeaperPiece::Pawn => {
                     match side {
                         Side::White => {
@@ -175,35 +179,39 @@ impl SliderAttackTables {
         let magic_numbers = MagicNumbers::initialise();
 
         for square in Square::iter() {
-            let bishop_occupancy_indices = 1 << bishop_attack_masks[square.as_usize()].count_bits();
+            let bishop_occupancy_indices =
+                1 << bishop_attack_masks[square.to_usize().unwrap()].count_bits();
 
             for index in 0..bishop_occupancy_indices {
-                let occupancy = Self::set_occupancy(index, bishop_attack_masks[square.as_usize()]);
+                let occupancy =
+                    Self::set_occupancy(index, bishop_attack_masks[square.to_usize().unwrap()]);
 
                 let magic_index = magic_numbers.generate_magic_index(
                     occupancy,
-                    bishop_attack_masks[square.as_usize()],
+                    bishop_attack_masks[square.to_usize().unwrap()],
                     &square,
                     &SliderPiece::Bishop,
                 );
 
-                bishop_attack_tables[square.as_usize()][magic_index] =
+                bishop_attack_tables[square.to_usize().unwrap()][magic_index] =
                     Self::generate_attack_table(occupancy, &SliderPiece::Bishop, &square);
             }
 
-            let rook_occupancy_indices = 1 << rook_attack_masks[square.as_usize()].count_bits();
+            let rook_occupancy_indices =
+                1 << rook_attack_masks[square.to_usize().unwrap()].count_bits();
 
             for index in 0..rook_occupancy_indices {
-                let occupancy = Self::set_occupancy(index, rook_attack_masks[square.as_usize()]);
+                let occupancy =
+                    Self::set_occupancy(index, rook_attack_masks[square.to_usize().unwrap()]);
 
                 let magic_index = magic_numbers.generate_magic_index(
                     occupancy,
-                    rook_attack_masks[square.as_usize()],
+                    rook_attack_masks[square.to_usize().unwrap()],
                     &square,
                     &SliderPiece::Rook,
                 );
 
-                rook_attack_tables[square.as_usize()][magic_index] =
+                rook_attack_tables[square.to_usize().unwrap()][magic_index] =
                     Self::generate_attack_table(occupancy, &SliderPiece::Rook, &square);
             }
         }
@@ -228,41 +236,41 @@ impl SliderAttackTables {
             match piece {
                 SliderPiece::Bishop => {
                     for (rank, file) in ((piece_rank + 1)..7).zip((piece_file + 1)..7) {
-                        attack_mask.set_bit(&Square::new_from_rf(rank, file));
+                        attack_mask.set_bit(&Square::from_rank_file(rank, file));
                     }
 
                     for (rank, file) in ((1..piece_rank).rev()).zip((piece_file + 1)..7) {
-                        attack_mask.set_bit(&Square::new_from_rf(rank, file));
+                        attack_mask.set_bit(&Square::from_rank_file(rank, file));
                     }
 
                     for (rank, file) in ((piece_rank + 1)..7).zip((1..piece_file).rev()) {
-                        attack_mask.set_bit(&Square::new_from_rf(rank, file));
+                        attack_mask.set_bit(&Square::from_rank_file(rank, file));
                     }
 
                     for (rank, file) in ((1..piece_rank).rev()).zip((1..piece_file).rev()) {
-                        attack_mask.set_bit(&Square::new_from_rf(rank, file));
+                        attack_mask.set_bit(&Square::from_rank_file(rank, file));
                     }
 
-                    attack_masks[square.as_usize()] = attack_mask;
+                    attack_masks[square.to_usize().unwrap()] = attack_mask;
                 }
                 SliderPiece::Rook => {
                     for rank in (piece_rank + 1)..7 {
-                        attack_mask.set_bit(&Square::new_from_rf(rank, piece_file));
+                        attack_mask.set_bit(&Square::from_rank_file(rank, piece_file));
                     }
 
                     for rank in (1..piece_rank).rev() {
-                        attack_mask.set_bit(&Square::new_from_rf(rank, piece_file));
+                        attack_mask.set_bit(&Square::from_rank_file(rank, piece_file));
                     }
 
                     for file in (piece_file + 1)..7 {
-                        attack_mask.set_bit(&Square::new_from_rf(piece_rank, file));
+                        attack_mask.set_bit(&Square::from_rank_file(piece_rank, file));
                     }
 
                     for file in (1..piece_file).rev() {
-                        attack_mask.set_bit(&Square::new_from_rf(piece_rank, file));
+                        attack_mask.set_bit(&Square::from_rank_file(piece_rank, file));
                     }
 
-                    attack_masks[square.as_usize()] = attack_mask;
+                    attack_masks[square.to_usize().unwrap()] = attack_mask;
                 }
             }
         }
@@ -279,7 +287,7 @@ impl SliderAttackTables {
         match piece {
             SliderPiece::Bishop => {
                 for (rank, file) in ((piece_rank + 1)..8).zip((piece_file + 1)..8) {
-                    let square = &Square::new_from_rf(rank, file);
+                    let square = &Square::from_rank_file(rank, file);
 
                     attack_table.set_bit(square);
 
@@ -289,7 +297,7 @@ impl SliderAttackTables {
                 }
 
                 for (rank, file) in ((0..piece_rank).rev()).zip((piece_file + 1)..8) {
-                    let square = &Square::new_from_rf(rank, file);
+                    let square = &Square::from_rank_file(rank, file);
 
                     attack_table.set_bit(square);
 
@@ -299,7 +307,7 @@ impl SliderAttackTables {
                 }
 
                 for (rank, file) in ((piece_rank + 1)..8).zip((0..piece_file).rev()) {
-                    let square = &Square::new_from_rf(rank, file);
+                    let square = &Square::from_rank_file(rank, file);
 
                     attack_table.set_bit(square);
 
@@ -309,7 +317,7 @@ impl SliderAttackTables {
                 }
 
                 for (rank, file) in ((0..piece_rank).rev()).zip((0..piece_file).rev()) {
-                    let square = &Square::new_from_rf(rank, file);
+                    let square = &Square::from_rank_file(rank, file);
 
                     attack_table.set_bit(square);
 
@@ -320,7 +328,7 @@ impl SliderAttackTables {
             }
             SliderPiece::Rook => {
                 for rank in (piece_rank + 1)..8 {
-                    let square = &Square::new_from_rf(rank, piece_file);
+                    let square = &Square::from_rank_file(rank, piece_file);
 
                     attack_table.set_bit(square);
 
@@ -330,7 +338,7 @@ impl SliderAttackTables {
                 }
 
                 for rank in (0..piece_rank).rev() {
-                    let square = &Square::new_from_rf(rank, piece_file);
+                    let square = &Square::from_rank_file(rank, piece_file);
 
                     attack_table.set_bit(square);
 
@@ -340,7 +348,7 @@ impl SliderAttackTables {
                 }
 
                 for file in (piece_file + 1)..8 {
-                    let square = &Square::new_from_rf(piece_rank, file);
+                    let square = &Square::from_rank_file(piece_rank, file);
 
                     attack_table.set_bit(square);
 
@@ -350,7 +358,7 @@ impl SliderAttackTables {
                 }
 
                 for file in (0..piece_file).rev() {
-                    let square = &Square::new_from_rf(piece_rank, file);
+                    let square = &Square::from_rank_file(piece_rank, file);
 
                     attack_table.set_bit(square);
 
@@ -369,7 +377,7 @@ impl SliderAttackTables {
         let mut count = 0;
 
         while let Some(square_index) = attack_mask.get_lsb_index() {
-            let lsb_square = Square::new_from_index(square_index);
+            let lsb_square = Square::from_usize(square_index).unwrap();
 
             if index & (1 << count) != 0 {
                 occupancy.set_bit(&lsb_square);
@@ -384,8 +392,8 @@ impl SliderAttackTables {
 
     fn attack_mask(&self, piece: &SliderPiece, square: &Square) -> Bitboard {
         match piece {
-            SliderPiece::Bishop => self.bishop_attack_masks[square.as_usize()],
-            SliderPiece::Rook => self.rook_attack_masks[square.as_usize()],
+            SliderPiece::Bishop => self.bishop_attack_masks[square.to_usize().unwrap()],
+            SliderPiece::Rook => self.rook_attack_masks[square.to_usize().unwrap()],
         }
     }
 }
@@ -566,8 +574,8 @@ impl MagicNumbers {
 
     fn magic_number(&self, piece: &SliderPiece, square: &Square) -> u64 {
         match piece {
-            SliderPiece::Bishop => self.bishop_magic_numbers[square.as_usize()],
-            SliderPiece::Rook => self.rook_magic_numbers[square.as_usize()],
+            SliderPiece::Bishop => self.bishop_magic_numbers[square.to_usize().unwrap()],
+            SliderPiece::Rook => self.rook_magic_numbers[square.to_usize().unwrap()],
         }
     }
 
@@ -604,7 +612,7 @@ impl MagicNumbers {
         let slider_attack_tables = SliderAttackTables::initialise();
 
         for square in Square::iter() {
-            rook_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
+            rook_magic_numbers[square.to_usize().unwrap()] = Self::_generate_magic_number(
                 random_state,
                 slider_attack_tables.attack_mask(&SliderPiece::Rook, &square),
                 &SliderPiece::Rook,
@@ -613,7 +621,7 @@ impl MagicNumbers {
         }
 
         for square in Square::iter() {
-            bishop_magic_numbers[square.as_usize()] = Self::_generate_magic_number(
+            bishop_magic_numbers[square.to_usize().unwrap()] = Self::_generate_magic_number(
                 random_state,
                 slider_attack_tables.attack_mask(&SliderPiece::Bishop, &square),
                 &SliderPiece::Bishop,
