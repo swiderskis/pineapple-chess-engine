@@ -2,28 +2,30 @@ mod attack_tables;
 mod game;
 mod moves;
 
-use self::{attack_tables::AttackTables, game::Game, moves::MoveFlag};
+use self::{game::Game, moves::MoveFlag};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive, Unsigned};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
-static _TRICKY_POSITION: &str =
+const _TRICKY_POSITION: &str =
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
-static CUSTOM_POSITION: &str =
+const CUSTOM_POSITION: &str =
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBqPPP/R3K2R w KQkq - 0 1";
 
 pub fn position() {
     let mut game = Game::initialise(CUSTOM_POSITION);
 
-    let attack_tables = AttackTables::initialise();
-
-    let moves = moves::generate_moves(&attack_tables, &game);
+    let moves = moves::generate_moves(&attack_tables::ATTACK_TABLES, &game);
 
     game.print();
 
-    let _ = game.make_move(&attack_tables, &moves.moves()[0], MoveFlag::All);
+    let _ = game.make_move(
+        &attack_tables::ATTACK_TABLES,
+        &moves.moves()[0],
+        MoveFlag::All,
+    );
 }
 
 #[derive(Clone, Copy, PartialEq)]

@@ -549,7 +549,10 @@ impl CastlingType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::moves::{self, MoveList};
+    use crate::engine::{
+        attack_tables::ATTACK_TABLES,
+        moves::{self, MoveList},
+    };
 
     fn perft(
         attack_tables: &AttackTables,
@@ -580,12 +583,11 @@ mod tests {
     #[ignore]
     fn perft_start_position() {
         let mut game = Game::initialise("startpos");
-        let attack_tables = AttackTables::initialise();
-        let moves = moves::generate_moves(&attack_tables, &game);
+        let moves = moves::generate_moves(&ATTACK_TABLES, &game);
 
         let mut nodes = 0;
 
-        perft(&attack_tables, &mut game, &moves, &mut nodes, 6);
+        perft(&ATTACK_TABLES, &mut game, &moves, &mut nodes, 6);
 
         assert_eq!(nodes, 119_060_324);
     }
@@ -596,12 +598,11 @@ mod tests {
         let mut game = Game::initialise(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         );
-        let attack_tables = AttackTables::initialise();
-        let moves = moves::generate_moves(&attack_tables, &game);
+        let moves = moves::generate_moves(&ATTACK_TABLES, &game);
 
         let mut nodes = 0;
 
-        perft(&attack_tables, &mut game, &moves, &mut nodes, 5);
+        perft(&ATTACK_TABLES, &mut game, &moves, &mut nodes, 5);
 
         assert_eq!(nodes, 193_690_690);
     }
