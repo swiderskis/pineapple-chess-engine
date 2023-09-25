@@ -1,5 +1,5 @@
 use super::{
-    attack_tables::AttackTables,
+    attack_tables,
     moves::{Move, MoveFlag, MoveType},
     Bitboard, Piece, Side, Square,
 };
@@ -141,12 +141,7 @@ impl Game {
         }
     }
 
-    pub fn make_move(
-        &mut self,
-        attack_tables: &AttackTables,
-        mv: &Move,
-        move_flag: MoveFlag,
-    ) -> Result<(), ()> {
+    pub fn make_move(&mut self, mv: &Move, move_flag: MoveFlag) -> Result<(), ()> {
         if move_flag == MoveFlag::Capture && !mv.capture() {
             return Err(());
         }
@@ -273,8 +268,7 @@ impl Game {
 
         if let Some(index) = king_square {
             let king_square = Square::from_usize(index).unwrap();
-            let own_king_in_check =
-                game_clone.is_square_attacked(attack_tables, opponent_side, &king_square);
+            let own_king_in_check = game_clone.is_square_attacked(opponent_side, &king_square);
 
             if own_king_in_check {
                 return Err(());
@@ -311,14 +305,9 @@ impl Game {
         println!("Castling rights: {}", self.castling_rights.as_string());
     }
 
-    pub fn is_square_attacked(
-        &self,
-        attack_tables: &AttackTables,
-        attacking_side: &Side,
-        square: &Square,
-    ) -> bool {
+    pub fn is_square_attacked(&self, attacking_side: &Side, square: &Square) -> bool {
         for piece in Piece::iter() {
-            let piece_attacks_square = attack_tables.attack_table(
+            let piece_attacks_square = attack_tables::ATTACK_TABLES.attack_table(
                 self.board(None),
                 &piece,
                 &attacking_side.opponent_side(),
@@ -549,18 +538,9 @@ impl CastlingType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::{
-        attack_tables::ATTACK_TABLES,
-        moves::{self, MoveList},
-    };
+    use crate::engine::moves::{self, MoveList};
 
-    fn perft(
-        attack_tables: &AttackTables,
-        game: &mut Game,
-        moves: &MoveList,
-        nodes: &mut i32,
-        depth: i32,
-    ) {
+    fn perft(game: &mut Game, moves: &MoveList, nodes: &mut i32, depth: i32) {
         if depth == 0 {
             *nodes += 1;
             return;
@@ -569,12 +549,9 @@ mod tests {
         for mv in moves.moves() {
             let mut game_clone = game.clone();
 
-            if game_clone
-                .make_move(attack_tables, mv, MoveFlag::All)
-                .is_ok()
-            {
-                let moves = &moves::generate_moves(attack_tables, &game_clone);
-                perft(attack_tables, &mut game_clone, moves, nodes, depth - 1);
+            if game_clone.make_move(mv, MoveFlag::All).is_ok() {
+                let moves = &moves::generate_moves(&game_clone);
+                perft(&mut game_clone, moves, nodes, depth - 1);
             }
         }
     }
@@ -583,11 +560,11 @@ mod tests {
     #[ignore]
     fn perft_start_position() {
         let mut game = Game::initialise("startpos");
-        let moves = moves::generate_moves(&ATTACK_TABLES, &game);
+        let moves = moves::generate_moves(&game);
 
         let mut nodes = 0;
 
-        perft(&ATTACK_TABLES, &mut game, &moves, &mut nodes, 6);
+        perft(&mut game, &moves, &mut nodes, 6);
 
         assert_eq!(nodes, 119_060_324);
     }
@@ -598,11 +575,11 @@ mod tests {
         let mut game = Game::initialise(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         );
-        let moves = moves::generate_moves(&ATTACK_TABLES, &game);
+        let moves = moves::generate_moves(&game);
 
         let mut nodes = 0;
 
-        perft(&ATTACK_TABLES, &mut game, &moves, &mut nodes, 5);
+        perft(&mut game, &moves, &mut nodes, 5);
 
         assert_eq!(nodes, 193_690_690);
     }

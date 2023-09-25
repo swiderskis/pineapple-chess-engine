@@ -17,15 +17,11 @@ const CUSTOM_POSITION: &str =
 pub fn position() {
     let mut game = Game::initialise(CUSTOM_POSITION);
 
-    let moves = moves::generate_moves(&attack_tables::ATTACK_TABLES, &game);
+    let moves = moves::generate_moves(&game);
 
     game.print();
 
-    let _ = game.make_move(
-        &attack_tables::ATTACK_TABLES,
-        &moves.moves()[0],
-        MoveFlag::All,
-    );
+    let _ = game.make_move(&moves.moves()[0], MoveFlag::All);
 }
 
 #[derive(Clone, Copy, PartialEq)]

@@ -176,20 +176,8 @@ impl AttackTables {
         side: &Side,
         square: &Square,
     ) -> Bitboard {
-        let bishop_magic_index = MAGIC_NUMBERS.get_magic_index(
-            board,
-            &SliderPiece::Bishop,
-            &MAGIC_NUMBERS,
-            &self.slider_attack_tables,
-            square,
-        );
-        let rook_magic_index = MAGIC_NUMBERS.get_magic_index(
-            board,
-            &SliderPiece::Rook,
-            &MAGIC_NUMBERS,
-            &self.slider_attack_tables,
-            square,
-        );
+        let bishop_magic_index = MAGIC_NUMBERS.get_magic_index(board, &SliderPiece::Bishop, square);
+        let rook_magic_index = MAGIC_NUMBERS.get_magic_index(board, &SliderPiece::Rook, square);
 
         match piece {
             Piece::Pawn => match side {
@@ -576,24 +564,23 @@ impl MagicNumbers {
         }
     }
 
-    fn get_magic_index(
-        &self,
-        board: Bitboard,
-        piece: &SliderPiece,
-        magic_numbers: &MagicNumbers,
-        slider_attack_tables: &SliderAttackTables,
-        square: &Square,
-    ) -> usize {
+    fn get_magic_index(&self, board: Bitboard, piece: &SliderPiece, square: &Square) -> usize {
         let mut magic_index = board;
 
-        magic_index &= slider_attack_tables.attack_mask(piece, square);
+        magic_index &= ATTACK_TABLES
+            .slider_attack_tables
+            .attack_mask(piece, square);
         magic_index = Bitboard::new(
             magic_index
                 .bitboard
-                .overflowing_mul(magic_numbers.magic_number(piece, square))
+                .overflowing_mul(self.magic_number(piece, square))
                 .0,
         );
-        magic_index >>= 64 - slider_attack_tables.attack_mask(piece, square).count_bits();
+        magic_index >>= 64
+            - ATTACK_TABLES
+                .slider_attack_tables
+                .attack_mask(piece, square)
+                .count_bits();
 
         magic_index.bitboard as usize
     }
