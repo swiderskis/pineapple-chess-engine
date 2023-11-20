@@ -21,7 +21,7 @@ pub fn position() {
 
     game.print();
 
-    let _ = game.make_move(&moves.moves()[0], MoveFlag::All);
+    let _ = game.make_move(&moves[0], MoveFlag::All);
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -34,7 +34,7 @@ impl Bitboard {
         Self { bitboard }
     }
 
-    fn from_square(square: &Square) -> Self {
+    fn from_square(square: Square) -> Self {
         let mut bitboard = Self::new(0);
 
         bitboard.set_bit(square);
@@ -42,15 +42,15 @@ impl Bitboard {
         bitboard
     }
 
-    fn bit_occupied(&self, square: &Square) -> bool {
+    fn bit_occupied(&self, square: Square) -> bool {
         self.bitboard & (1 << square.to_usize().unwrap()) != 0
     }
 
-    fn set_bit(&mut self, square: &Square) {
-        self.bitboard |= 1 << square.to_usize().unwrap()
+    fn set_bit(&mut self, square: Square) {
+        self.bitboard |= 1 << square.to_usize().unwrap();
     }
 
-    fn pop_bit(&mut self, square: &Square) {
+    fn pop_bit(&mut self, square: Square) {
         self.bitboard &= !(1 << square.to_usize().unwrap());
     }
 
@@ -77,7 +77,7 @@ impl Bitboard {
                 print!("{}   ", ((64 - square.to_usize().unwrap()) / 8));
             }
 
-            print!("{} ", if self.bit_occupied(&square) { 1 } else { 0 });
+            print!("{} ", if self.bit_occupied(square) { 1 } else { 0 });
 
             if square.file() == 7 {
                 println!();
@@ -169,7 +169,7 @@ impl<T: Unsigned + AsPrimitive<u64>> ShrAssign<T> for Bitboard {
     }
 }
 
-#[derive(Debug, Display, EnumIter, FromPrimitive, PartialEq, ToPrimitive)]
+#[derive(Clone, Copy, Debug, Display, EnumIter, FromPrimitive, PartialEq, ToPrimitive)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -180,7 +180,7 @@ pub enum Piece {
 }
 
 impl Piece {
-    fn to_char(&self, side: &Side) -> char {
+    fn to_char(self, side: Side) -> char {
         match side {
             Side::White => match self {
                 Self::Pawn => 'P',
@@ -202,7 +202,7 @@ impl Piece {
     }
 }
 
-#[derive(Clone, Debug, Display, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, PartialEq)]
 pub enum Side {
     White,
     Black,
@@ -217,7 +217,9 @@ impl Side {
     }
 }
 
-#[derive(Clone, Debug, Display, EnumIter, EnumString, FromPrimitive, PartialEq, ToPrimitive)]
+#[derive(
+    Clone, Copy, Debug, Display, EnumIter, EnumString, FromPrimitive, PartialEq, ToPrimitive,
+)]
 pub enum Square {
     A8,
     B8,
@@ -298,7 +300,7 @@ impl Square {
         self.to_usize().unwrap() % 8
     }
 
-    fn to_lowercase_string(&self) -> String {
+    fn _to_lowercase_string(&self) -> String {
         self.to_string().to_lowercase()
     }
 }
@@ -313,9 +315,9 @@ mod tests {
         let mut bitboard2 = Bitboard::new(0);
         let mut bitboard3 = Bitboard::new(0);
 
-        bitboard1.set_bit(&Square::H2);
-        bitboard2.set_bit(&Square::G6);
-        bitboard3.set_bit(&Square::B4);
+        bitboard1.set_bit(Square::H2);
+        bitboard2.set_bit(Square::G6);
+        bitboard3.set_bit(Square::B4);
 
         assert_eq!(
             bitboard1.bitboard,
@@ -337,17 +339,17 @@ mod tests {
         let mut bitboard2 = Bitboard::new(0);
         let mut bitboard3 = Bitboard::new(0);
 
-        bitboard1.set_bit(&Square::G5);
-        bitboard1.set_bit(&Square::A8);
-        bitboard1.pop_bit(&Square::G5);
+        bitboard1.set_bit(Square::G5);
+        bitboard1.set_bit(Square::A8);
+        bitboard1.pop_bit(Square::G5);
 
-        bitboard2.set_bit(&Square::C1);
-        bitboard2.set_bit(&Square::A7);
-        bitboard2.pop_bit(&Square::C1);
+        bitboard2.set_bit(Square::C1);
+        bitboard2.set_bit(Square::A7);
+        bitboard2.pop_bit(Square::C1);
 
-        bitboard3.set_bit(&Square::C4);
-        bitboard3.set_bit(&Square::B8);
-        bitboard3.pop_bit(&Square::C4);
+        bitboard3.set_bit(Square::C4);
+        bitboard3.set_bit(Square::B8);
+        bitboard3.pop_bit(Square::C4);
 
         assert_eq!(
             bitboard1.bitboard,
@@ -368,11 +370,11 @@ mod tests {
         let mut bitboard1 = Bitboard::new(0);
         let mut bitboard2 = Bitboard::new(0);
 
-        bitboard1.set_bit(&Square::F1);
-        bitboard1.pop_bit(&Square::F1);
-        bitboard1.pop_bit(&Square::F1);
+        bitboard1.set_bit(Square::F1);
+        bitboard1.pop_bit(Square::F1);
+        bitboard1.pop_bit(Square::F1);
 
-        bitboard2.pop_bit(&Square::G2);
+        bitboard2.pop_bit(Square::G2);
 
         assert_eq!(bitboard1.bitboard, 0);
         assert_eq!(bitboard2.bitboard, 0);

@@ -3,14 +3,14 @@ use std::io;
 
 struct Input<'a> {
     command: &'a str,
-    arguments: Vec<&'a str>,
+    _arguments: Vec<&'a str>,
 }
 
 impl<'a> Input<'a> {
     fn new(input_vec: Vec<&'a str>) -> Self {
         Self {
             command: input_vec[0],
-            arguments: input_vec[1..].to_vec(),
+            _arguments: input_vec[1..].to_vec(),
         }
     }
 }

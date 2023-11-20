@@ -56,51 +56,51 @@ impl Game {
         for character in fen[0].chars() {
             match character {
                 'P' => {
-                    white_pawns.set_bit(&Square::from_usize(square_index).unwrap());
+                    white_pawns.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'N' => {
-                    white_knights.set_bit(&Square::from_usize(square_index).unwrap());
+                    white_knights.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'B' => {
-                    white_bishops.set_bit(&Square::from_usize(square_index).unwrap());
+                    white_bishops.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'R' => {
-                    white_rooks.set_bit(&Square::from_usize(square_index).unwrap());
+                    white_rooks.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'Q' => {
-                    white_queens.set_bit(&Square::from_usize(square_index).unwrap());
+                    white_queens.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'K' => {
-                    white_king.set_bit(&Square::from_usize(square_index).unwrap());
+                    white_king.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'p' => {
-                    black_pawns.set_bit(&Square::from_usize(square_index).unwrap());
+                    black_pawns.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'n' => {
-                    black_knights.set_bit(&Square::from_usize(square_index).unwrap());
+                    black_knights.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'b' => {
-                    black_bishops.set_bit(&Square::from_usize(square_index).unwrap());
+                    black_bishops.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'r' => {
-                    black_rooks.set_bit(&Square::from_usize(square_index).unwrap());
+                    black_rooks.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'q' => {
-                    black_queens.set_bit(&Square::from_usize(square_index).unwrap());
+                    black_queens.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 'k' => {
-                    black_king.set_bit(&Square::from_usize(square_index).unwrap());
+                    black_king.set_bit(Square::from_usize(square_index).unwrap());
                     square_index += 1;
                 }
                 '0'..='9' => square_index += character as usize - '0' as usize,
@@ -148,21 +148,21 @@ impl Game {
 
         let mut game_clone = self.clone();
 
-        let side = &game_clone.side_to_move.clone();
-        let opponent_side = &game_clone.side_to_move.opponent_side().clone();
+        let side = game_clone.side_to_move;
+        let opponent_side = game_clone.side_to_move.opponent_side();
 
         game_clone
-            .mut_piece_bitboard(&mv.piece(), side)
-            .pop_bit(&mv.source_square());
+            .mut_piece_bitboard(mv.piece(), side)
+            .pop_bit(mv.source_square());
 
         if let Some(promoted_piece) = mv.promoted_piece() {
             game_clone
-                .mut_piece_bitboard(&promoted_piece, side)
-                .set_bit(&mv.target_square());
+                .mut_piece_bitboard(promoted_piece, side)
+                .set_bit(mv.target_square());
         } else {
             game_clone
-                .mut_piece_bitboard(&mv.piece(), side)
-                .set_bit(&mv.target_square());
+                .mut_piece_bitboard(mv.piece(), side)
+                .set_bit(mv.target_square());
         }
 
         let target_square_index = mv.target_square().to_usize().unwrap();
@@ -171,8 +171,8 @@ impl Game {
             MoveType::Capture => {
                 for piece in Piece::iter() {
                     game_clone
-                        .mut_piece_bitboard(&piece, opponent_side)
-                        .pop_bit(&mv.target_square());
+                        .mut_piece_bitboard(piece, opponent_side)
+                        .pop_bit(mv.target_square());
                 }
             }
             MoveType::DoublePawnPush => {
@@ -192,8 +192,8 @@ impl Game {
                 .unwrap();
 
                 game_clone
-                    .mut_piece_bitboard(&Piece::Pawn, opponent_side)
-                    .pop_bit(&capture_square);
+                    .mut_piece_bitboard(Piece::Pawn, opponent_side)
+                    .pop_bit(capture_square);
             }
             MoveType::Castling => {
                 let (a_file_square, c_file_square, d_file_square, f_file_square, h_file_square) =
@@ -204,18 +204,18 @@ impl Game {
 
                 if mv.target_square() == c_file_square {
                     game_clone
-                        .mut_piece_bitboard(&Piece::Rook, side)
-                        .pop_bit(&a_file_square);
+                        .mut_piece_bitboard(Piece::Rook, side)
+                        .pop_bit(a_file_square);
                     game_clone
-                        .mut_piece_bitboard(&Piece::Rook, side)
-                        .set_bit(&d_file_square);
+                        .mut_piece_bitboard(Piece::Rook, side)
+                        .set_bit(d_file_square);
                 } else {
                     game_clone
-                        .mut_piece_bitboard(&Piece::Rook, side)
-                        .pop_bit(&h_file_square);
+                        .mut_piece_bitboard(Piece::Rook, side)
+                        .pop_bit(h_file_square);
                     game_clone
-                        .mut_piece_bitboard(&Piece::Rook, side)
-                        .set_bit(&f_file_square);
+                        .mut_piece_bitboard(Piece::Rook, side)
+                        .set_bit(f_file_square);
                 }
             }
             _ => {}
@@ -262,13 +262,11 @@ impl Game {
             },
         }
 
-        let king_square = game_clone
-            .piece_bitboard(&Piece::King, side)
-            .get_lsb_index();
+        let king_square = game_clone.piece_bitboard(Piece::King, side).get_lsb_index();
 
         if let Some(index) = king_square {
             let king_square = Square::from_usize(index).unwrap();
-            let own_king_in_check = game_clone.is_square_attacked(opponent_side, &king_square);
+            let own_king_in_check = game_clone.is_square_attacked(opponent_side, king_square);
 
             if own_king_in_check {
                 return Err(());
@@ -287,8 +285,8 @@ impl Game {
                 print!("{}   ", (64 - square.to_usize().unwrap()) / 8);
             }
 
-            match self.piece_at_square(&square) {
-                Some((piece, side)) => print!("{} ", piece.to_char(&side)),
+            match self.piece_at_square(square) {
+                Some((piece, side)) => print!("{} ", piece.to_char(side)),
                 None => print!(". "),
             }
 
@@ -305,14 +303,14 @@ impl Game {
         println!("Castling rights: {}", self.castling_rights.as_string());
     }
 
-    pub fn is_square_attacked(&self, attacking_side: &Side, square: &Square) -> bool {
+    pub fn is_square_attacked(&self, attacking_side: Side, square: Square) -> bool {
         for piece in Piece::iter() {
             let piece_attacks_square = attack_tables::ATTACK_TABLES.attack_table(
                 self.board(None),
-                &piece,
-                &attacking_side.opponent_side(),
+                piece,
+                attacking_side.opponent_side(),
                 square,
-            ) & self.piece_bitboard(&piece, attacking_side)
+            ) & self.piece_bitboard(piece, attacking_side)
                 != 0u64;
 
             if piece_attacks_square {
@@ -323,7 +321,7 @@ impl Game {
         false
     }
 
-    pub fn side_bitboards(&self, side: &Side) -> [(Bitboard, Piece); 6] {
+    pub fn side_bitboards(&self, side: Side) -> [(Bitboard, Piece); 6] {
         match side {
             Side::White => [
                 (self.white_pawns, Piece::Pawn),
@@ -344,7 +342,7 @@ impl Game {
         }
     }
 
-    pub fn board(&self, side: Option<&Side>) -> Bitboard {
+    pub fn board(&self, side: Option<Side>) -> Bitboard {
         match side {
             Some(side) => match side {
                 Side::White => {
@@ -381,7 +379,7 @@ impl Game {
         }
     }
 
-    pub fn piece_at_square(&self, square: &Square) -> Option<(Piece, Side)> {
+    pub fn piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
         for (bitboard, piece, side) in self.piece_bitboards() {
             if bitboard.bit_occupied(square) {
                 return Some((piece, side));
@@ -391,12 +389,12 @@ impl Game {
         None
     }
 
-    pub fn side_to_move(&self) -> &Side {
-        &self.side_to_move
+    pub fn side_to_move(&self) -> Side {
+        self.side_to_move
     }
 
-    pub fn en_passant_square(&self) -> &Option<Square> {
-        &self.en_passant_square
+    pub fn en_passant_square(&self) -> Option<Square> {
+        self.en_passant_square
     }
 
     pub fn castling_type_allowed(&self, castling_type: &CastlingType) -> bool {
@@ -420,7 +418,7 @@ impl Game {
         ]
     }
 
-    fn piece_bitboard(&self, piece: &Piece, side: &Side) -> Bitboard {
+    fn piece_bitboard(&self, piece: Piece, side: Side) -> Bitboard {
         match side {
             Side::White => match piece {
                 Piece::Pawn => self.white_pawns,
@@ -441,7 +439,7 @@ impl Game {
         }
     }
 
-    fn mut_piece_bitboard(&mut self, piece: &Piece, side: &Side) -> &mut Bitboard {
+    fn mut_piece_bitboard(&mut self, piece: Piece, side: Side) -> &mut Bitboard {
         match side {
             Side::White => match piece {
                 Piece::Pawn => &mut self.white_pawns,
@@ -516,7 +514,7 @@ impl CastlingRights {
     }
 }
 
-#[derive(ToPrimitive)]
+#[derive(Clone, Copy, ToPrimitive)]
 pub enum CastlingType {
     WhiteShort = 0b1000,
     WhiteLong = 0b0100,
@@ -525,7 +523,7 @@ pub enum CastlingType {
 }
 
 impl CastlingType {
-    pub fn move_string(&self) -> &str {
+    pub fn _move_string(&self) -> &str {
         match self {
             Self::WhiteShort => "e1g1",
             Self::WhiteLong => "e1c1",
@@ -538,19 +536,20 @@ impl CastlingType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::moves::{self, MoveList};
+    use crate::engine::moves::{self};
 
-    fn perft(game: &mut Game, moves: &MoveList, nodes: &mut i32, depth: i32) {
+    fn perft(game: &mut Game, moves: &Vec<Move>, nodes: &mut i32, depth: i32) {
         if depth == 0 {
             *nodes += 1;
             return;
         }
 
-        for mv in moves.moves() {
+        for mv in moves {
             let mut game_clone = game.clone();
 
             if game_clone.make_move(mv, MoveFlag::All).is_ok() {
                 let moves = &moves::generate_moves(&game_clone);
+
                 perft(&mut game_clone, moves, nodes, depth - 1);
             }
         }
