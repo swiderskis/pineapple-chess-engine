@@ -78,7 +78,7 @@ pub fn position() {
     let mut promotions = 0;
     let mut castles = 0;
 
-    let depth = 5;
+    let depth = 4;
 
     let now = Instant::now();
 

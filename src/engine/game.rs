@@ -169,6 +169,23 @@ impl Game {
 
         match mv.move_type() {
             MoveType::Capture => {
+                let (a_file_square, h_file_square) = match opponent_side {
+                    Side::White => (Square::A1, Square::H1),
+                    Side::Black => (Square::A8, Square::H8),
+                };
+                let (short_castle, long_castle) = match opponent_side {
+                    Side::White => (CastlingType::WhiteShort, CastlingType::WhiteLong),
+                    Side::Black => (CastlingType::BlackShort, CastlingType::BlackLong),
+                };
+
+                if mv.target_square() == a_file_square {
+                    game_clone.castling_rights.remove_castling_type(long_castle)
+                } else if mv.target_square() == h_file_square {
+                    game_clone
+                        .castling_rights
+                        .remove_castling_type(short_castle)
+                }
+
                 for piece in Piece::iter() {
                     game_clone
                         .mut_piece_bitboard(piece, opponent_side)
@@ -285,7 +302,7 @@ impl Game {
                 print!("{}   ", (64 - square.to_usize().unwrap()) / 8);
             }
 
-            match self.piece_at_square(square) {
+            match self._piece_at_square(square) {
                 Some((piece, side)) => print!("{} ", piece._to_char(side)),
                 None => print!(". "),
             }
@@ -379,7 +396,7 @@ impl Game {
         }
     }
 
-    pub fn piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
+    pub fn _piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
         for (bitboard, piece, side) in self._piece_bitboards() {
             if bitboard.bit_occupied(square) {
                 return Some((piece, side));

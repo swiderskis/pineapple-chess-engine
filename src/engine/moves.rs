@@ -291,44 +291,31 @@ fn generate_castling_moves(game: &Game) -> Vec<Move> {
     let side = game.side_to_move();
     let opponent_side = side.opponent_side();
 
-    let (
-        a_file_square,
-        b_file_square,
-        c_file_square,
-        d_file_square,
-        e_file_square,
-        f_file_square,
-        g_file_square,
-        h_file_square,
-    ) = match side {
-        Side::White => (
-            Square::A1,
-            Square::B1,
-            Square::C1,
-            Square::D1,
-            Square::E1,
-            Square::F1,
-            Square::G1,
-            Square::H1,
-        ),
-        Side::Black => (
-            Square::A8,
-            Square::B8,
-            Square::C8,
-            Square::D8,
-            Square::E8,
-            Square::F8,
-            Square::G8,
-            Square::H8,
-        ),
-    };
+    let (b_file_square, c_file_square, d_file_square, e_file_square, f_file_square, g_file_square) =
+        match side {
+            Side::White => (
+                Square::B1,
+                Square::C1,
+                Square::D1,
+                Square::E1,
+                Square::F1,
+                Square::G1,
+            ),
+            Side::Black => (
+                Square::B8,
+                Square::C8,
+                Square::D8,
+                Square::E8,
+                Square::F8,
+                Square::G8,
+            ),
+        };
     let (short_castle, long_castle) = match side {
         Side::White => (CastlingType::WhiteShort, CastlingType::WhiteLong),
         Side::Black => (CastlingType::BlackShort, CastlingType::BlackLong),
     };
 
     if game.castling_type_allowed(short_castle)
-        && game.piece_at_square(h_file_square) == Some((Piece::Rook, side))
         && !game.is_square_occupied(f_file_square)
         && !game.is_square_occupied(g_file_square)
         && !game.is_square_attacked(opponent_side, e_file_square)
@@ -344,7 +331,6 @@ fn generate_castling_moves(game: &Game) -> Vec<Move> {
     }
 
     if game.castling_type_allowed(long_castle)
-        && game.piece_at_square(a_file_square) == Some((Piece::Rook, side))
         && !game.is_square_occupied(b_file_square)
         && !game.is_square_occupied(c_file_square)
         && !game.is_square_occupied(d_file_square)
