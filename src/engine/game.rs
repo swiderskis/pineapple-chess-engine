@@ -285,7 +285,7 @@ impl Game {
                 print!("{}   ", (64 - square.to_usize().unwrap()) / 8);
             }
 
-            match self._piece_at_square(square) {
+            match self.piece_at_square(square) {
                 Some((piece, side)) => print!("{} ", piece._to_char(side)),
                 None => print!(". "),
             }
@@ -379,7 +379,7 @@ impl Game {
         }
     }
 
-    pub fn _piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
+    pub fn piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
         for (bitboard, piece, side) in self._piece_bitboards() {
             if bitboard.bit_occupied(square) {
                 return Some((piece, side));
@@ -389,7 +389,7 @@ impl Game {
         None
     }
 
-    pub fn square_occupied(&self, square: Square) -> bool {
+    pub fn is_square_occupied(&self, square: Square) -> bool {
         self.board(None).bit_occupied(square)
     }
 
@@ -401,7 +401,7 @@ impl Game {
         self.en_passant_square
     }
 
-    pub fn castling_type_allowed(&self, castling_type: &CastlingType) -> bool {
+    pub fn castling_type_allowed(&self, castling_type: CastlingType) -> bool {
         self.castling_rights.castling_rights & castling_type.to_u8().unwrap() != 0
     }
 
@@ -537,27 +537,27 @@ impl CastlingType {
     }
 }
 
+fn _perft(game: &mut Game, moves: &Vec<Move>, nodes: &mut i32, depth: i32) {
+    if depth == 0 {
+        *nodes += 1;
+        return;
+    }
+
+    for mv in moves {
+        let mut game_clone = game.clone();
+
+        if game_clone.make_move(mv, MoveFlag::All).is_ok() {
+            let moves = super::moves::generate_moves(&game_clone);
+
+            _perft(&mut game_clone, &moves, nodes, depth - 1);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::engine::moves::{self};
-
-    fn perft(game: &mut Game, moves: &Vec<Move>, nodes: &mut i32, depth: i32) {
-        if depth == 0 {
-            *nodes += 1;
-            return;
-        }
-
-        for mv in moves {
-            let mut game_clone = game.clone();
-
-            if game_clone.make_move(mv, MoveFlag::All).is_ok() {
-                let moves = &moves::generate_moves(&game_clone);
-
-                perft(&mut game_clone, moves, nodes, depth - 1);
-            }
-        }
-    }
 
     #[test]
     #[ignore]
@@ -567,7 +567,7 @@ mod tests {
 
         let mut nodes = 0;
 
-        perft(&mut game, &moves, &mut nodes, 6);
+        _perft(&mut game, &moves, &mut nodes, 6);
 
         assert_eq!(nodes, 119_060_324);
     }
@@ -582,7 +582,7 @@ mod tests {
 
         let mut nodes = 0;
 
-        perft(&mut game, &moves, &mut nodes, 5);
+        _perft(&mut game, &moves, &mut nodes, 5);
 
         assert_eq!(nodes, 193_690_690);
     }

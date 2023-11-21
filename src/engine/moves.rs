@@ -152,7 +152,7 @@ fn generate_pawn_moves(
         Side::Black => Square::from_usize(source_square_index + 8),
     }
     .unwrap();
-    let target_square_occupied = game.square_occupied(target_square);
+    let target_square_occupied = game.is_square_occupied(target_square);
 
     let single_piece = Bitboard::from_square(source_square);
 
@@ -190,7 +190,7 @@ fn generate_pawn_moves(
         };
 
         if let Some(target_square) = double_push_target_square {
-            let target_square_occupied = game.square_occupied(target_square);
+            let target_square_occupied = game.is_square_occupied(target_square);
 
             if !target_square_occupied {
                 move_list.push(Move::new(
@@ -261,7 +261,7 @@ fn generate_piece_moves(
     while let Some(target_square_index) = attacks.get_lsb_index() {
         let target_square = Square::from_usize(target_square_index).unwrap();
 
-        let move_type = if game.square_occupied(target_square) {
+        let move_type = if game.is_square_occupied(target_square) {
             MoveType::Capture
         } else {
             MoveType::Quiet
@@ -291,39 +291,48 @@ fn generate_castling_moves(game: &Game) -> Vec<Move> {
     let side = game.side_to_move();
     let opponent_side = side.opponent_side();
 
-    let (b_file_square, c_file_square, d_file_square, e_file_square, f_file_square, g_file_square) =
-        match side {
-            Side::White => (
-                Square::B1,
-                Square::C1,
-                Square::D1,
-                Square::E1,
-                Square::F1,
-                Square::G1,
-            ),
-            Side::Black => (
-                Square::B8,
-                Square::C8,
-                Square::D8,
-                Square::E8,
-                Square::F8,
-                Square::G8,
-            ),
-        };
+    let (
+        a_file_square,
+        b_file_square,
+        c_file_square,
+        d_file_square,
+        e_file_square,
+        f_file_square,
+        g_file_square,
+        h_file_square,
+    ) = match side {
+        Side::White => (
+            Square::A1,
+            Square::B1,
+            Square::C1,
+            Square::D1,
+            Square::E1,
+            Square::F1,
+            Square::G1,
+            Square::H1,
+        ),
+        Side::Black => (
+            Square::A8,
+            Square::B8,
+            Square::C8,
+            Square::D8,
+            Square::E8,
+            Square::F8,
+            Square::G8,
+            Square::H8,
+        ),
+    };
     let (short_castle, long_castle) = match side {
         Side::White => (CastlingType::WhiteShort, CastlingType::WhiteLong),
         Side::Black => (CastlingType::BlackShort, CastlingType::BlackLong),
     };
 
-    let d_file_square_attacked = game.is_square_attacked(opponent_side, d_file_square);
-    let e_file_square_attacked = game.is_square_attacked(opponent_side, e_file_square);
-    let f_file_square_attacked = game.is_square_attacked(opponent_side, f_file_square);
-
-    if game.castling_type_allowed(&short_castle)
-        && !game.square_occupied(f_file_square)
-        && !game.square_occupied(g_file_square)
-        && !e_file_square_attacked
-        && !f_file_square_attacked
+    if game.castling_type_allowed(short_castle)
+        && game.piece_at_square(h_file_square) == Some((Piece::Rook, side))
+        && !game.is_square_occupied(f_file_square)
+        && !game.is_square_occupied(g_file_square)
+        && !game.is_square_attacked(opponent_side, e_file_square)
+        && !game.is_square_attacked(opponent_side, f_file_square)
     {
         move_list.push(Move::new(
             e_file_square,
@@ -334,12 +343,13 @@ fn generate_castling_moves(game: &Game) -> Vec<Move> {
         ));
     }
 
-    if game.castling_type_allowed(&long_castle)
-        && !game.square_occupied(b_file_square)
-        && !game.square_occupied(c_file_square)
-        && !game.square_occupied(d_file_square)
-        && !d_file_square_attacked
-        && !e_file_square_attacked
+    if game.castling_type_allowed(long_castle)
+        && game.piece_at_square(a_file_square) == Some((Piece::Rook, side))
+        && !game.is_square_occupied(b_file_square)
+        && !game.is_square_occupied(c_file_square)
+        && !game.is_square_occupied(d_file_square)
+        && !game.is_square_attacked(opponent_side, d_file_square)
+        && !game.is_square_attacked(opponent_side, e_file_square)
     {
         move_list.push(Move::new(
             e_file_square,
@@ -354,33 +364,23 @@ fn generate_castling_moves(game: &Game) -> Vec<Move> {
 }
 
 fn generate_attacks(game: &Game, piece: Piece, source_square: Square) -> Bitboard {
-    match piece {
-        Piece::Pawn => {
-            let attack_table = attack_tables::ATTACK_TABLES.attack_table(
-                game.board(None),
-                piece,
-                game.side_to_move(),
-                source_square,
-            );
-            let opponent_board = game.board(Some(game.side_to_move().opponent_side()));
+    let attack_table = attack_tables::ATTACK_TABLES.attack_table(
+        game.board(None),
+        piece,
+        game.side_to_move(),
+        source_square,
+    );
+    let valid_attack_squares = match piece {
+        Piece::Pawn => game.board(Some(game.side_to_move().opponent_side())),
+        _ => !game.board(Some(game.side_to_move())),
+    };
 
-            attack_table & opponent_board
-        }
-        _ => {
-            attack_tables::ATTACK_TABLES.attack_table(
-                game.board(None),
-                piece,
-                game.side_to_move(),
-                source_square,
-            ) & !game.board(Some(game.side_to_move()))
-        }
-    }
+    attack_table & valid_attack_squares
 }
 
 #[cfg(test)]
 #[allow(clippy::unusual_byte_groupings)]
 mod tests {
-
     use super::*;
 
     #[test]
