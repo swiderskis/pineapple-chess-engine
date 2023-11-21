@@ -91,7 +91,7 @@ impl Move {
             self.target_square()._to_lowercase_string(),
         );
         if let Some(promoted_piece) = self.promoted_piece() {
-            print!("{}", promoted_piece.to_char(Side::Black))
+            print!("{}", promoted_piece._to_char(Side::Black))
         }
         println!();
     }
@@ -152,6 +152,7 @@ fn generate_pawn_moves(
         Side::Black => Square::from_usize(source_square_index + 8),
     }
     .unwrap();
+    let target_square_occupied = game.square_occupied(target_square);
 
     let single_piece = Bitboard::from_square(source_square);
 
@@ -160,7 +161,7 @@ fn generate_pawn_moves(
 
     if ((side == Side::White && piece_on_seventh_rank)
         || (side == Side::Black && piece_on_second_rank))
-        && game.piece_at_square(target_square).is_none()
+        && !target_square_occupied
     {
         for promoted_piece in promotion_pieces {
             move_list.push(Move::new(
@@ -171,7 +172,7 @@ fn generate_pawn_moves(
                 MoveType::Quiet,
             ));
         }
-    } else if game.piece_at_square(target_square).is_none() {
+    } else if !target_square_occupied {
         move_list.push(Move::new(
             source_square,
             target_square,
@@ -179,22 +180,19 @@ fn generate_pawn_moves(
             None,
             MoveType::Quiet,
         ));
-    }
 
-    let single_push_target_square = target_square;
-    let double_push_target_square = if side == Side::White && piece_on_second_rank {
-        Some(Square::from_usize(source_square_index - 16).unwrap())
-    } else if side == Side::Black && piece_on_seventh_rank {
-        Some(Square::from_usize(source_square_index + 16).unwrap())
-    } else {
-        None
-    };
+        let double_push_target_square = if side == Side::White && piece_on_second_rank {
+            Some(Square::from_usize(source_square_index - 16).unwrap())
+        } else if side == Side::Black && piece_on_seventh_rank {
+            Some(Square::from_usize(source_square_index + 16).unwrap())
+        } else {
+            None
+        };
 
-    if let Some(target_square) = double_push_target_square {
-        if game.piece_at_square(single_push_target_square).is_none() {
-            let target_square_empty = game.piece_at_square(target_square).is_none();
+        if let Some(target_square) = double_push_target_square {
+            let target_square_occupied = game.square_occupied(target_square);
 
-            if target_square_empty {
+            if !target_square_occupied {
                 move_list.push(Move::new(
                     source_square,
                     target_square,
@@ -263,9 +261,10 @@ fn generate_piece_moves(
     while let Some(target_square_index) = attacks.get_lsb_index() {
         let target_square = Square::from_usize(target_square_index).unwrap();
 
-        let move_type = match game.piece_at_square(target_square) {
-            Some(_) => MoveType::Capture,
-            None => MoveType::Quiet,
+        let move_type = if game.square_occupied(target_square) {
+            MoveType::Capture
+        } else {
+            MoveType::Quiet
         };
 
         move_list.push(Move::new(
@@ -290,6 +289,7 @@ fn generate_castling_moves(game: &Game) -> Vec<Move> {
     let mut move_list = Vec::new();
 
     let side = game.side_to_move();
+    let opponent_side = side.opponent_side();
 
     let (b_file_square, c_file_square, d_file_square, e_file_square, f_file_square, g_file_square) =
         match side {
@@ -315,15 +315,15 @@ fn generate_castling_moves(game: &Game) -> Vec<Move> {
         Side::Black => (CastlingType::BlackShort, CastlingType::BlackLong),
     };
 
-    let d_file_square_attacked = game.is_square_attacked(side.opponent_side(), d_file_square);
-    let e_file_square_attacked = game.is_square_attacked(side.opponent_side(), e_file_square);
-    let f_file_square_attacked = game.is_square_attacked(side.opponent_side(), f_file_square);
+    let d_file_square_attacked = game.is_square_attacked(opponent_side, d_file_square);
+    let e_file_square_attacked = game.is_square_attacked(opponent_side, e_file_square);
+    let f_file_square_attacked = game.is_square_attacked(opponent_side, f_file_square);
 
-    if game.piece_at_square(f_file_square).is_none()
-        && game.piece_at_square(g_file_square).is_none()
+    if game.castling_type_allowed(&short_castle)
+        && !game.square_occupied(f_file_square)
+        && !game.square_occupied(g_file_square)
         && !e_file_square_attacked
         && !f_file_square_attacked
-        && game.castling_type_allowed(&short_castle)
     {
         move_list.push(Move::new(
             e_file_square,
@@ -334,12 +334,12 @@ fn generate_castling_moves(game: &Game) -> Vec<Move> {
         ));
     }
 
-    if game.piece_at_square(b_file_square).is_none()
-        && game.piece_at_square(c_file_square).is_none()
-        && game.piece_at_square(d_file_square).is_none()
+    if game.castling_type_allowed(&long_castle)
+        && !game.square_occupied(b_file_square)
+        && !game.square_occupied(c_file_square)
+        && !game.square_occupied(d_file_square)
         && !d_file_square_attacked
         && !e_file_square_attacked
-        && game.castling_type_allowed(&long_castle)
     {
         move_list.push(Move::new(
             e_file_square,

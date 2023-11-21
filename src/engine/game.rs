@@ -279,14 +279,14 @@ impl Game {
         Ok(())
     }
 
-    pub fn print(&self) {
+    pub fn _print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
                 print!("{}   ", (64 - square.to_usize().unwrap()) / 8);
             }
 
-            match self.piece_at_square(square) {
-                Some((piece, side)) => print!("{} ", piece.to_char(side)),
+            match self._piece_at_square(square) {
+                Some((piece, side)) => print!("{} ", piece._to_char(side)),
                 None => print!(". "),
             }
 
@@ -300,7 +300,7 @@ impl Game {
         println!();
         println!("Side to move: {:?}", self.side_to_move);
         println!("En passant square: {:?}", self.en_passant_square);
-        println!("Castling rights: {}", self.castling_rights.as_string());
+        println!("Castling rights: {}", self.castling_rights._as_string());
     }
 
     pub fn is_square_attacked(&self, attacking_side: Side, square: Square) -> bool {
@@ -379,14 +379,18 @@ impl Game {
         }
     }
 
-    pub fn piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
-        for (bitboard, piece, side) in self.piece_bitboards() {
+    pub fn _piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
+        for (bitboard, piece, side) in self._piece_bitboards() {
             if bitboard.bit_occupied(square) {
                 return Some((piece, side));
             }
         }
 
         None
+    }
+
+    pub fn square_occupied(&self, square: Square) -> bool {
+        self.board(None).bit_occupied(square)
     }
 
     pub fn side_to_move(&self) -> Side {
@@ -401,7 +405,7 @@ impl Game {
         self.castling_rights.castling_rights & castling_type.to_u8().unwrap() != 0
     }
 
-    fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
+    fn _piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
         [
             (self.white_pawns, Piece::Pawn, Side::White),
             (self.white_knights, Piece::Knight, Side::White),
@@ -491,7 +495,7 @@ impl CastlingRights {
         self.castling_rights &= !castling_type.to_u8().unwrap();
     }
 
-    fn as_string(&self) -> String {
+    fn _as_string(&self) -> String {
         let mut castling_rights_string = String::new();
 
         if self.castling_rights & CastlingType::WhiteShort.to_u8().unwrap() != 0 {

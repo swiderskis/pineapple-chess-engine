@@ -2,26 +2,103 @@ mod attack_tables;
 mod game;
 mod moves;
 
+use crate::engine::moves::Move;
+
 use self::{game::Game, moves::MoveFlag};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive, Unsigned};
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign};
+use std::{
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign},
+    time::Instant,
+};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
-const _TRICKY_POSITION: &str =
+const TRICKY_POSITION: &str =
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
-const CUSTOM_POSITION: &str =
-    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBqPPP/R3K2R w KQkq - 0 1";
 
 pub fn position() {
-    let mut game = Game::initialise(CUSTOM_POSITION);
+    let mut game = Game::initialise(TRICKY_POSITION);
 
     let moves = moves::generate_moves(&game);
 
-    game.print();
+    fn perft(
+        game: &mut Game,
+        moves: &Vec<Move>,
+        nodes: &mut i32,
+        depth: i32,
+        captures: &mut i32,
+        promotions: &mut i32,
+        en_passants: &mut i32,
+        castles: &mut i32,
+    ) {
+        if depth == 0 {
+            *nodes += 1;
+            return;
+        }
 
-    let _ = game.make_move(&moves[0], MoveFlag::All);
+        for mv in moves {
+            let mut game_clone = game.clone();
+
+            if game_clone.make_move(mv, MoveFlag::All).is_ok() {
+                let moves = moves::generate_moves(&game_clone);
+
+                if depth == 1 {
+                    if mv.capture() || mv._en_passant() {
+                        *captures += 1;
+                        if mv._en_passant() {
+                            *en_passants += 1;
+                        }
+                    } else if mv.promoted_piece().is_some() {
+                        *promotions += 1;
+                    } else if mv._castling() {
+                        *castles += 1;
+                    }
+                }
+
+                perft(
+                    &mut game_clone,
+                    &moves,
+                    nodes,
+                    depth - 1,
+                    captures,
+                    promotions,
+                    en_passants,
+                    castles,
+                );
+            }
+        }
+    }
+
+    println!("Starting perft");
+
+    let mut nodes = 0;
+    let mut captures = 0;
+    let mut en_passants = 0;
+    let mut promotions = 0;
+    let mut castles = 0;
+
+    let depth = 4;
+
+    let now = Instant::now();
+
+    perft(
+        &mut game,
+        &moves,
+        &mut nodes,
+        depth,
+        &mut captures,
+        &mut promotions,
+        &mut en_passants,
+        &mut castles,
+    );
+
+    println!("{} moves measured", nodes);
+    println!("{} captures", captures);
+    println!("{} en passants", en_passants);
+    println!("{} promotions", promotions);
+    println!("{} castling moves", castles);
+    println!("{:?} time elapsed", now.elapsed());
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -180,7 +257,7 @@ pub enum Piece {
 }
 
 impl Piece {
-    fn to_char(self, side: Side) -> char {
+    fn _to_char(self, side: Side) -> char {
         match side {
             Side::White => match self {
                 Self::Pawn => 'P',
