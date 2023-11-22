@@ -2,6 +2,8 @@ mod attack_tables;
 mod game;
 mod moves;
 
+use crate::engine::moves::MoveList;
+
 use self::game::Game;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive, Unsigned};
@@ -18,7 +20,7 @@ const TRICKY_POSITION: &str =
 pub fn position() {
     let mut game = Game::initialise(TRICKY_POSITION);
 
-    let moves = moves::generate_moves(&game);
+    let moves = MoveList::generate_moves(&game);
 
     println!("Starting perft");
 
@@ -28,7 +30,7 @@ pub fn position() {
 
     let now = Instant::now();
 
-    game::perft(&mut game, &moves, &mut nodes, depth);
+    game::perft(&mut game, moves, &mut nodes, depth);
 
     println!("{} moves measured", nodes);
     println!("{:?} time elapsed", now.elapsed());

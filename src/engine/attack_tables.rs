@@ -5,8 +5,7 @@ use strum::IntoEnumIterator;
 
 pub static ATTACK_TABLES: Lazy<AttackTables> = Lazy::new(AttackTables::initialise);
 
-// Magic numbers generated using attack_tables::generate_magic_numbers module,
-// with random_state = 1804289383
+// Magic numbers generated using generate_magic_numbers() with random_state = 1804289383
 const MAGIC_NUMBERS: MagicNumbers = MagicNumbers {
     bishop_magic_numbers: [
         0x40040844404084,

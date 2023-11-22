@@ -1,6 +1,6 @@
 use super::{
     attack_tables,
-    moves::{Move, MoveFlag, MoveType},
+    moves::{Move, MoveFlag, MoveList, MoveType},
     Bitboard, Piece, Side, Square,
 };
 use num_derive::ToPrimitive;
@@ -142,7 +142,7 @@ impl Game {
     }
 
     pub fn make_move(&mut self, mv: &Move, move_flag: MoveFlag) -> Result<(), ()> {
-        if move_flag == MoveFlag::Capture && !mv.capture() {
+        if move_flag == MoveFlag::Capture && mv.move_type() != MoveType::Capture {
             return Err(());
         }
 
@@ -238,7 +238,7 @@ impl Game {
             _ => {}
         }
 
-        if !mv.double_pawn_push() {
+        if mv.move_type() != MoveType::DoublePawnPush {
             game_clone.en_passant_square = None;
         }
 
@@ -554,19 +554,19 @@ impl CastlingType {
     }
 }
 
-pub fn perft(game: &mut Game, moves: &Vec<Move>, nodes: &mut i32, depth: i32) {
+pub fn perft(game: &mut Game, moves: MoveList, nodes: &mut i32, depth: i32) {
     if depth == 0 {
         *nodes += 1;
         return;
     }
 
-    for mv in moves {
+    for mv in moves.move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
         if game_clone.make_move(mv, MoveFlag::All).is_ok() {
-            let moves = super::moves::generate_moves(&game_clone);
+            let moves = MoveList::generate_moves(&game_clone);
 
-            perft(&mut game_clone, &moves, nodes, depth - 1);
+            perft(&mut game_clone, moves, nodes, depth - 1);
         }
     }
 }
@@ -574,17 +574,16 @@ pub fn perft(game: &mut Game, moves: &Vec<Move>, nodes: &mut i32, depth: i32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::moves::{self};
 
     #[test]
     #[ignore]
     fn perft_start_position() {
         let mut game = Game::initialise("startpos");
-        let moves = moves::generate_moves(&game);
+        let moves = MoveList::generate_moves(&game);
 
         let mut nodes = 0;
 
-        perft(&mut game, &moves, &mut nodes, 6);
+        perft(&mut game, moves, &mut nodes, 6);
 
         assert_eq!(nodes, 119_060_324);
     }
@@ -595,11 +594,11 @@ mod tests {
         let mut game = Game::initialise(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         );
-        let moves = moves::generate_moves(&game);
+        let moves = MoveList::generate_moves(&game);
 
         let mut nodes = 0;
 
-        perft(&mut game, &moves, &mut nodes, 5);
+        perft(&mut game, moves, &mut nodes, 5);
 
         assert_eq!(nodes, 193_690_690);
     }
