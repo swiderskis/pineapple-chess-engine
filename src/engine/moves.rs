@@ -61,6 +61,7 @@ impl MoveList {
     pub fn move_list(&self) -> &[Option<Move>; MAX_MOVE_LIST_SIZE] {
         &self.move_list
     }
+
     fn generate_pawn_moves(
         &mut self,
         attack_table: Bitboard,
@@ -85,13 +86,13 @@ impl MoveList {
 
         let single_piece = Bitboard::from_square(source_square);
 
-        let piece_on_second_rank = second_rank & single_piece != 0u64;
-        let piece_on_seventh_rank = seventh_rank & single_piece != 0u64;
+        let pawn_on_second_rank = second_rank & single_piece != 0u64;
+        let pawn_on_seventh_rank = seventh_rank & single_piece != 0u64;
 
-        if ((side == Side::White && piece_on_seventh_rank)
-            || (side == Side::Black && piece_on_second_rank))
-            && !target_square_occupied
-        {
+        let pawn_ready_to_promote = (side == Side::White && pawn_on_seventh_rank)
+            || (side == Side::Black && pawn_on_second_rank);
+
+        if !target_square_occupied && pawn_ready_to_promote {
             for promoted_piece in promotion_pieces {
                 self.push(Move::new(
                     source_square,
@@ -110,9 +111,9 @@ impl MoveList {
                 MoveType::Quiet,
             ));
 
-            let double_push_target_square = if side == Side::White && piece_on_second_rank {
+            let double_push_target_square = if side == Side::White && pawn_on_second_rank {
                 Some(Square::from_usize(source_square_index - 16).unwrap())
-            } else if side == Side::Black && piece_on_seventh_rank {
+            } else if side == Side::Black && pawn_on_seventh_rank {
                 Some(Square::from_usize(source_square_index + 16).unwrap())
             } else {
                 None
@@ -136,9 +137,7 @@ impl MoveList {
         while let Some(target_square_index) = attacks.get_lsb_index() {
             let target_square = Square::from_usize(target_square_index).unwrap();
 
-            if (side == Side::White && piece_on_seventh_rank)
-                || (side == Side::Black && piece_on_second_rank)
-            {
+            if pawn_ready_to_promote {
                 for promoted_piece in promotion_pieces {
                     self.push(Move::new(
                         source_square,
@@ -311,7 +310,7 @@ pub enum MoveFlag {
     Capture,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Move {
     source_square: Square,
     target_square: Square,
@@ -357,16 +356,17 @@ impl Move {
         self.move_type
     }
 
-    pub fn _print_move(&self) {
-        print!(
-            "{}{}",
-            self.source_square()._to_lowercase_string(),
-            self.target_square()._to_lowercase_string(),
-        );
-        if let Some(promoted_piece) = self.promoted_piece() {
-            print!("{}", promoted_piece._to_char(Side::Black))
+    pub fn _to_string(&self) -> String {
+        let source_square_string = self.source_square()._to_lowercase_string();
+        let target_square_string = self.target_square()._to_lowercase_string();
+        let promoted_piece_string = if let Some(promoted_piece) = self.promoted_piece() {
+            promoted_piece._to_char(Side::Black)
+        } else {
+            ' '
         }
-        println!();
+        .to_string();
+
+        source_square_string + &target_square_string + &promoted_piece_string
     }
 }
 

@@ -594,8 +594,6 @@ impl MagicNumbers {
 
     // Implementation to generate magic numbers taken from
     // https://www.youtube.com/watch?v=UnEu5GOiSEs&list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs&index=15
-    // NB this seems to take much longer for me - no clue why, must be some problem in the code I can't see
-    // Not too important as magic numbers are hard coded anyway
     pub fn _new(random_state: &mut u32) -> Self {
         let mut bishop_magic_numbers = [0; 64];
         let mut rook_magic_numbers = [0; 64];

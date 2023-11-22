@@ -5,7 +5,7 @@ use super::{
 };
 use num_derive::ToPrimitive;
 use num_traits::{FromPrimitive, ToPrimitive};
-use std::str::FromStr;
+use std::{str::FromStr, time::Instant};
 use strum::IntoEnumIterator;
 
 #[derive(Clone)]
@@ -141,7 +141,7 @@ impl Game {
         }
     }
 
-    pub fn make_move(&mut self, mv: &Move, move_flag: MoveFlag) -> Result<(), ()> {
+    pub fn make_move(&mut self, mv: Move, move_flag: MoveFlag) -> Result<(), ()> {
         if move_flag == MoveFlag::Capture && mv.move_type() != MoveType::Capture {
             return Err(());
         }
@@ -301,11 +301,11 @@ impl Game {
     pub fn _print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
-                print!("{}   ", (64 - square.to_usize().unwrap()) / 8);
+                print!("{:<4}", (64 - square.to_usize().unwrap()) / 8);
             }
 
             match self._piece_at_square(square) {
-                Some((piece, side)) => print!("{} ", piece._to_char(side)),
+                Some((piece, side)) => print!("{:<2}", piece._to_char(side)),
                 None => print!(". "),
             }
 
@@ -554,21 +554,54 @@ impl CastlingType {
     }
 }
 
-pub fn perft(game: &mut Game, moves: MoveList, nodes: &mut i32, depth: i32) {
+pub fn _perft(game: &mut Game, nodes: &mut u32, depth: u32) {
     if depth == 0 {
         *nodes += 1;
         return;
     }
 
+    let moves = MoveList::generate_moves(game);
+
     for mv in moves.move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
-        if game_clone.make_move(mv, MoveFlag::All).is_ok() {
-            let moves = MoveList::generate_moves(&game_clone);
-
-            perft(&mut game_clone, moves, nodes, depth - 1);
+        if game_clone.make_move(*mv, MoveFlag::All).is_err() {
+            continue;
         }
+
+        _perft(&mut game_clone, nodes, depth - 1);
     }
+}
+
+pub fn _perft_test(game: &mut Game, depth: u32) {
+    let mut total_nodes = 0;
+    let now = Instant::now();
+
+    let moves = MoveList::generate_moves(game);
+
+    println!("Move   Nodes   ");
+
+    for mv in moves.move_list().iter().flatten() {
+        let mut game_clone = game.clone();
+
+        if game_clone.make_move(*mv, MoveFlag::All).is_err() {
+            continue;
+        }
+
+        let mut nodes = 0;
+        _perft(&mut game_clone, &mut nodes, depth - 1);
+
+        print!("{:<6}", mv._to_string());
+        print!("{:^7}", nodes);
+        println!();
+
+        total_nodes += nodes;
+    }
+
+    println!();
+    println!("Depth: {}", depth);
+    println!("Nodes: {}", total_nodes);
+    println!("Time taken: {:?}", now.elapsed());
 }
 
 #[cfg(test)]
@@ -579,11 +612,10 @@ mod tests {
     #[ignore]
     fn perft_start_position() {
         let mut game = Game::initialise("startpos");
-        let moves = MoveList::generate_moves(&game);
 
         let mut nodes = 0;
 
-        perft(&mut game, moves, &mut nodes, 6);
+        _perft(&mut game, &mut nodes, 6);
 
         assert_eq!(nodes, 119_060_324);
     }
@@ -594,11 +626,10 @@ mod tests {
         let mut game = Game::initialise(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         );
-        let moves = MoveList::generate_moves(&game);
 
         let mut nodes = 0;
 
-        perft(&mut game, moves, &mut nodes, 5);
+        _perft(&mut game, &mut nodes, 5);
 
         assert_eq!(nodes, 193_690_690);
     }

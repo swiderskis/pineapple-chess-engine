@@ -2,15 +2,10 @@ mod attack_tables;
 mod game;
 mod moves;
 
-use crate::engine::moves::MoveList;
-
 use self::game::Game;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive, Unsigned};
-use std::{
-    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign},
-    time::Instant,
-};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
@@ -20,20 +15,7 @@ const TRICKY_POSITION: &str =
 pub fn position() {
     let mut game = Game::initialise(TRICKY_POSITION);
 
-    let moves = MoveList::generate_moves(&game);
-
-    println!("Starting perft");
-
-    let mut nodes = 0;
-
-    let depth = 5;
-
-    let now = Instant::now();
-
-    game::perft(&mut game, moves, &mut nodes, depth);
-
-    println!("{} moves measured", nodes);
-    println!("{:?} time elapsed", now.elapsed());
+    game::_perft_test(&mut game, 5);
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -80,10 +62,10 @@ impl Bitboard {
     fn _print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
-                print!("{}   ", ((64 - square.to_usize().unwrap()) / 8));
+                print!("{:<4}", ((64 - square.to_usize().unwrap()) / 8));
             }
 
-            print!("{} ", if self.bit_occupied(square) { 1 } else { 0 });
+            print!("{:<2}", if self.bit_occupied(square) { 1 } else { 0 });
 
             if square.file() == 7 {
                 println!();
@@ -93,7 +75,7 @@ impl Bitboard {
         println!();
         println!("    a b c d e f g h");
         println!();
-        println!("    Bitboard decimal value: {}", self.0);
+        println!("Bitboard decimal value: {}", self.0);
     }
 }
 
