@@ -141,8 +141,8 @@ fn generate_pawn_moves(
 
     let mut move_list = Vec::new();
 
-    let second_rank = Bitboard::new(0xFF_0000_0000_0000);
-    let seventh_rank = Bitboard::new(0xFF00);
+    let second_rank = Bitboard(0xFF_0000_0000_0000);
+    let seventh_rank = Bitboard(0xFF00);
 
     let side = game.side_to_move();
 

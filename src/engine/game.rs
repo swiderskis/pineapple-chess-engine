@@ -29,19 +29,19 @@ pub struct Game {
 
 impl Game {
     pub fn initialise(fen: &str) -> Self {
-        let mut white_pawns = Bitboard::new(0);
-        let mut white_knights = Bitboard::new(0);
-        let mut white_bishops = Bitboard::new(0);
-        let mut white_rooks = Bitboard::new(0);
-        let mut white_queens = Bitboard::new(0);
-        let mut white_king = Bitboard::new(0);
+        let mut white_pawns = Bitboard(0);
+        let mut white_knights = Bitboard(0);
+        let mut white_bishops = Bitboard(0);
+        let mut white_rooks = Bitboard(0);
+        let mut white_queens = Bitboard(0);
+        let mut white_king = Bitboard(0);
 
-        let mut black_pawns = Bitboard::new(0);
-        let mut black_knights = Bitboard::new(0);
-        let mut black_bishops = Bitboard::new(0);
-        let mut black_rooks = Bitboard::new(0);
-        let mut black_queens = Bitboard::new(0);
-        let mut black_king = Bitboard::new(0);
+        let mut black_pawns = Bitboard(0);
+        let mut black_knights = Bitboard(0);
+        let mut black_bishops = Bitboard(0);
+        let mut black_rooks = Bitboard(0);
+        let mut black_queens = Bitboard(0);
+        let mut black_king = Bitboard(0);
 
         let fen = if fen == "startpos" {
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -242,41 +242,43 @@ impl Game {
             game_clone.en_passant_square = None;
         }
 
-        match side {
-            Side::White => match mv.source_square() {
-                Square::A1 => game_clone
-                    .castling_rights
-                    .remove_castling_type(CastlingType::WhiteLong),
-                Square::E1 => {
-                    game_clone
+        if game_clone.castling_rights.0 != 0 {
+            match side {
+                Side::White => match mv.source_square() {
+                    Square::A1 => game_clone
                         .castling_rights
-                        .remove_castling_type(CastlingType::WhiteShort);
-                    game_clone
+                        .remove_castling_type(CastlingType::WhiteLong),
+                    Square::E1 => {
+                        game_clone
+                            .castling_rights
+                            .remove_castling_type(CastlingType::WhiteShort);
+                        game_clone
+                            .castling_rights
+                            .remove_castling_type(CastlingType::WhiteLong);
+                    }
+                    Square::H1 => game_clone
                         .castling_rights
-                        .remove_castling_type(CastlingType::WhiteLong);
-                }
-                Square::H1 => game_clone
-                    .castling_rights
-                    .remove_castling_type(CastlingType::WhiteShort),
-                _ => {}
-            },
-            Side::Black => match mv.source_square() {
-                Square::A8 => game_clone
-                    .castling_rights
-                    .remove_castling_type(CastlingType::BlackLong),
-                Square::E8 => {
-                    game_clone
+                        .remove_castling_type(CastlingType::WhiteShort),
+                    _ => {}
+                },
+                Side::Black => match mv.source_square() {
+                    Square::A8 => game_clone
                         .castling_rights
-                        .remove_castling_type(CastlingType::BlackShort);
-                    game_clone
+                        .remove_castling_type(CastlingType::BlackLong),
+                    Square::E8 => {
+                        game_clone
+                            .castling_rights
+                            .remove_castling_type(CastlingType::BlackShort);
+                        game_clone
+                            .castling_rights
+                            .remove_castling_type(CastlingType::BlackLong);
+                    }
+                    Square::H8 => game_clone
                         .castling_rights
-                        .remove_castling_type(CastlingType::BlackLong);
-                }
-                Square::H8 => game_clone
-                    .castling_rights
-                    .remove_castling_type(CastlingType::BlackShort),
-                _ => {}
-            },
+                        .remove_castling_type(CastlingType::BlackShort),
+                    _ => {}
+                },
+            }
         }
 
         let king_square = game_clone.piece_bitboard(Piece::King, side).get_lsb_index();
@@ -419,7 +421,7 @@ impl Game {
     }
 
     pub fn castling_type_allowed(&self, castling_type: CastlingType) -> bool {
-        self.castling_rights.castling_rights & castling_type.to_u8().unwrap() != 0
+        self.castling_rights.0 & castling_type.to_u8().unwrap() != 0
     }
 
     fn _piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
@@ -483,14 +485,12 @@ impl Game {
 }
 
 #[derive(Clone)]
-struct CastlingRights {
-    castling_rights: u8,
-}
+struct CastlingRights(u8);
 
 impl CastlingRights {
     fn initialise(castling_rights_string: &str) -> Self {
         if castling_rights_string == "-" {
-            return Self { castling_rights: 0 };
+            return Self(0);
         };
 
         let mut castling_rights = 0;
@@ -505,29 +505,29 @@ impl CastlingRights {
             }
         }
 
-        Self { castling_rights }
+        Self(castling_rights)
     }
 
     fn remove_castling_type(&mut self, castling_type: CastlingType) {
-        self.castling_rights &= !castling_type.to_u8().unwrap();
+        self.0 &= !castling_type.to_u8().unwrap();
     }
 
     fn _as_string(&self) -> String {
         let mut castling_rights_string = String::new();
 
-        if self.castling_rights & CastlingType::WhiteShort.to_u8().unwrap() != 0 {
+        if self.0 & CastlingType::WhiteShort.to_u8().unwrap() != 0 {
             castling_rights_string.push('K');
         }
 
-        if self.castling_rights & CastlingType::WhiteLong.to_u8().unwrap() != 0 {
+        if self.0 & CastlingType::WhiteLong.to_u8().unwrap() != 0 {
             castling_rights_string.push('Q');
         }
 
-        if self.castling_rights & CastlingType::BlackShort.to_u8().unwrap() != 0 {
+        if self.0 & CastlingType::BlackShort.to_u8().unwrap() != 0 {
             castling_rights_string.push('k');
         }
 
-        if self.castling_rights & CastlingType::BlackLong.to_u8().unwrap() != 0 {
+        if self.0 & CastlingType::BlackLong.to_u8().unwrap() != 0 {
             castling_rights_string.push('q');
         }
 
@@ -554,7 +554,7 @@ impl CastlingType {
     }
 }
 
-fn _perft(game: &mut Game, moves: &Vec<Move>, nodes: &mut i32, depth: i32) {
+pub fn perft(game: &mut Game, moves: &Vec<Move>, nodes: &mut i32, depth: i32) {
     if depth == 0 {
         *nodes += 1;
         return;
@@ -566,7 +566,7 @@ fn _perft(game: &mut Game, moves: &Vec<Move>, nodes: &mut i32, depth: i32) {
         if game_clone.make_move(mv, MoveFlag::All).is_ok() {
             let moves = super::moves::generate_moves(&game_clone);
 
-            _perft(&mut game_clone, &moves, nodes, depth - 1);
+            perft(&mut game_clone, &moves, nodes, depth - 1);
         }
     }
 }
@@ -584,7 +584,7 @@ mod tests {
 
         let mut nodes = 0;
 
-        _perft(&mut game, &moves, &mut nodes, 6);
+        perft(&mut game, &moves, &mut nodes, 6);
 
         assert_eq!(nodes, 119_060_324);
     }
@@ -599,7 +599,7 @@ mod tests {
 
         let mut nodes = 0;
 
-        _perft(&mut game, &moves, &mut nodes, 5);
+        perft(&mut game, &moves, &mut nodes, 5);
 
         assert_eq!(nodes, 193_690_690);
     }
@@ -644,18 +644,18 @@ mod tests {
         let desired_black_queens_bitboard = u64::pow(2, Square::E7 as u32);
         let desired_black_king_bitboard = u64::pow(2, Square::E8 as u32);
 
-        assert_eq!(game.white_pawns.bitboard, desired_white_pawns_bitboard);
-        assert_eq!(game.white_knights.bitboard, desired_white_knights_bitboard);
-        assert_eq!(game.white_bishops.bitboard, desired_white_bishops_bitboard);
-        assert_eq!(game.white_rooks.bitboard, desired_white_rooks_bitboard);
-        assert_eq!(game.white_queens.bitboard, desired_white_queens_bitboard);
-        assert_eq!(game.white_king.bitboard, desired_white_king_bitboard);
-        assert_eq!(game.black_pawns.bitboard, desired_black_pawns_bitboard);
-        assert_eq!(game.black_knights.bitboard, desired_black_knights_bitboard);
-        assert_eq!(game.black_bishops.bitboard, desired_black_bishops_bitboard);
-        assert_eq!(game.black_rooks.bitboard, desired_black_rooks_bitboard);
-        assert_eq!(game.black_queens.bitboard, desired_black_queens_bitboard);
-        assert_eq!(game.black_king.bitboard, desired_black_king_bitboard);
+        assert_eq!(game.white_pawns.0, desired_white_pawns_bitboard);
+        assert_eq!(game.white_knights.0, desired_white_knights_bitboard);
+        assert_eq!(game.white_bishops.0, desired_white_bishops_bitboard);
+        assert_eq!(game.white_rooks.0, desired_white_rooks_bitboard);
+        assert_eq!(game.white_queens.0, desired_white_queens_bitboard);
+        assert_eq!(game.white_king.0, desired_white_king_bitboard);
+        assert_eq!(game.black_pawns.0, desired_black_pawns_bitboard);
+        assert_eq!(game.black_knights.0, desired_black_knights_bitboard);
+        assert_eq!(game.black_bishops.0, desired_black_bishops_bitboard);
+        assert_eq!(game.black_rooks.0, desired_black_rooks_bitboard);
+        assert_eq!(game.black_queens.0, desired_black_queens_bitboard);
+        assert_eq!(game.black_king.0, desired_black_king_bitboard);
     }
 
     #[test]
@@ -696,18 +696,18 @@ mod tests {
         let desired_black_queens_bitboard = u64::pow(2, Square::D8 as u32);
         let desired_black_king_bitboard = u64::pow(2, Square::E8 as u32);
 
-        assert_eq!(game.white_pawns.bitboard, desired_white_pawns_bitboard);
-        assert_eq!(game.white_knights.bitboard, desired_white_knights_bitboard);
-        assert_eq!(game.white_bishops.bitboard, desired_white_bishops_bitboard);
-        assert_eq!(game.white_rooks.bitboard, desired_white_rooks_bitboard);
-        assert_eq!(game.white_queens.bitboard, desired_white_queens_bitboard);
-        assert_eq!(game.white_king.bitboard, desired_white_king_bitboard);
-        assert_eq!(game.black_pawns.bitboard, desired_black_pawns_bitboard);
-        assert_eq!(game.black_knights.bitboard, desired_black_knights_bitboard);
-        assert_eq!(game.black_bishops.bitboard, desired_black_bishops_bitboard);
-        assert_eq!(game.black_rooks.bitboard, desired_black_rooks_bitboard);
-        assert_eq!(game.black_queens.bitboard, desired_black_queens_bitboard);
-        assert_eq!(game.black_king.bitboard, desired_black_king_bitboard);
+        assert_eq!(game.white_pawns.0, desired_white_pawns_bitboard);
+        assert_eq!(game.white_knights.0, desired_white_knights_bitboard);
+        assert_eq!(game.white_bishops.0, desired_white_bishops_bitboard);
+        assert_eq!(game.white_rooks.0, desired_white_rooks_bitboard);
+        assert_eq!(game.white_queens.0, desired_white_queens_bitboard);
+        assert_eq!(game.white_king.0, desired_white_king_bitboard);
+        assert_eq!(game.black_pawns.0, desired_black_pawns_bitboard);
+        assert_eq!(game.black_knights.0, desired_black_knights_bitboard);
+        assert_eq!(game.black_bishops.0, desired_black_bishops_bitboard);
+        assert_eq!(game.black_rooks.0, desired_black_rooks_bitboard);
+        assert_eq!(game.black_queens.0, desired_black_queens_bitboard);
+        assert_eq!(game.black_king.0, desired_black_king_bitboard);
     }
 
     #[test]
@@ -750,17 +750,17 @@ mod tests {
         let desired_black_queens_bitboard = u64::pow(2, Square::D8 as u32);
         let desired_black_king_bitboard = u64::pow(2, Square::G8 as u32);
 
-        assert_eq!(game.white_pawns.bitboard, desired_white_pawns_bitboard);
-        assert_eq!(game.white_knights.bitboard, desired_white_knights_bitboard);
-        assert_eq!(game.white_bishops.bitboard, desired_white_bishops_bitboard);
-        assert_eq!(game.white_rooks.bitboard, desired_white_rooks_bitboard);
-        assert_eq!(game.white_queens.bitboard, desired_white_queens_bitboard);
-        assert_eq!(game.white_king.bitboard, desired_white_king_bitboard);
-        assert_eq!(game.black_pawns.bitboard, desired_black_pawns_bitboard);
-        assert_eq!(game.black_knights.bitboard, desired_black_knights_bitboard);
-        assert_eq!(game.black_bishops.bitboard, desired_black_bishops_bitboard);
-        assert_eq!(game.black_rooks.bitboard, desired_black_rooks_bitboard);
-        assert_eq!(game.black_queens.bitboard, desired_black_queens_bitboard);
-        assert_eq!(game.black_king.bitboard, desired_black_king_bitboard);
+        assert_eq!(game.white_pawns.0, desired_white_pawns_bitboard);
+        assert_eq!(game.white_knights.0, desired_white_knights_bitboard);
+        assert_eq!(game.white_bishops.0, desired_white_bishops_bitboard);
+        assert_eq!(game.white_rooks.0, desired_white_rooks_bitboard);
+        assert_eq!(game.white_queens.0, desired_white_queens_bitboard);
+        assert_eq!(game.white_king.0, desired_white_king_bitboard);
+        assert_eq!(game.black_pawns.0, desired_black_pawns_bitboard);
+        assert_eq!(game.black_knights.0, desired_black_knights_bitboard);
+        assert_eq!(game.black_bishops.0, desired_black_bishops_bitboard);
+        assert_eq!(game.black_rooks.0, desired_black_rooks_bitboard);
+        assert_eq!(game.black_queens.0, desired_black_queens_bitboard);
+        assert_eq!(game.black_king.0, desired_black_king_bitboard);
     }
 }

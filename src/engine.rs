@@ -2,9 +2,7 @@ mod attack_tables;
 mod game;
 mod moves;
 
-use crate::engine::moves::Move;
-
-use self::{game::Game, moves::MoveFlag};
+use self::game::Game;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive, Unsigned};
 use std::{
@@ -22,97 +20,26 @@ pub fn position() {
 
     let moves = moves::generate_moves(&game);
 
-    fn perft(
-        game: &mut Game,
-        moves: &Vec<Move>,
-        nodes: &mut i32,
-        depth: i32,
-        captures: &mut i32,
-        promotions: &mut i32,
-        en_passants: &mut i32,
-        castles: &mut i32,
-    ) {
-        if depth == 0 {
-            *nodes += 1;
-            return;
-        }
-
-        for mv in moves {
-            let mut game_clone = game.clone();
-
-            if game_clone.make_move(mv, MoveFlag::All).is_ok() {
-                let moves = moves::generate_moves(&game_clone);
-
-                if depth == 1 {
-                    if mv.capture() || mv._en_passant() {
-                        *captures += 1;
-                        if mv._en_passant() {
-                            *en_passants += 1;
-                        }
-                    } else if mv.promoted_piece().is_some() {
-                        *promotions += 1;
-                    } else if mv._castling() {
-                        *castles += 1;
-                    }
-                }
-
-                perft(
-                    &mut game_clone,
-                    &moves,
-                    nodes,
-                    depth - 1,
-                    captures,
-                    promotions,
-                    en_passants,
-                    castles,
-                );
-            }
-        }
-    }
-
     println!("Starting perft");
 
     let mut nodes = 0;
-    let mut captures = 0;
-    let mut en_passants = 0;
-    let mut promotions = 0;
-    let mut castles = 0;
 
-    let depth = 4;
+    let depth = 5;
 
     let now = Instant::now();
 
-    perft(
-        &mut game,
-        &moves,
-        &mut nodes,
-        depth,
-        &mut captures,
-        &mut promotions,
-        &mut en_passants,
-        &mut castles,
-    );
+    game::perft(&mut game, &moves, &mut nodes, depth);
 
     println!("{} moves measured", nodes);
-    println!("{} captures", captures);
-    println!("{} en passants", en_passants);
-    println!("{} promotions", promotions);
-    println!("{} castling moves", castles);
     println!("{:?} time elapsed", now.elapsed());
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub struct Bitboard {
-    bitboard: u64,
-}
+pub struct Bitboard(u64);
 
 impl Bitboard {
-    fn new(bitboard: u64) -> Self {
-        Self { bitboard }
-    }
-
     fn from_square(square: Square) -> Self {
-        let mut bitboard = Self::new(0);
+        let mut bitboard = Self(0);
 
         bitboard.set_bit(square);
 
@@ -120,19 +47,19 @@ impl Bitboard {
     }
 
     fn bit_occupied(&self, square: Square) -> bool {
-        self.bitboard & (1 << square.to_usize().unwrap()) != 0
+        self.0 & (1 << square.to_usize().unwrap()) != 0
     }
 
     fn set_bit(&mut self, square: Square) {
-        self.bitboard |= 1 << square.to_usize().unwrap();
+        self.0 |= 1 << square.to_usize().unwrap();
     }
 
     fn pop_bit(&mut self, square: Square) {
-        self.bitboard &= !(1 << square.to_usize().unwrap());
+        self.0 &= !(1 << square.to_usize().unwrap());
     }
 
     fn count_bits(&self) -> u32 {
-        self.bitboard.count_ones()
+        self.0.count_ones()
     }
 
     // lsb = least significant bit
@@ -141,11 +68,11 @@ impl Bitboard {
             return None;
         }
 
-        Some(self.bitboard.trailing_zeros() as usize)
+        Some(self.0.trailing_zeros() as usize)
     }
 
     fn is_empty(&self) -> bool {
-        self.bitboard == 0
+        self.0 == 0
     }
 
     fn _print(&self) {
@@ -164,7 +91,7 @@ impl Bitboard {
         println!();
         println!("    a b c d e f g h");
         println!();
-        println!("    Bitboard decimal value: {}", self.bitboard);
+        println!("    Bitboard decimal value: {}", self.0);
     }
 }
 
@@ -172,7 +99,7 @@ impl BitAnd for Bitboard {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        Self::new(self.bitboard & rhs.bitboard)
+        Self(self.0 & rhs.0)
     }
 }
 
@@ -180,13 +107,13 @@ impl<T: Unsigned + AsPrimitive<u64>> BitAnd<T> for Bitboard {
     type Output = Self;
 
     fn bitand(self, rhs: T) -> Self::Output {
-        Self::new(self.bitboard & rhs.as_())
+        Self(self.0 & rhs.as_())
     }
 }
 
 impl BitAndAssign for Bitboard {
     fn bitand_assign(&mut self, rhs: Self) {
-        *self = Self::new(self.bitboard & rhs.bitboard)
+        *self = Self(self.0 & rhs.0)
     }
 }
 
@@ -194,19 +121,19 @@ impl BitOr for Bitboard {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        Self::new(self.bitboard | rhs.bitboard)
+        Self(self.0 | rhs.0)
     }
 }
 
 impl BitOrAssign for Bitboard {
     fn bitor_assign(&mut self, rhs: Self) {
-        *self = Self::new(self.bitboard | rhs.bitboard)
+        *self = Self(self.0 | rhs.0)
     }
 }
 
 impl<T: Unsigned + AsPrimitive<u64>> BitOrAssign<T> for Bitboard {
     fn bitor_assign(&mut self, rhs: T) {
-        *self = Self::new(self.bitboard | rhs.as_())
+        *self = Self(self.0 | rhs.as_())
     }
 }
 
@@ -214,13 +141,13 @@ impl Not for Bitboard {
     type Output = Self;
 
     fn not(self) -> Self::Output {
-        Self::new(!self.bitboard)
+        Self(!self.0)
     }
 }
 
 impl<T: Unsigned + AsPrimitive<u64>> PartialEq<T> for Bitboard {
     fn eq(&self, other: &T) -> bool {
-        self.bitboard == other.as_()
+        self.0 == other.as_()
     }
 }
 
@@ -228,7 +155,7 @@ impl<T: Unsigned + AsPrimitive<u64>> Shl<T> for Bitboard {
     type Output = Self;
 
     fn shl(self, rhs: T) -> Self::Output {
-        Self::new(self.bitboard << rhs.as_())
+        Self(self.0 << rhs.as_())
     }
 }
 
@@ -236,13 +163,13 @@ impl<T: Unsigned + AsPrimitive<u64>> Shr<T> for Bitboard {
     type Output = Self;
 
     fn shr(self, rhs: T) -> Self::Output {
-        Self::new(self.bitboard >> rhs.as_())
+        Self(self.0 >> rhs.as_())
     }
 }
 
 impl<T: Unsigned + AsPrimitive<u64>> ShrAssign<T> for Bitboard {
     fn shr_assign(&mut self, rhs: T) {
-        *self = Self::new(self.bitboard >> rhs.as_())
+        *self = Self(self.0 >> rhs.as_())
     }
 }
 
@@ -388,33 +315,33 @@ mod tests {
 
     #[test]
     fn set_bit() {
-        let mut bitboard1 = Bitboard::new(0);
-        let mut bitboard2 = Bitboard::new(0);
-        let mut bitboard3 = Bitboard::new(0);
+        let mut bitboard1 = Bitboard(0);
+        let mut bitboard2 = Bitboard(0);
+        let mut bitboard3 = Bitboard(0);
 
         bitboard1.set_bit(Square::H2);
         bitboard2.set_bit(Square::G6);
         bitboard3.set_bit(Square::B4);
 
         assert_eq!(
-            bitboard1.bitboard,
+            bitboard1.0,
             u64::pow(2, Square::H2.to_usize().unwrap() as u32)
         );
         assert_eq!(
-            bitboard2.bitboard,
+            bitboard2.0,
             u64::pow(2, Square::G6.to_usize().unwrap() as u32)
         );
         assert_eq!(
-            bitboard3.bitboard,
+            bitboard3.0,
             u64::pow(2, Square::B4.to_usize().unwrap() as u32)
         );
     }
 
     #[test]
     fn pop_bit() {
-        let mut bitboard1 = Bitboard::new(0);
-        let mut bitboard2 = Bitboard::new(0);
-        let mut bitboard3 = Bitboard::new(0);
+        let mut bitboard1 = Bitboard(0);
+        let mut bitboard2 = Bitboard(0);
+        let mut bitboard3 = Bitboard(0);
 
         bitboard1.set_bit(Square::G5);
         bitboard1.set_bit(Square::A8);
@@ -429,23 +356,23 @@ mod tests {
         bitboard3.pop_bit(Square::C4);
 
         assert_eq!(
-            bitboard1.bitboard,
+            bitboard1.0,
             u64::pow(2, Square::A8.to_usize().unwrap() as u32)
         );
         assert_eq!(
-            bitboard2.bitboard,
+            bitboard2.0,
             u64::pow(2, Square::A7.to_usize().unwrap() as u32)
         );
         assert_eq!(
-            bitboard3.bitboard,
+            bitboard3.0,
             u64::pow(2, Square::B8.to_usize().unwrap() as u32)
         );
     }
 
     #[test]
     fn pop_unset_bit() {
-        let mut bitboard1 = Bitboard::new(0);
-        let mut bitboard2 = Bitboard::new(0);
+        let mut bitboard1 = Bitboard(0);
+        let mut bitboard2 = Bitboard(0);
 
         bitboard1.set_bit(Square::F1);
         bitboard1.pop_bit(Square::F1);
@@ -453,7 +380,7 @@ mod tests {
 
         bitboard2.pop_bit(Square::G2);
 
-        assert_eq!(bitboard1.bitboard, 0);
-        assert_eq!(bitboard2.bitboard, 0);
+        assert_eq!(bitboard1.0, 0);
+        assert_eq!(bitboard2.0, 0);
     }
 }
