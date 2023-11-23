@@ -1,7 +1,6 @@
 use super::{
     attack_tables,
-    game::{CastlingType, Game},
-    Bitboard, Piece, Side, Square,
+    game::{Bitboard, CastlingType, Game, Piece, Side, Square},
 };
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::FromPrimitive;
@@ -71,8 +70,8 @@ impl MoveList {
     ) {
         let promotion_pieces = [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight];
 
-        let second_rank = Bitboard(0xFF_0000_0000_0000);
-        let seventh_rank = Bitboard(0xFF00);
+        let second_rank = Bitboard::new(0xFF_0000_0000_0000);
+        let seventh_rank = Bitboard::new(0xFF00);
 
         let side = game.side_to_move();
 
