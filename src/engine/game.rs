@@ -303,30 +303,6 @@ impl Game {
         Ok(())
     }
 
-    pub fn _print(&self) {
-        for square in Square::iter() {
-            if square.file() == 0 {
-                print!("{:<4}", (64 - square.to_usize().unwrap()) / 8);
-            }
-
-            match self._piece_at_square(square) {
-                Some((piece, side)) => print!("{:<2}", piece._to_char(side)),
-                None => print!(". "),
-            }
-
-            if square.file() == 7 {
-                println!();
-            }
-        }
-
-        println!();
-        println!("    a b c d e f g h");
-        println!();
-        println!("Side to move: {:?}", self.side_to_move);
-        println!("En passant square: {:?}", self.en_passant_square);
-        println!("Castling rights: {}", self.castling_rights._as_string());
-    }
-
     pub fn is_square_attacked(&self, attacking_side: Side, square: Square) -> bool {
         for piece in Piece::iter() {
             let piece_attacks_square = attack_tables::ATTACK_TABLES.attack_table(
@@ -343,27 +319,6 @@ impl Game {
         }
 
         false
-    }
-
-    pub fn side_bitboards(&self, side: Side) -> [(Bitboard, Piece); 6] {
-        match side {
-            Side::White => [
-                (self.white_pawns, Piece::Pawn),
-                (self.white_knights, Piece::Knight),
-                (self.white_bishops, Piece::Bishop),
-                (self.white_rooks, Piece::Rook),
-                (self.white_queens, Piece::Queen),
-                (self.white_king, Piece::King),
-            ],
-            Side::Black => [
-                (self.black_pawns, Piece::Pawn),
-                (self.black_knights, Piece::Knight),
-                (self.black_bishops, Piece::Bishop),
-                (self.black_rooks, Piece::Rook),
-                (self.black_queens, Piece::Queen),
-                (self.black_king, Piece::King),
-            ],
-        }
     }
 
     pub fn board(&self, side: Option<Side>) -> Bitboard {
@@ -403,16 +358,6 @@ impl Game {
         }
     }
 
-    pub fn _piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
-        for (bitboard, piece, side) in self._piece_bitboards() {
-            if bitboard.bit_occupied(square) {
-                return Some((piece, side));
-            }
-        }
-
-        None
-    }
-
     pub fn is_square_occupied(&self, square: Square) -> bool {
         self.board(None).bit_occupied(square)
     }
@@ -429,24 +374,7 @@ impl Game {
         self.castling_rights.0 & castling_type.to_u8().unwrap() != 0
     }
 
-    fn _piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
-        [
-            (self.white_pawns, Piece::Pawn, Side::White),
-            (self.white_knights, Piece::Knight, Side::White),
-            (self.white_bishops, Piece::Bishop, Side::White),
-            (self.white_rooks, Piece::Rook, Side::White),
-            (self.white_queens, Piece::Queen, Side::White),
-            (self.white_king, Piece::King, Side::White),
-            (self.black_pawns, Piece::Pawn, Side::Black),
-            (self.black_knights, Piece::Knight, Side::Black),
-            (self.black_bishops, Piece::Bishop, Side::Black),
-            (self.black_rooks, Piece::Rook, Side::Black),
-            (self.black_queens, Piece::Queen, Side::Black),
-            (self.black_king, Piece::King, Side::Black),
-        ]
-    }
-
-    fn piece_bitboard(&self, piece: Piece, side: Side) -> Bitboard {
+    pub fn piece_bitboard(&self, piece: Piece, side: Side) -> Bitboard {
         match side {
             Side::White => match piece {
                 Piece::Pawn => self.white_pawns,
@@ -486,6 +414,57 @@ impl Game {
                 Piece::King => &mut self.black_king,
             },
         }
+    }
+
+    fn _print(&self) {
+        for square in Square::iter() {
+            if square.file() == 0 {
+                print!("{:<4}", (64 - square.to_usize().unwrap()) / 8);
+            }
+
+            match self._piece_at_square(square) {
+                Some((piece, side)) => print!("{:<2}", piece._to_char(side)),
+                None => print!(". "),
+            }
+
+            if square.file() == 7 {
+                println!();
+            }
+        }
+
+        println!();
+        println!("    a b c d e f g h");
+        println!();
+        println!("Side to move: {:?}", self.side_to_move);
+        println!("En passant square: {:?}", self.en_passant_square);
+        println!("Castling rights: {}", self.castling_rights._as_string());
+    }
+
+    fn _piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
+        for (bitboard, piece, side) in self._piece_bitboards() {
+            if bitboard.bit_occupied(square) {
+                return Some((piece, side));
+            }
+        }
+
+        None
+    }
+
+    fn _piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
+        [
+            (self.white_pawns, Piece::Pawn, Side::White),
+            (self.white_knights, Piece::Knight, Side::White),
+            (self.white_bishops, Piece::Bishop, Side::White),
+            (self.white_rooks, Piece::Rook, Side::White),
+            (self.white_queens, Piece::Queen, Side::White),
+            (self.white_king, Piece::King, Side::White),
+            (self.black_pawns, Piece::Pawn, Side::Black),
+            (self.black_knights, Piece::Knight, Side::Black),
+            (self.black_bishops, Piece::Bishop, Side::Black),
+            (self.black_rooks, Piece::Rook, Side::Black),
+            (self.black_queens, Piece::Queen, Side::Black),
+            (self.black_king, Piece::King, Side::Black),
+        ]
     }
 }
 

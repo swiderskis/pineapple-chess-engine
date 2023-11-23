@@ -550,6 +550,7 @@ impl SliderAttackTables {
     }
 }
 
+#[derive(Debug, PartialEq)]
 struct MagicNumbers {
     bishop_magic_numbers: [u64; 64],
     rook_magic_numbers: [u64; 64],
@@ -583,15 +584,16 @@ impl MagicNumbers {
     // Implementation to generate magic numbers taken from
     // https://www.youtube.com/watch?v=UnEu5GOiSEs&list=PLmN0neTso3Jxh8ZIylk74JpwfiWNI76Cs&index=15
     pub fn _new(random_state: &mut u32) -> Self {
-        let mut bishop_magic_numbers = [0; 64];
         let mut rook_magic_numbers = [0; 64];
+        let mut bishop_magic_numbers = [0; 64];
 
-        let slider_attack_tables = SliderAttackTables::initialise();
+        let rook_attack_masks = SliderAttackTables::generate_attack_masks(SliderPiece::Rook);
+        let bishop_attack_masks = SliderAttackTables::generate_attack_masks(SliderPiece::Bishop);
 
         for square in Square::iter() {
             rook_magic_numbers[square.to_usize().unwrap()] = Self::_generate_magic_number(
                 random_state,
-                slider_attack_tables.attack_mask(SliderPiece::Rook, square),
+                rook_attack_masks[square.to_usize().unwrap()],
                 SliderPiece::Rook,
                 square,
             )
@@ -600,7 +602,7 @@ impl MagicNumbers {
         for square in Square::iter() {
             bishop_magic_numbers[square.to_usize().unwrap()] = Self::_generate_magic_number(
                 random_state,
-                slider_attack_tables.attack_mask(SliderPiece::Bishop, square),
+                bishop_attack_masks[square.to_usize().unwrap()],
                 SliderPiece::Bishop,
                 square,
             )
@@ -649,16 +651,16 @@ impl MagicNumbers {
 
             let mut used_attacks = [Bitboard::new(0); 4096];
 
-            for i in 0..occupancy_indices {
-                let magic_index = ((occupancies[i]
+            for index in 0..occupancy_indices {
+                let magic_index = ((occupancies[index]
                     .board()
                     .overflowing_mul(magic_number_candidate)
                     .0)
                     >> (64 - occupancy_count)) as usize;
 
                 if used_attacks[magic_index] == 0u64 {
-                    used_attacks[magic_index] = attacks[i];
-                } else if used_attacks[magic_index] != attacks[i] {
+                    used_attacks[magic_index] = attacks[index];
+                } else if used_attacks[magic_index] != attacks[index] {
                     continue 'outer;
                 }
             }
@@ -1302,5 +1304,15 @@ mod tests {
                 .board(),
             desired_h4_attack_table
         );
+    }
+
+    #[test]
+    #[ignore]
+    fn generate_magic_numbers() {
+        let mut random_state = 1804289383;
+
+        let magic_numbers = MagicNumbers::_new(&mut random_state);
+
+        assert_eq!(magic_numbers, MAGIC_NUMBERS)
     }
 }

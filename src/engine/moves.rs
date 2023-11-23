@@ -4,6 +4,7 @@ use super::{
 };
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
+use strum::IntoEnumIterator;
 
 pub const MAX_MOVE_LIST_SIZE: usize = 256;
 
@@ -15,7 +16,7 @@ pub struct MoveList {
 impl MoveList {
     fn new() -> Self {
         Self {
-            move_list: [(); MAX_MOVE_LIST_SIZE].map(|_| None),
+            move_list: [None; MAX_MOVE_LIST_SIZE],
             current_move_list_size: 0,
         }
     }
@@ -25,7 +26,9 @@ impl MoveList {
 
         let side = game.side_to_move();
 
-        for (mut bitboard, piece) in game.side_bitboards(side) {
+        for piece in Piece::iter() {
+            let mut bitboard = game.piece_bitboard(piece, side);
+
             while let Some(source_square) = bitboard.get_lsb_square() {
                 let attacks = Self::generate_attacks(game, piece, source_square);
 
@@ -63,9 +66,6 @@ impl MoveList {
     ) {
         let promotion_pieces = [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight];
 
-        let second_rank = Bitboard::new(0xFF_0000_0000_0000);
-        let seventh_rank = Bitboard::new(0xFF00);
-
         let side = game.side_to_move();
 
         let source_square_index = source_square.to_usize().unwrap();
@@ -74,7 +74,9 @@ impl MoveList {
             Side::Black => Square::from_usize(source_square_index + 8),
         }
         .unwrap();
-        let target_square_occupied = game.is_square_occupied(target_square);
+
+        let second_rank = Bitboard::new(0xFF_0000_0000_0000);
+        let seventh_rank = Bitboard::new(0xFF00);
 
         let single_piece = Bitboard::from_square(source_square);
 
@@ -84,7 +86,7 @@ impl MoveList {
         let pawn_ready_to_promote = (side == Side::White && pawn_on_seventh_rank)
             || (side == Side::Black && pawn_on_second_rank);
 
-        if !target_square_occupied && pawn_ready_to_promote {
+        if pawn_ready_to_promote && !game.is_square_occupied(target_square) {
             for promoted_piece in promotion_pieces {
                 self.push(Move::new(
                     source_square,
@@ -94,7 +96,7 @@ impl MoveList {
                     MoveType::Quiet,
                 ));
             }
-        } else if !target_square_occupied {
+        } else if !game.is_square_occupied(target_square) {
             self.push(Move::new(
                 source_square,
                 target_square,
@@ -112,9 +114,7 @@ impl MoveList {
             };
 
             if let Some(target_square) = double_push_target_square {
-                let target_square_occupied = game.is_square_occupied(target_square);
-
-                if !target_square_occupied {
+                if !game.is_square_occupied(target_square) {
                     self.push(Move::new(
                         source_square,
                         target_square,
