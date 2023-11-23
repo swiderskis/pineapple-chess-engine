@@ -285,10 +285,11 @@ impl Game {
             }
         }
 
-        let king_square = game_clone.piece_bitboard(Piece::King, side).get_lsb_index();
+        let king_square = game_clone
+            .piece_bitboard(Piece::King, side)
+            .get_lsb_square();
 
-        if let Some(index) = king_square {
-            let king_square = Square::from_usize(index).unwrap();
+        if let Some(king_square) = king_square {
             let own_king_in_check = game_clone.is_square_attacked(opponent_side, king_square);
 
             if own_king_in_check {
@@ -525,12 +526,12 @@ impl Bitboard {
     }
 
     // lsb = least significant bit
-    pub fn get_lsb_index(self) -> Option<usize> {
+    pub fn get_lsb_square(self) -> Option<Square> {
         if self.0 == 0 {
             return None;
         }
 
-        Some(self.0.trailing_zeros() as usize)
+        Square::from_u32(self.0.trailing_zeros())
     }
 
     fn _print(self) {

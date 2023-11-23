@@ -1,5 +1,5 @@
 use super::game::{Bitboard, Piece, Side, Square};
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
 use strum::IntoEnumIterator;
 
@@ -530,9 +530,7 @@ impl SliderAttackTables {
         let mut occupancy = Bitboard::new(0);
         let mut count = 0;
 
-        while let Some(square_index) = attack_mask.get_lsb_index() {
-            let lsb_square = Square::from_usize(square_index).unwrap();
-
+        while let Some(lsb_square) = attack_mask.get_lsb_square() {
             if index & (1 << count) != 0 {
                 occupancy.set_bit(lsb_square);
             }
