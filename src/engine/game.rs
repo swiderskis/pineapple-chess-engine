@@ -108,6 +108,7 @@ impl Game {
                     square_index += 1;
                 }
                 '0'..='9' => square_index += character as usize - '0' as usize,
+                '/' => {}
                 _ => eprintln!("Invalid character found in position string"),
             }
         }
