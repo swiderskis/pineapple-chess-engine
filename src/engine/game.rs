@@ -766,25 +766,6 @@ impl CastlingType {
     }
 }
 
-pub fn _perft(game: &mut Game, nodes: &mut u32, depth: u32) {
-    if depth == 0 {
-        *nodes += 1;
-        return;
-    }
-
-    let moves = MoveList::generate_moves(game);
-
-    for mv in moves.move_list().iter().flatten() {
-        let mut game_clone = game.clone();
-
-        if game_clone.make_move(*mv, MoveFlag::All).is_err() {
-            continue;
-        }
-
-        _perft(&mut game_clone, nodes, depth - 1);
-    }
-}
-
 pub fn _perft_test(game: &mut Game, depth: u32) {
     let mut total_nodes = 0;
     let now = Instant::now();
@@ -814,6 +795,25 @@ pub fn _perft_test(game: &mut Game, depth: u32) {
     println!("Depth: {}", depth);
     println!("Nodes: {}", total_nodes);
     println!("Time taken: {:?}", now.elapsed());
+}
+
+pub fn _perft(game: &mut Game, nodes: &mut u32, depth: u32) {
+    if depth == 0 {
+        *nodes += 1;
+        return;
+    }
+
+    let moves = MoveList::generate_moves(game);
+
+    for mv in moves.move_list().iter().flatten() {
+        let mut game_clone = game.clone();
+
+        if game_clone.make_move(*mv, MoveFlag::All).is_err() {
+            continue;
+        }
+
+        _perft(&mut game_clone, nodes, depth - 1);
+    }
 }
 
 #[derive(Clone)]
