@@ -30,20 +30,9 @@ impl MoveList {
             let mut bitboard = game.piece_bitboard(piece, side);
 
             while let Some(source_square) = bitboard.get_lsb_square() {
-                let attacks = Self::generate_attacks(game, piece, source_square);
-
                 match piece {
-                    Piece::Pawn => {
-                        let attack_table = attack_tables::ATTACK_TABLES.attack_table(
-                            game.board(None),
-                            piece,
-                            side,
-                            source_square,
-                        );
-
-                        move_list.generate_pawn_moves(attack_table, attacks, game, source_square)
-                    }
-                    _ => move_list.generate_piece_moves(attacks, game, piece, source_square),
+                    Piece::Pawn => move_list.generate_pawn_moves(game, source_square),
+                    _ => move_list.generate_piece_moves(game, piece, source_square),
                 };
 
                 bitboard.pop_bit(source_square);
@@ -57,15 +46,7 @@ impl MoveList {
         &self.move_list
     }
 
-    fn generate_pawn_moves(
-        &mut self,
-        attack_table: Bitboard,
-        mut attacks: Bitboard,
-        game: &Game,
-        source_square: Square,
-    ) {
-        let promotion_pieces = [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight];
-
+    fn generate_pawn_moves(&mut self, game: &Game, source_square: Square) {
         let side = game.side_to_move();
 
         let source_square_index = source_square as usize;
@@ -85,6 +66,7 @@ impl MoveList {
 
         let pawn_ready_to_promote = (side == Side::White && pawn_on_seventh_rank)
             || (side == Side::Black && pawn_on_second_rank);
+        let promotion_pieces = [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight];
 
         if pawn_ready_to_promote && !game.is_square_occupied(target_square) {
             for promoted_piece in promotion_pieces {
@@ -126,6 +108,8 @@ impl MoveList {
             }
         }
 
+        let mut attacks = Self::generate_attacks(game, Piece::Pawn, source_square);
+
         while let Some(target_square) = attacks.get_lsb_square() {
             if pawn_ready_to_promote {
                 for promoted_piece in promotion_pieces {
@@ -150,6 +134,13 @@ impl MoveList {
             attacks.pop_bit(target_square);
         }
 
+        let attack_table = attack_tables::ATTACK_TABLES.attack_table(
+            game.board(None),
+            Piece::Pawn,
+            side,
+            source_square,
+        );
+
         if let Some(target_square) = game.en_passant_square() {
             let en_passant_square_attacked =
                 attack_table & Bitboard::from_square(target_square) != 0u64;
@@ -166,13 +157,9 @@ impl MoveList {
         }
     }
 
-    fn generate_piece_moves(
-        &mut self,
-        mut attacks: Bitboard,
-        game: &Game,
-        piece: Piece,
-        source_square: Square,
-    ) {
+    fn generate_piece_moves(&mut self, game: &Game, piece: Piece, source_square: Square) {
+        let mut attacks = Self::generate_attacks(game, piece, source_square);
+
         while let Some(target_square) = attacks.get_lsb_square() {
             let move_type = if game.is_square_occupied(target_square) {
                 MoveType::Capture
@@ -371,37 +358,11 @@ mod tests {
         let white_square = Square::D3;
         let black_square = Square::D6;
 
-        let white_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            white_game.board(None),
-            Piece::Pawn,
-            Side::White,
-            white_square,
-        );
-        let black_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            black_game.board(None),
-            Piece::Pawn,
-            Side::Black,
-            black_square,
-        );
-
-        let white_attacks = MoveList::generate_attacks(&white_game, Piece::Pawn, white_square);
-        let black_attacks = MoveList::generate_attacks(&black_game, Piece::Pawn, black_square);
-
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
 
-        white_moves.generate_pawn_moves(
-            white_attack_table,
-            white_attacks,
-            &white_game,
-            white_square,
-        );
-        black_moves.generate_pawn_moves(
-            black_attack_table,
-            black_attacks,
-            &black_game,
-            black_square,
-        );
+        white_moves.generate_pawn_moves(&white_game, white_square);
+        black_moves.generate_pawn_moves(&black_game, black_square);
 
         let white_pawn_push = Move::new(Square::D3, Square::D4, Piece::Pawn, None, MoveType::Quiet);
         let black_pawn_push = Move::new(Square::D6, Square::D5, Piece::Pawn, None, MoveType::Quiet);
@@ -421,37 +382,11 @@ mod tests {
         let white_square = Square::D3;
         let black_square = Square::D6;
 
-        let white_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            white_game.board(None),
-            Piece::Pawn,
-            Side::White,
-            white_square,
-        );
-        let black_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            black_game.board(None),
-            Piece::Pawn,
-            Side::Black,
-            black_square,
-        );
-
-        let white_attacks = MoveList::generate_attacks(&white_game, Piece::Pawn, white_square);
-        let black_attacks = MoveList::generate_attacks(&black_game, Piece::Pawn, black_square);
-
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
 
-        white_moves.generate_pawn_moves(
-            white_attack_table,
-            white_attacks,
-            &white_game,
-            white_square,
-        );
-        black_moves.generate_pawn_moves(
-            black_attack_table,
-            black_attacks,
-            &black_game,
-            black_square,
-        );
+        white_moves.generate_pawn_moves(&white_game, white_square);
+        black_moves.generate_pawn_moves(&black_game, black_square);
 
         let white_moves_correct = white_moves.current_move_list_size == 0;
         let black_moves_correct = black_moves.current_move_list_size == 0;
@@ -468,37 +403,11 @@ mod tests {
         let white_square = Square::D2;
         let black_square = Square::D7;
 
-        let white_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            white_game.board(None),
-            Piece::Pawn,
-            Side::White,
-            white_square,
-        );
-        let black_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            black_game.board(None),
-            Piece::Pawn,
-            Side::Black,
-            black_square,
-        );
-
-        let white_attacks = MoveList::generate_attacks(&white_game, Piece::Pawn, white_square);
-        let black_attacks = MoveList::generate_attacks(&black_game, Piece::Pawn, black_square);
-
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
 
-        white_moves.generate_pawn_moves(
-            white_attack_table,
-            white_attacks,
-            &white_game,
-            white_square,
-        );
-        black_moves.generate_pawn_moves(
-            black_attack_table,
-            black_attacks,
-            &black_game,
-            black_square,
-        );
+        white_moves.generate_pawn_moves(&white_game, white_square);
+        black_moves.generate_pawn_moves(&black_game, black_square);
 
         let white_single_pawn_push =
             Move::new(Square::D2, Square::D3, Piece::Pawn, None, MoveType::Quiet);
@@ -545,18 +454,8 @@ mod tests {
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
 
-        white_moves.generate_pawn_moves(
-            white_attack_table,
-            white_attacks,
-            &white_game,
-            white_square,
-        );
-        black_moves.generate_pawn_moves(
-            black_attack_table,
-            black_attacks,
-            &black_game,
-            black_square,
-        );
+        white_moves.generate_pawn_moves(&white_game, white_square);
+        black_moves.generate_pawn_moves(&black_game, black_square);
 
         let white_single_pawn_push =
             Move::new(Square::D2, Square::D3, Piece::Pawn, None, MoveType::Quiet);
@@ -582,18 +481,8 @@ mod tests {
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
 
-        white_moves.generate_pawn_moves(
-            white_attack_table,
-            white_attacks,
-            &white_game,
-            white_square,
-        );
-        black_moves.generate_pawn_moves(
-            black_attack_table,
-            black_attacks,
-            &black_game,
-            black_square,
-        );
+        white_moves.generate_pawn_moves(&white_game, white_square);
+        black_moves.generate_pawn_moves(&black_game, black_square);
 
         let white_moves_correct = white_moves.current_move_list_size == 0;
         let black_moves_correct = black_moves.current_move_list_size == 0;
@@ -610,37 +499,11 @@ mod tests {
         let white_square = Square::D4;
         let black_square = Square::D5;
 
-        let white_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            white_game.board(None),
-            Piece::Pawn,
-            Side::White,
-            white_square,
-        );
-        let black_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            black_game.board(None),
-            Piece::Pawn,
-            Side::Black,
-            black_square,
-        );
-
-        let white_attacks = MoveList::generate_attacks(&white_game, Piece::Pawn, white_square);
-        let black_attacks = MoveList::generate_attacks(&black_game, Piece::Pawn, black_square);
-
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
 
-        white_moves.generate_pawn_moves(
-            white_attack_table,
-            white_attacks,
-            &white_game,
-            white_square,
-        );
-        black_moves.generate_pawn_moves(
-            black_attack_table,
-            black_attacks,
-            &black_game,
-            black_square,
-        );
+        white_moves.generate_pawn_moves(&white_game, white_square);
+        black_moves.generate_pawn_moves(&black_game, black_square);
 
         let white_capture = Move::new(Square::D4, Square::E5, Piece::Pawn, None, MoveType::Capture);
         let black_capture = Move::new(Square::D5, Square::E4, Piece::Pawn, None, MoveType::Capture);
@@ -657,37 +520,11 @@ mod tests {
         let white_square = Square::D7;
         let black_square = Square::D2;
 
-        let white_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            white_game.board(None),
-            Piece::Pawn,
-            Side::White,
-            white_square,
-        );
-        let black_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            black_game.board(None),
-            Piece::Pawn,
-            Side::Black,
-            black_square,
-        );
-
-        let white_attacks = MoveList::generate_attacks(&white_game, Piece::Pawn, white_square);
-        let black_attacks = MoveList::generate_attacks(&black_game, Piece::Pawn, black_square);
-
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
 
-        white_moves.generate_pawn_moves(
-            white_attack_table,
-            white_attacks,
-            &white_game,
-            white_square,
-        );
-        black_moves.generate_pawn_moves(
-            black_attack_table,
-            black_attacks,
-            &black_game,
-            black_square,
-        );
+        white_moves.generate_pawn_moves(&white_game, white_square);
+        black_moves.generate_pawn_moves(&black_game, black_square);
 
         let white_promotion_queen = Move::new(
             Square::D7,
@@ -778,37 +615,11 @@ mod tests {
         let white_square = Square::D5;
         let black_square = Square::D4;
 
-        let white_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            white_game.board(None),
-            Piece::Pawn,
-            Side::White,
-            white_square,
-        );
-        let black_attack_table = attack_tables::ATTACK_TABLES.attack_table(
-            black_game.board(None),
-            Piece::Pawn,
-            Side::Black,
-            black_square,
-        );
-
-        let white_attacks = MoveList::generate_attacks(&white_game, Piece::Pawn, white_square);
-        let black_attacks = MoveList::generate_attacks(&black_game, Piece::Pawn, black_square);
-
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
 
-        white_moves.generate_pawn_moves(
-            white_attack_table,
-            white_attacks,
-            &white_game,
-            white_square,
-        );
-        black_moves.generate_pawn_moves(
-            black_attack_table,
-            black_attacks,
-            &black_game,
-            black_square,
-        );
+        white_moves.generate_pawn_moves(&white_game, white_square);
+        black_moves.generate_pawn_moves(&black_game, black_square);
 
         let white_en_passant = Move::new(
             Square::D5,
@@ -836,13 +647,9 @@ mod tests {
     fn knight_moves() {
         let game = Game::initialise("8/8/2p5/5P2/3N4/1p6/2p1P3/8 w - - 0 1");
 
-        let source_square = Square::D4;
-
-        let attacks = MoveList::generate_attacks(&game, Piece::Knight, source_square);
-
         let mut moves = MoveList::new();
 
-        moves.generate_piece_moves(attacks, &game, Piece::Knight, Square::D4);
+        moves.generate_piece_moves(&game, Piece::Knight, Square::D4);
 
         let desired_c6_move = Move::new(
             Square::D4,
@@ -889,11 +696,9 @@ mod tests {
 
         let source_square = Square::D4;
 
-        let attacks = MoveList::generate_attacks(&game, Piece::Bishop, source_square);
-
         let mut moves = MoveList::new();
 
-        moves.generate_piece_moves(attacks, &game, Piece::Bishop, Square::D4);
+        moves.generate_piece_moves(&game, Piece::Bishop, source_square);
 
         let desired_a7_move =
             Move::new(Square::D4, Square::A7, Piece::Bishop, None, MoveType::Quiet);
@@ -945,11 +750,9 @@ mod tests {
 
         let source_square = Square::D4;
 
-        let attacks = MoveList::generate_attacks(&game, Piece::Rook, source_square);
-
         let mut moves = MoveList::new();
 
-        moves.generate_piece_moves(attacks, &game, Piece::Rook, Square::D4);
+        moves.generate_piece_moves(&game, Piece::Rook, source_square);
 
         let desired_d8_move =
             Move::new(Square::D4, Square::D8, Piece::Rook, None, MoveType::Capture);
@@ -989,11 +792,9 @@ mod tests {
 
         let source_square = Square::D4;
 
-        let attacks = MoveList::generate_attacks(&game, Piece::Queen, source_square);
-
         let mut moves = MoveList::new();
 
-        moves.generate_piece_moves(attacks, &game, Piece::Queen, Square::D4);
+        moves.generate_piece_moves(&game, Piece::Queen, source_square);
 
         let desired_a7_move =
             Move::new(Square::D4, Square::A7, Piece::Queen, None, MoveType::Quiet);
@@ -1087,11 +888,9 @@ mod tests {
 
         let source_square = Square::D4;
 
-        let attacks = MoveList::generate_attacks(&game, Piece::King, source_square);
-
         let mut moves = MoveList::new();
 
-        moves.generate_piece_moves(attacks, &game, Piece::King, Square::D4);
+        moves.generate_piece_moves(&game, Piece::King, source_square);
 
         let desired_c5_move =
             Move::new(Square::D4, Square::C5, Piece::King, None, MoveType::Capture);

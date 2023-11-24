@@ -108,7 +108,7 @@ impl Game {
                     square_index += 1;
                 }
                 '0'..='9' => square_index += character as usize - '0' as usize,
-                _ => {}
+                _ => eprintln!("Invalid character found in position string"),
             }
         }
 
@@ -153,7 +153,7 @@ impl Game {
         let mut game_clone = self.clone();
 
         let side = game_clone.side_to_move;
-        let opponent_side = game_clone.side_to_move.opponent_side();
+        let opponent_side = side.opponent_side();
 
         game_clone
             .mut_piece_bitboard(mv.piece(), side)
@@ -298,7 +298,7 @@ impl Game {
         }
 
         *self = game_clone;
-        self.side_to_move = side.opponent_side();
+        self.side_to_move = opponent_side;
 
         Ok(())
     }
@@ -762,7 +762,7 @@ impl CastlingRights {
                 'Q' => castling_rights |= CastlingType::WhiteLong as u8,
                 'k' => castling_rights |= CastlingType::BlackShort as u8,
                 'q' => castling_rights |= CastlingType::BlackLong as u8,
-                _ => {}
+                _ => eprintln!("Invalid character found in castling rights string"),
             }
         }
 
