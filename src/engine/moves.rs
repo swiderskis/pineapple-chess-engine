@@ -16,7 +16,7 @@ pub struct MoveList {
 impl MoveList {
     fn new() -> Self {
         Self {
-            move_list: [None; MAX_MOVE_LIST_SIZE],
+            move_list: [(); MAX_MOVE_LIST_SIZE].map(|_| None),
             current_move_list_size: 0,
         }
     }
@@ -285,7 +285,7 @@ pub enum MoveFlag {
     Capture,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Move {
     source_square: Square,
     target_square: Square,
@@ -311,27 +311,27 @@ impl Move {
         }
     }
 
-    pub fn source_square(self) -> Square {
+    pub fn source_square(&self) -> Square {
         self.source_square
     }
 
-    pub fn target_square(self) -> Square {
+    pub fn target_square(&self) -> Square {
         self.target_square
     }
 
-    pub fn piece(self) -> Piece {
+    pub fn piece(&self) -> Piece {
         self.piece
     }
 
-    pub fn promoted_piece(self) -> Option<Piece> {
+    pub fn promoted_piece(&self) -> Option<Piece> {
         self.promoted_piece
     }
 
-    pub fn move_type(self) -> MoveType {
+    pub fn move_type(&self) -> MoveType {
         self.move_type
     }
 
-    pub fn _to_string(self) -> String {
+    pub fn _to_string(&self) -> String {
         let source_square_string = self.source_square()._to_lowercase_string();
         let target_square_string = self.target_square()._to_lowercase_string();
         let promoted_piece_string = if let Some(promoted_piece) = self.promoted_piece() {

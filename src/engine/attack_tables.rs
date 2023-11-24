@@ -160,12 +160,9 @@ pub struct AttackTables {
 
 impl AttackTables {
     fn initialise() -> Self {
-        let leaper_attack_tables = LeaperAttackTables::initialise();
-        let slider_attack_tables = SliderAttackTables::initialise();
-
         Self {
-            leaper_attack_tables,
-            slider_attack_tables,
+            leaper_attack_tables: LeaperAttackTables::initialise(),
+            slider_attack_tables: SliderAttackTables::initialise(),
         }
     }
 

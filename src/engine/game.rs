@@ -146,7 +146,7 @@ impl Game {
         }
     }
 
-    pub fn make_move(&mut self, mv: Move, move_flag: MoveFlag) -> Result<(), ()> {
+    pub fn make_move(&mut self, mv: &Move, move_flag: MoveFlag) -> Result<(), ()> {
         if move_flag == MoveFlag::Capture && mv.move_type() != MoveType::Capture {
             return Err(());
         }
@@ -827,7 +827,7 @@ pub fn _perft_test(game: &mut Game, depth: u32) {
     for mv in moves.move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
-        if game_clone.make_move(*mv, MoveFlag::All).is_err() {
+        if game_clone.make_move(mv, MoveFlag::All).is_err() {
             continue;
         }
 
@@ -858,7 +858,7 @@ pub fn _perft(game: &mut Game, nodes: &mut u32, depth: u32) {
     for mv in moves.move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
-        if game_clone.make_move(*mv, MoveFlag::All).is_err() {
+        if game_clone.make_move(mv, MoveFlag::All).is_err() {
             continue;
         }
 
