@@ -2,8 +2,8 @@ use super::{
     attack_tables,
     game::{Bitboard, CastlingType, Game, Piece, Side, Square},
 };
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 
 pub const MAX_MOVE_LIST_SIZE: usize = 256;
@@ -68,7 +68,7 @@ impl MoveList {
 
         let side = game.side_to_move();
 
-        let source_square_index = source_square.to_usize().unwrap();
+        let source_square_index = source_square as usize;
         let target_square = match side {
             Side::White => Square::from_usize(source_square_index - 8),
             Side::Black => Square::from_usize(source_square_index + 8),
@@ -283,7 +283,7 @@ impl MoveList {
     }
 }
 
-#[derive(Clone, Copy, Debug, FromPrimitive, PartialEq, ToPrimitive)]
+#[derive(Clone, Copy, Debug, FromPrimitive, PartialEq)]
 pub enum MoveType {
     Quiet,
     Capture,
@@ -324,27 +324,27 @@ impl Move {
         }
     }
 
-    pub fn source_square(&self) -> Square {
+    pub fn source_square(self) -> Square {
         self.source_square
     }
 
-    pub fn target_square(&self) -> Square {
+    pub fn target_square(self) -> Square {
         self.target_square
     }
 
-    pub fn piece(&self) -> Piece {
+    pub fn piece(self) -> Piece {
         self.piece
     }
 
-    pub fn promoted_piece(&self) -> Option<Piece> {
+    pub fn promoted_piece(self) -> Option<Piece> {
         self.promoted_piece
     }
 
-    pub fn move_type(&self) -> MoveType {
+    pub fn move_type(self) -> MoveType {
         self.move_type
     }
 
-    pub fn _to_string(&self) -> String {
+    pub fn _to_string(self) -> String {
         let source_square_string = self.source_square()._to_lowercase_string();
         let target_square_string = self.target_square()._to_lowercase_string();
         let promoted_piece_string = if let Some(promoted_piece) = self.promoted_piece() {

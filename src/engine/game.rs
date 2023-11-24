@@ -2,8 +2,8 @@ use super::{
     attack_tables,
     moves::{Move, MoveFlag, MoveList, MoveType},
 };
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{AsPrimitive, FromPrimitive, ToPrimitive, Unsigned};
+use num_derive::FromPrimitive;
+use num_traits::{AsPrimitive, FromPrimitive, Unsigned};
 use std::{
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign},
     str::FromStr,
@@ -169,7 +169,7 @@ impl Game {
                 .set_bit(mv.target_square());
         }
 
-        let target_square_index = mv.target_square().to_usize().unwrap();
+        let target_square_index = mv.target_square() as usize;
 
         match mv.move_type() {
             MoveType::Capture => {
@@ -371,7 +371,7 @@ impl Game {
     }
 
     pub fn castling_type_allowed(&self, castling_type: CastlingType) -> bool {
-        self.castling_rights.0 & castling_type.to_u8().unwrap() != 0
+        self.castling_rights.0 & castling_type as u8 != 0
     }
 
     pub fn piece_bitboard(&self, piece: Piece, side: Side) -> Bitboard {
@@ -419,7 +419,7 @@ impl Game {
     fn _print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
-                print!("{:<4}", (64 - square.to_usize().unwrap()) / 8);
+                print!("{:<4}", (64 - square as usize) / 8);
             }
 
             match self._piece_at_square(square) {
@@ -485,18 +485,18 @@ impl Bitboard {
     }
 
     pub fn bit_occupied(&self, square: Square) -> bool {
-        self.0 & (1 << square.to_usize().unwrap()) != 0
+        self.0 & (1 << square as usize) != 0
     }
 
     pub fn set_bit(&mut self, square: Square) {
-        self.0 |= 1 << square.to_usize().unwrap();
+        self.0 |= 1 << square as usize;
     }
 
     pub fn pop_bit(&mut self, square: Square) {
-        self.0 &= !(1 << square.to_usize().unwrap());
+        self.0 &= !(1 << square as usize);
     }
 
-    pub fn board(self) -> u64 {
+    pub fn value(self) -> u64 {
         self.0
     }
 
@@ -516,7 +516,7 @@ impl Bitboard {
     fn _print(self) {
         for square in Square::iter() {
             if square.file() == 0 {
-                print!("{:<4}", ((64 - square.to_usize().unwrap()) / 8));
+                print!("{:<4}", ((64 - square as usize) / 8));
             }
 
             print!("{:<2}", if self.bit_occupied(square) { 1 } else { 0 });
@@ -611,7 +611,7 @@ impl<T: Unsigned + AsPrimitive<u64>> ShrAssign<T> for Bitboard {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, EnumIter, FromPrimitive, PartialEq, ToPrimitive)]
+#[derive(Clone, Copy, Debug, Display, EnumIter, FromPrimitive, PartialEq)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -651,7 +651,7 @@ pub enum Side {
 }
 
 impl Side {
-    pub fn opponent_side(&self) -> Self {
+    pub fn opponent_side(self) -> Self {
         match self {
             Self::White => Self::Black,
             Self::Black => Self::White,
@@ -659,9 +659,7 @@ impl Side {
     }
 }
 
-#[derive(
-    Clone, Copy, Debug, Display, EnumIter, EnumString, FromPrimitive, PartialEq, ToPrimitive,
-)]
+#[derive(Clone, Copy, Debug, Display, EnumIter, EnumString, FromPrimitive, PartialEq)]
 pub enum Square {
     A8,
     B8,
@@ -734,20 +732,71 @@ impl Square {
         Self::from_usize(rank * 8 + file).unwrap()
     }
 
-    pub fn rank(&self) -> usize {
-        self.to_usize().unwrap() / 8
+    pub fn rank(self) -> usize {
+        self as usize / 8
     }
 
-    pub fn file(&self) -> usize {
-        self.to_usize().unwrap() % 8
+    pub fn file(self) -> usize {
+        self as usize % 8
     }
 
-    pub fn _to_lowercase_string(&self) -> String {
+    pub fn _to_lowercase_string(self) -> String {
         self.to_string().to_lowercase()
     }
 }
 
-#[derive(Clone, Copy, ToPrimitive)]
+#[derive(Clone)]
+struct CastlingRights(u8);
+
+impl CastlingRights {
+    fn initialise(castling_rights_string: &str) -> Self {
+        if castling_rights_string == "-" {
+            return Self(0);
+        };
+
+        let mut castling_rights = 0;
+
+        for character in castling_rights_string.chars() {
+            match character {
+                'K' => castling_rights |= CastlingType::WhiteShort as u8,
+                'Q' => castling_rights |= CastlingType::WhiteLong as u8,
+                'k' => castling_rights |= CastlingType::BlackShort as u8,
+                'q' => castling_rights |= CastlingType::BlackLong as u8,
+                _ => {}
+            }
+        }
+
+        Self(castling_rights)
+    }
+
+    fn remove_castling_type(&mut self, castling_type: CastlingType) {
+        self.0 &= !(castling_type as u8);
+    }
+
+    fn _as_string(&self) -> String {
+        let mut castling_rights_string = String::new();
+
+        if self.0 & CastlingType::WhiteShort as u8 != 0 {
+            castling_rights_string.push('K');
+        }
+
+        if self.0 & CastlingType::WhiteLong as u8 != 0 {
+            castling_rights_string.push('Q');
+        }
+
+        if self.0 & CastlingType::BlackShort as u8 != 0 {
+            castling_rights_string.push('k');
+        }
+
+        if self.0 & CastlingType::BlackLong as u8 != 0 {
+            castling_rights_string.push('q');
+        }
+
+        castling_rights_string
+    }
+}
+
+#[derive(Clone, Copy)]
 pub enum CastlingType {
     WhiteShort = 0b1000,
     WhiteLong = 0b0100,
@@ -813,57 +862,6 @@ pub fn _perft(game: &mut Game, nodes: &mut u32, depth: u32) {
         }
 
         _perft(&mut game_clone, nodes, depth - 1);
-    }
-}
-
-#[derive(Clone)]
-struct CastlingRights(u8);
-
-impl CastlingRights {
-    fn initialise(castling_rights_string: &str) -> Self {
-        if castling_rights_string == "-" {
-            return Self(0);
-        };
-
-        let mut castling_rights = 0;
-
-        for character in castling_rights_string.chars() {
-            match character {
-                'K' => castling_rights |= CastlingType::WhiteShort.to_u8().unwrap(),
-                'Q' => castling_rights |= CastlingType::WhiteLong.to_u8().unwrap(),
-                'k' => castling_rights |= CastlingType::BlackShort.to_u8().unwrap(),
-                'q' => castling_rights |= CastlingType::BlackLong.to_u8().unwrap(),
-                _ => {}
-            }
-        }
-
-        Self(castling_rights)
-    }
-
-    fn remove_castling_type(&mut self, castling_type: CastlingType) {
-        self.0 &= !castling_type.to_u8().unwrap();
-    }
-
-    fn _as_string(&self) -> String {
-        let mut castling_rights_string = String::new();
-
-        if self.0 & CastlingType::WhiteShort.to_u8().unwrap() != 0 {
-            castling_rights_string.push('K');
-        }
-
-        if self.0 & CastlingType::WhiteLong.to_u8().unwrap() != 0 {
-            castling_rights_string.push('Q');
-        }
-
-        if self.0 & CastlingType::BlackShort.to_u8().unwrap() != 0 {
-            castling_rights_string.push('k');
-        }
-
-        if self.0 & CastlingType::BlackLong.to_u8().unwrap() != 0 {
-            castling_rights_string.push('q');
-        }
-
-        castling_rights_string
     }
 }
 
@@ -1067,18 +1065,9 @@ mod tests {
         bitboard2.set_bit(Square::G6);
         bitboard3.set_bit(Square::B4);
 
-        assert_eq!(
-            bitboard1.0,
-            u64::pow(2, Square::H2.to_usize().unwrap() as u32)
-        );
-        assert_eq!(
-            bitboard2.0,
-            u64::pow(2, Square::G6.to_usize().unwrap() as u32)
-        );
-        assert_eq!(
-            bitboard3.0,
-            u64::pow(2, Square::B4.to_usize().unwrap() as u32)
-        );
+        assert_eq!(bitboard1.0, u64::pow(2, Square::H2 as u32));
+        assert_eq!(bitboard2.0, u64::pow(2, Square::G6 as u32));
+        assert_eq!(bitboard3.0, u64::pow(2, Square::B4 as u32));
     }
 
     #[test]
@@ -1099,18 +1088,9 @@ mod tests {
         bitboard3.set_bit(Square::B8);
         bitboard3.pop_bit(Square::C4);
 
-        assert_eq!(
-            bitboard1.0,
-            u64::pow(2, Square::A8.to_usize().unwrap() as u32)
-        );
-        assert_eq!(
-            bitboard2.0,
-            u64::pow(2, Square::A7.to_usize().unwrap() as u32)
-        );
-        assert_eq!(
-            bitboard3.0,
-            u64::pow(2, Square::B8.to_usize().unwrap() as u32)
-        );
+        assert_eq!(bitboard1.0, u64::pow(2, Square::A8 as u32));
+        assert_eq!(bitboard2.0, u64::pow(2, Square::A7 as u32));
+        assert_eq!(bitboard3.0, u64::pow(2, Square::B8 as u32));
     }
 
     #[test]
