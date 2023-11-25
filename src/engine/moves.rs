@@ -1,13 +1,18 @@
 use super::{
     attack_tables,
     game::{Bitboard, CastlingType, Game, Piece, Side, Square},
+    InputError,
 };
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 
+// Max legal moves from a position is currently thought to be 218
+// https://www.chessprogramming.org/Encoding_Moves#MoveIndex
+// 256 is given as a buffer due to pseudo-legal moves
 pub const MAX_MOVE_LIST_SIZE: usize = 256;
 
+#[derive(Clone)]
 pub struct MoveList {
     move_list: [Option<Move>; MAX_MOVE_LIST_SIZE],
     current_move_list_size: usize,
@@ -42,8 +47,17 @@ impl MoveList {
         move_list
     }
 
-    pub fn move_list(&self) -> &[Option<Move>; MAX_MOVE_LIST_SIZE] {
-        &self.move_list
+    pub fn find_move(&self, move_search_params: MoveSearchParams) -> Result<Move, InputError> {
+        for mv in self.move_list.iter().flatten() {
+            if mv.source_square() == move_search_params.source_square
+                && mv.target_square() == move_search_params.target_square
+                && mv.promoted_piece() == move_search_params.promoted_piece
+            {
+                return Ok(mv.clone());
+            }
+        }
+
+        Err(InputError::MoveNotFound(move_search_params.as_string()))
     }
 
     fn generate_pawn_moves(&mut self, game: &Game, source_square: Square) {
@@ -268,6 +282,10 @@ impl MoveList {
         self.move_list[self.current_move_list_size] = Some(mv);
         self.current_move_list_size += 1;
     }
+
+    pub fn _move_list(&self) -> &[Option<Move>; MAX_MOVE_LIST_SIZE] {
+        &self.move_list
+    }
 }
 
 #[derive(Clone, Copy, Debug, FromPrimitive, PartialEq)]
@@ -285,7 +303,7 @@ pub enum MoveFlag {
     Capture,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Move {
     source_square: Square,
     target_square: Square,
@@ -331,17 +349,52 @@ impl Move {
         self.move_type
     }
 
-    pub fn _to_string(&self) -> String {
-        let source_square_string = self.source_square()._to_lowercase_string();
-        let target_square_string = self.target_square()._to_lowercase_string();
-        let promoted_piece_string = if let Some(promoted_piece) = self.promoted_piece() {
-            promoted_piece._to_char(Side::Black)
-        } else {
-            ' '
-        }
-        .to_string();
+    pub fn as_string(&self) -> String {
+        let source_square_string = self.source_square.to_lowercase_string();
+        let target_square_string = self.target_square.to_lowercase_string();
 
-        source_square_string + &target_square_string + &promoted_piece_string
+        match self.promoted_piece {
+            Some(promoted_piece) => {
+                let promoted_piece_string = promoted_piece.to_char(None).to_string();
+
+                source_square_string + &target_square_string + &promoted_piece_string
+            }
+            None => source_square_string + &target_square_string,
+        }
+    }
+}
+
+pub struct MoveSearchParams {
+    source_square: Square,
+    target_square: Square,
+    promoted_piece: Option<Piece>,
+}
+
+impl MoveSearchParams {
+    pub fn new(
+        source_square: Square,
+        target_square: Square,
+        promoted_piece: Option<Piece>,
+    ) -> Self {
+        Self {
+            source_square,
+            target_square,
+            promoted_piece,
+        }
+    }
+
+    pub fn as_string(&self) -> String {
+        let source_square_string = self.source_square.to_lowercase_string();
+        let target_square_string = self.target_square.to_lowercase_string();
+
+        match self.promoted_piece {
+            Some(promoted_piece) => {
+                let promoted_piece_string = promoted_piece.to_char(None).to_string();
+
+                source_square_string + &target_square_string + &promoted_piece_string
+            }
+            None => source_square_string + &target_square_string,
+        }
     }
 }
 
@@ -352,8 +405,11 @@ mod tests {
 
     #[test]
     fn single_pawn_push() {
-        let white_game = Game::initialise("8/8/8/8/8/3P4/8/8 w - - 0 1");
-        let black_game = Game::initialise("8/8/3p4/8/8/8/8/8 b - - 0 1");
+        let mut white_game = Game::initialise();
+        let mut black_game = Game::initialise();
+
+        white_game.load_fen("8/8/8/8/8/3P4/8/8 w - - 0 1").unwrap();
+        black_game.load_fen("8/8/3p4/8/8/8/8/8 b - - 0 1").unwrap();
 
         let white_square = Square::D3;
         let black_square = Square::D6;
@@ -376,8 +432,12 @@ mod tests {
         assert!(black_moves_correct);
 
         // blocked from pushing
-        let white_game = Game::initialise("8/8/8/8/3p4/3P4/8/8 w - - 0 1");
-        let black_game = Game::initialise("8/8/3p4/3P4/8/8/8/8 b - - 0 1");
+        white_game
+            .load_fen("8/8/8/8/3p4/3P4/8/8 w - - 0 1")
+            .unwrap();
+        black_game
+            .load_fen("8/8/3p4/3P4/8/8/8/8 b - - 0 1")
+            .unwrap();
 
         let white_square = Square::D3;
         let black_square = Square::D6;
@@ -397,8 +457,11 @@ mod tests {
 
     #[test]
     fn double_pawn_push() {
-        let white_game = Game::initialise("8/8/8/8/8/8/3P4/8 w - - 0 1");
-        let black_game = Game::initialise("8/3p4/8/8/8/8/8/8 b - - 0 1");
+        let mut white_game = Game::initialise();
+        let mut black_game = Game::initialise();
+
+        white_game.load_fen("8/8/8/8/8/8/3P4/8 w - - 0 1").unwrap();
+        black_game.load_fen("8/3p4/8/8/8/8/8/8 b - - 0 1").unwrap();
 
         let white_square = Square::D2;
         let black_square = Square::D7;
@@ -448,8 +511,12 @@ mod tests {
         assert!(black_moves_correct);
 
         // blocked from double push
-        let white_game = Game::initialise("8/8/8/8/3p4/8/3P4/8 w - - 0 1");
-        let black_game = Game::initialise("8/3p4/8/3P4/8/8/8/8 b - - 0 1");
+        white_game
+            .load_fen("8/8/8/8/3p4/8/3P4/8 w - - 0 1")
+            .unwrap();
+        black_game
+            .load_fen("8/3p4/8/3P4/8/8/8/8 b - - 0 1")
+            .unwrap();
 
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
@@ -475,8 +542,12 @@ mod tests {
         assert!(black_moves_correct);
 
         // blocked from single push
-        let white_game = Game::initialise("8/8/8/8/8/3p4/3P4/8 w - - 0 1");
-        let black_game = Game::initialise("8/3p4/3P4/8/8/8/8/8 b - - 0 1");
+        white_game
+            .load_fen("8/8/8/8/8/3p4/3P4/8 w - - 0 1")
+            .unwrap();
+        black_game
+            .load_fen("8/3p4/3P4/8/8/8/8/8 b - - 0 1")
+            .unwrap();
 
         let mut white_moves = MoveList::new();
         let mut black_moves = MoveList::new();
@@ -493,8 +564,15 @@ mod tests {
 
     #[test]
     fn pawn_capture() {
-        let white_game = Game::initialise("8/8/8/2P1p3/3P4/8/8/8 w - - 0 1");
-        let black_game = Game::initialise("8/8/8/3p4/2p1P3/8/8/8 b - - 0 1");
+        let mut white_game = Game::initialise();
+        let mut black_game = Game::initialise();
+
+        white_game
+            .load_fen("8/8/8/2P1p3/3P4/8/8/8 w - - 0 1")
+            .unwrap();
+        black_game
+            .load_fen("8/8/8/3p4/2p1P3/8/8/8 b - - 0 1")
+            .unwrap();
 
         let white_square = Square::D4;
         let black_square = Square::D5;
@@ -514,8 +592,11 @@ mod tests {
 
     #[test]
     fn pawn_promotion() {
-        let white_game = Game::initialise("8/3P4/8/8/8/8/8/8 w - - 0 1");
-        let black_game = Game::initialise("8/8/8/8/8/8/3p4/8 b - - 0 1");
+        let mut white_game = Game::initialise();
+        let mut black_game = Game::initialise();
+
+        white_game.load_fen("8/3P4/8/8/8/8/8/8 w - - 0 1").unwrap();
+        black_game.load_fen("8/8/8/8/8/8/3p4/8 b - - 0 1").unwrap();
 
         let white_square = Square::D7;
         let black_square = Square::D2;
@@ -609,8 +690,15 @@ mod tests {
 
     #[test]
     fn en_passant() {
-        let white_game = Game::initialise("8/8/8/3Pp3/8/8/8/8 w - e6 0 1");
-        let black_game = Game::initialise("8/8/8/8/3pP3/8/8/8 b - e3 0 1");
+        let mut white_game = Game::initialise();
+        let mut black_game = Game::initialise();
+
+        white_game
+            .load_fen("8/8/8/3Pp3/8/8/8/8 w - e6 0 1")
+            .unwrap();
+        black_game
+            .load_fen("8/8/8/8/3pP3/8/8/8 b - e3 0 1")
+            .unwrap();
 
         let white_square = Square::D5;
         let black_square = Square::D4;
@@ -645,7 +733,10 @@ mod tests {
 
     #[test]
     fn knight_moves() {
-        let game = Game::initialise("8/8/2p5/5P2/3N4/1p6/2p1P3/8 w - - 0 1");
+        let mut game = Game::initialise();
+
+        game.load_fen("8/8/2p5/5P2/3N4/1p6/2p1P3/8 w - - 0 1")
+            .unwrap();
 
         let mut moves = MoveList::new();
 
@@ -692,7 +783,9 @@ mod tests {
 
     #[test]
     fn bishop_moves() {
-        let game = Game::initialise("8/6p1/8/8/3B4/8/5P2/8 w - - 0 1");
+        let mut game = Game::initialise();
+
+        game.load_fen("8/6p1/8/8/3B4/8/5P2/8 w - - 0 1").unwrap();
 
         let source_square = Square::D4;
 
@@ -746,7 +839,9 @@ mod tests {
 
     #[test]
     fn rook_moves() {
-        let game = Game::initialise("3p4/8/8/8/3R1P2/8/8/8 w - - 0 1");
+        let mut game = Game::initialise();
+
+        game.load_fen("3p4/8/8/8/3R1P2/8/8/8 w - - 0 1").unwrap();
 
         let source_square = Square::D4;
 
@@ -788,7 +883,10 @@ mod tests {
 
     #[test]
     fn queen_moves() {
-        let game = Game::initialise("3p4/6p1/8/8/3Q1P2/8/5P2/8 w - - 0 1");
+        let mut game = Game::initialise();
+
+        game.load_fen("3p4/6p1/8/8/3Q1P2/8/5P2/8 w - - 0 1")
+            .unwrap();
 
         let source_square = Square::D4;
 
@@ -884,7 +982,9 @@ mod tests {
 
     #[test]
     fn king_moves() {
-        let game = Game::initialise("8/8/8/2pP4/2PK4/2p5/8/8 w - - 0 1");
+        let mut game = Game::initialise();
+
+        game.load_fen("8/8/8/2pP4/2PK4/2p5/8/8 w - - 0 1").unwrap();
 
         let source_square = Square::D4;
 
@@ -914,7 +1014,9 @@ mod tests {
 
     #[test]
     fn castling() {
-        let game = Game::initialise("8/8/8/8/8/8/8/R3K2R w KQ - 0 1");
+        let mut game = Game::initialise();
+
+        game.load_fen("8/8/8/8/8/8/8/R3K2R w KQ - 0 1").unwrap();
 
         let mut moves = MoveList::new();
 
@@ -941,7 +1043,7 @@ mod tests {
 
         assert!(castling_moves_correct);
 
-        let game = Game::initialise("8/8/8/8/8/5r2/8/R3K2R w KQ - 0 1");
+        game.load_fen("8/8/8/8/8/5r2/8/R3K2R w KQ - 0 1").unwrap();
 
         let mut moves = MoveList::new();
 
@@ -960,7 +1062,7 @@ mod tests {
 
         assert!(castling_moves_correct);
 
-        let game = Game::initialise("8/8/8/8/8/5q2/8/R3K2R w KQ - 0 1");
+        game.load_fen("8/8/8/8/8/5q2/8/R3K2R w KQ - 0 1").unwrap();
 
         let mut moves = MoveList::new();
 
@@ -968,7 +1070,7 @@ mod tests {
 
         assert!(moves.current_move_list_size == 0);
 
-        let game = Game::initialise("8/8/8/8/8/8/8/R3K2R w - - 0 1");
+        game.load_fen("8/8/8/8/8/8/8/R3K2R w - - 0 1").unwrap();
 
         let mut moves = MoveList::new();
 

@@ -2,6 +2,7 @@ use super::{
     attack_tables,
     moves::{Move, MoveFlag, MoveList, MoveType},
 };
+use crate::uci::{FenError, InputError};
 use num_derive::FromPrimitive;
 use num_traits::{AsPrimitive, FromPrimitive, Unsigned};
 use std::{
@@ -9,7 +10,7 @@ use std::{
     str::FromStr,
     time::Instant,
 };
-use strum::IntoEnumIterator;
+use strum::{IntoEnumIterator, ParseError};
 use strum_macros::{Display, EnumIter, EnumString};
 
 #[derive(Clone)]
@@ -27,12 +28,32 @@ pub struct Game {
     black_queens: Bitboard,
     black_king: Bitboard,
     side_to_move: Side,
-    en_passant_square: Option<Square>,
     castling_rights: CastlingRights,
+    en_passant_square: Option<Square>,
 }
 
 impl Game {
-    pub fn initialise(fen: &str) -> Self {
+    pub fn initialise() -> Self {
+        Self {
+            white_pawns: Bitboard(0),
+            white_knights: Bitboard(0),
+            white_bishops: Bitboard(0),
+            white_rooks: Bitboard(0),
+            white_queens: Bitboard(0),
+            white_king: Bitboard(0),
+            black_pawns: Bitboard(0),
+            black_knights: Bitboard(0),
+            black_bishops: Bitboard(0),
+            black_rooks: Bitboard(0),
+            black_queens: Bitboard(0),
+            black_king: Bitboard(0),
+            side_to_move: Side::White,
+            castling_rights: CastlingRights(0),
+            en_passant_square: None,
+        }
+    }
+
+    pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
         let mut white_pawns = Bitboard(0);
         let mut white_knights = Bitboard(0);
         let mut white_bishops = Bitboard(0);
@@ -109,46 +130,44 @@ impl Game {
                 }
                 '0'..='9' => square_index += character as usize - '0' as usize,
                 '/' => {}
-                _ => eprintln!("Invalid character found in position string"),
+                _ => return Err(InputError::InvalidFen(FenError::BoardPosition)),
             }
         }
 
-        let side_to_move = if fen[1] == "w" {
-            Side::White
-        } else {
-            Side::Black
+        let side_to_move = match fen[1] {
+            "w" => Side::White,
+            "b" => Side::Black,
+            _ => return Err(InputError::InvalidFen(FenError::SideToMove)),
         };
 
-        let en_passant_square = if fen[3] != "-" {
-            Some(Square::from_str(fen[3].to_uppercase().as_str()).unwrap())
-        } else {
-            None
-        };
+        let castling_rights = CastlingRights::initialise(fen[2])?;
 
-        let castling_rights = CastlingRights::initialise(fen[2]);
+        let en_passant_square = Self::parse_en_passant_square(fen[3])?;
 
-        Self {
-            white_pawns,
-            white_knights,
-            white_bishops,
-            white_rooks,
-            white_queens,
-            white_king,
-            black_pawns,
-            black_knights,
-            black_bishops,
-            black_rooks,
-            black_queens,
-            black_king,
-            side_to_move,
-            en_passant_square,
-            castling_rights,
-        }
+        self.white_pawns = white_pawns;
+        self.white_knights = white_knights;
+        self.white_bishops = white_bishops;
+        self.white_rooks = white_rooks;
+        self.white_queens = white_queens;
+        self.white_king = white_king;
+
+        self.black_pawns = black_pawns;
+        self.black_knights = black_knights;
+        self.black_bishops = black_bishops;
+        self.black_rooks = black_rooks;
+        self.black_queens = black_queens;
+        self.black_king = black_king;
+
+        self.side_to_move = side_to_move;
+        self.castling_rights = castling_rights;
+        self.en_passant_square = en_passant_square;
+
+        Ok(())
     }
 
-    pub fn make_move(&mut self, mv: &Move, move_flag: MoveFlag) -> Result<(), ()> {
+    pub fn make_move(&mut self, mv: &Move, move_flag: MoveFlag) -> Result<(), InputError> {
         if move_flag == MoveFlag::Capture && mv.move_type() != MoveType::Capture {
-            return Err(());
+            return Err(InputError::InvalidMoveFlag);
         }
 
         let mut game_clone = self.clone();
@@ -294,12 +313,13 @@ impl Game {
             let own_king_in_check = game_clone.is_square_attacked(opponent_side, king_square);
 
             if own_king_in_check {
-                return Err(());
+                return Err(InputError::IllegalMove(mv.as_string()));
             }
         }
 
+        game_clone.side_to_move = opponent_side;
+
         *self = game_clone;
-        self.side_to_move = opponent_side;
 
         Ok(())
     }
@@ -417,6 +437,19 @@ impl Game {
         }
     }
 
+    fn parse_en_passant_square(
+        en_passant_square_string: &str,
+    ) -> Result<Option<Square>, InputError> {
+        if en_passant_square_string == "-" {
+            return Ok(None);
+        }
+
+        match Square::from_str(en_passant_square_string.to_uppercase().as_str()) {
+            Ok(square) => Ok(Some(square)),
+            Err(_) => Err(InputError::InvalidFen(FenError::EnPassantSquare)),
+        }
+    }
+
     fn _print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
@@ -424,7 +457,7 @@ impl Game {
             }
 
             match self._piece_at_square(square) {
-                Some((piece, side)) => print!("{:<2}", piece._to_char(side)),
+                Some((piece, side)) => print!("{:<2}", piece.to_char(Some(side))),
                 None => print!(". "),
             }
 
@@ -623,17 +656,39 @@ pub enum Piece {
 }
 
 impl Piece {
-    pub fn _to_char(self, side: Side) -> char {
+    pub fn from_char(character: char) -> Result<Self, ParseError> {
+        match character {
+            'P' | 'p' => Ok(Self::Pawn),
+            'N' | 'n' => Ok(Self::Knight),
+            'B' | 'b' => Ok(Self::Bishop),
+            'R' | 'r' => Ok(Self::Rook),
+            'Q' | 'q' => Ok(Self::Queen),
+            'K' | 'k' => Ok(Self::King),
+            _ => Err(ParseError::VariantNotFound),
+        }
+    }
+
+    pub fn to_char(self, side: Option<Side>) -> char {
         match side {
-            Side::White => match self {
-                Self::Pawn => 'P',
-                Self::Knight => 'N',
-                Self::Bishop => 'B',
-                Self::Rook => 'R',
-                Self::Queen => 'Q',
-                Self::King => 'K',
+            Some(side) => match side {
+                Side::White => match self {
+                    Self::Pawn => 'P',
+                    Self::Knight => 'N',
+                    Self::Bishop => 'B',
+                    Self::Rook => 'R',
+                    Self::Queen => 'Q',
+                    Self::King => 'K',
+                },
+                Side::Black => match self {
+                    Self::Pawn => 'p',
+                    Self::Knight => 'n',
+                    Self::Bishop => 'b',
+                    Self::Rook => 'r',
+                    Self::Queen => 'q',
+                    Self::King => 'k',
+                },
             },
-            Side::Black => match self {
+            None => match self {
                 Self::Pawn => 'p',
                 Self::Knight => 'n',
                 Self::Bishop => 'b',
@@ -741,7 +796,7 @@ impl Square {
         self as usize % 8
     }
 
-    pub fn _to_lowercase_string(self) -> String {
+    pub fn to_lowercase_string(self) -> String {
         self.to_string().to_lowercase()
     }
 }
@@ -750,9 +805,9 @@ impl Square {
 struct CastlingRights(u8);
 
 impl CastlingRights {
-    fn initialise(castling_rights_string: &str) -> Self {
+    fn initialise(castling_rights_string: &str) -> Result<Self, InputError> {
         if castling_rights_string == "-" {
-            return Self(0);
+            return Ok(Self(0));
         };
 
         let mut castling_rights = 0;
@@ -763,11 +818,11 @@ impl CastlingRights {
                 'Q' => castling_rights |= CastlingType::WhiteLong as u8,
                 'k' => castling_rights |= CastlingType::BlackShort as u8,
                 'q' => castling_rights |= CastlingType::BlackLong as u8,
-                _ => eprintln!("Invalid character found in castling rights string"),
+                _ => return Err(InputError::InvalidFen(FenError::CastlingRights)),
             }
         }
 
-        Self(castling_rights)
+        Ok(Self(castling_rights))
     }
 
     fn remove_castling_type(&mut self, castling_type: CastlingType) {
@@ -816,15 +871,15 @@ impl CastlingType {
     }
 }
 
-pub fn _perft_test(game: &mut Game, depth: u32) {
+fn _perft_test(game: &mut Game, depth: u32) {
     let mut total_nodes = 0;
     let now = Instant::now();
 
-    let moves = MoveList::generate_moves(game);
+    let move_list = MoveList::generate_moves(game);
 
     println!("Move   Nodes   ");
 
-    for mv in moves.move_list().iter().flatten() {
+    for mv in move_list._move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
         if game_clone.make_move(mv, MoveFlag::All).is_err() {
@@ -832,9 +887,10 @@ pub fn _perft_test(game: &mut Game, depth: u32) {
         }
 
         let mut nodes = 0;
+
         _perft(&mut game_clone, &mut nodes, depth - 1);
 
-        print!("{:<6}", mv._to_string());
+        print!("{:<6}", mv.as_string());
         print!("{:^7}", nodes);
         println!();
 
@@ -847,15 +903,16 @@ pub fn _perft_test(game: &mut Game, depth: u32) {
     println!("Time taken: {:?}", now.elapsed());
 }
 
-pub fn _perft(game: &mut Game, nodes: &mut u32, depth: u32) {
+fn _perft(game: &mut Game, nodes: &mut u32, depth: u32) {
     if depth == 0 {
         *nodes += 1;
+
         return;
     }
 
-    let moves = MoveList::generate_moves(game);
+    let move_list = MoveList::generate_moves(game);
 
-    for mv in moves.move_list().iter().flatten() {
+    for mv in move_list._move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
         if game_clone.make_move(mv, MoveFlag::All).is_err() {
@@ -873,7 +930,9 @@ mod tests {
     #[test]
     #[ignore]
     fn perft_start_position() {
-        let mut game = Game::initialise("startpos");
+        let mut game = Game::initialise();
+
+        game.load_fen("startpos").unwrap();
 
         let mut nodes = 0;
 
@@ -885,9 +944,10 @@ mod tests {
     #[test]
     #[ignore]
     fn perft_tricky_position() {
-        let mut game = Game::initialise(
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-        );
+        let mut game = Game::initialise();
+
+        game.load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+            .unwrap();
 
         let mut nodes = 0;
 
@@ -898,9 +958,10 @@ mod tests {
 
     #[test]
     fn tricky_position() {
-        let game = Game::initialise(
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-        );
+        let mut game = Game::initialise();
+
+        game.load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+            .unwrap();
 
         let desired_white_pawns_bitboard = u64::pow(2, Square::A2 as u32)
             + u64::pow(2, Square::B2 as u32)
@@ -952,8 +1013,10 @@ mod tests {
 
     #[test]
     fn killer_position() {
-        let game =
-            Game::initialise("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1");
+        let mut game = Game::initialise();
+
+        game.load_fen("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1")
+            .unwrap();
 
         let desired_white_pawns_bitboard = u64::pow(2, Square::A2 as u32)
             + u64::pow(2, Square::B4 as u32)
@@ -1004,9 +1067,10 @@ mod tests {
 
     #[test]
     fn cmk_position() {
-        let game = Game::initialise(
-            "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9",
-        );
+        let mut game = Game::initialise();
+
+        game.load_fen("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9")
+            .unwrap();
 
         let desired_white_pawns_bitboard = u64::pow(2, Square::A2 as u32)
             + u64::pow(2, Square::B2 as u32)
