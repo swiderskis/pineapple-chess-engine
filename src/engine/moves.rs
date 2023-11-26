@@ -12,6 +12,8 @@ use strum::IntoEnumIterator;
 // 256 is given as a buffer due to pseudo-legal moves
 pub const MAX_MOVE_LIST_SIZE: usize = 256;
 
+const PROMOTION_PIECES: [Piece; 4] = [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
+
 #[derive(Clone)]
 pub struct MoveList {
     move_list: [Option<Move>; MAX_MOVE_LIST_SIZE],
@@ -80,10 +82,9 @@ impl MoveList {
 
         let pawn_ready_to_promote = (side == Side::White && pawn_on_seventh_rank)
             || (side == Side::Black && pawn_on_second_rank);
-        let promotion_pieces = [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight];
 
         if pawn_ready_to_promote && !game.is_square_occupied(target_square) {
-            for promoted_piece in promotion_pieces {
+            for promoted_piece in PROMOTION_PIECES {
                 self.push(Move::new(
                     source_square,
                     target_square,
@@ -126,7 +127,7 @@ impl MoveList {
 
         while let Some(target_square) = attacks.get_lsb_square() {
             if pawn_ready_to_promote {
-                for promoted_piece in promotion_pieces {
+                for promoted_piece in PROMOTION_PIECES {
                     self.push(Move::new(
                         source_square,
                         target_square,

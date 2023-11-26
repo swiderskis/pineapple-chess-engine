@@ -3,6 +3,8 @@ use std::{fmt::Display, io};
 
 const _TRICKY_POSITION: &str =
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+const FEN_MOVES_STARTING_INDEX: usize = 7;
+const STARTPOS_MOVES_STARTING_INDEX: usize = 1;
 
 struct Input<'a> {
     command: &'a str,
@@ -75,17 +77,20 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
 
     let moves_starting_index = match arguments[0] {
         "fen" => {
-            let fen: Vec<&str> = arguments.clone().drain(1..7).collect();
+            let fen: Vec<&str> = arguments
+                .clone()
+                .drain(1..FEN_MOVES_STARTING_INDEX)
+                .collect();
             let fen = fen.join(" ");
 
-            engine.load_position(fen.as_str())?;
+            engine.load_fen(fen.as_str())?;
 
-            7
+            FEN_MOVES_STARTING_INDEX
         }
         "startpos" => {
-            engine.load_position(arguments[0])?;
+            engine.load_fen(arguments[0])?;
 
-            1
+            STARTPOS_MOVES_STARTING_INDEX
         }
         _ => return Err(InputError::InvalidPositionArguments),
     };
@@ -100,13 +105,13 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
     }
 
     for move_string in arguments[moves_starting_index + 1..].iter() {
-        make_move(engine, move_string)?;
+        make_move_from_string(engine, move_string)?;
     }
 
     Ok(())
 }
 
-fn make_move(engine: &mut Engine, move_string: &str) -> Result<(), InputError> {
+fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), InputError> {
     let mv = engine.find_move_from_string(move_string)?;
 
     engine.make_move(&mv)?;

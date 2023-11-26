@@ -24,7 +24,7 @@ impl Engine {
         Self { game, move_list }
     }
 
-    pub fn load_position(&mut self, fen: &str) -> Result<(), InputError> {
+    pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
         self.game.load_fen(fen)?;
         self.move_list = MoveList::generate_moves(&self.game);
 
