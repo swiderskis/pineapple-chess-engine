@@ -12,7 +12,9 @@ struct Input<'a> {
 }
 
 impl<'a> Input<'a> {
-    fn new(input: Vec<&'a str>) -> Self {
+    fn new(input: &'a str) -> Self {
+        let input: Vec<&str> = input.split_whitespace().collect();
+
         let command = match input.first() {
             Some(command) => command,
             None => "",
@@ -30,30 +32,23 @@ impl<'a> Input<'a> {
 pub fn engine() {
     let mut engine = Engine::initialise();
 
-    command_loop(&mut engine);
-}
-
-fn command_loop(engine: &mut Engine) {
     loop {
         let mut input = String::new();
 
-        match io::stdin().read_line(&mut input) {
-            Ok(_) => {}
+        let input = match parse_input(&mut input) {
+            Ok(input) => input,
             Err(error) => {
-                println!("Error parsing command: {}", error);
+                println!("{}", error);
 
                 continue;
             }
         };
 
-        let input: Vec<&str> = input.split_whitespace().collect();
-        let input = Input::new(input);
-
         match input.command {
             "uci" => uci(),
             "isready" => println!("readyok"),
             "ucinewgame" => {}
-            "position" => match position(engine, input.arguments) {
+            "position" => match position(&mut engine, input.arguments) {
                 Ok(_) => {}
                 Err(error) => println!("{}", error),
             },
@@ -61,6 +56,17 @@ fn command_loop(engine: &mut Engine) {
             "" => {}
             _ => println!("Unknown command"),
         }
+    }
+}
+
+fn parse_input(input: &mut String) -> Result<Input<'_>, InputError> {
+    match io::stdin().read_line(input) {
+        Ok(_) => {
+            let input = Input::new(input);
+
+            Ok(input)
+        }
+        Err(_) => Err(InputError::InputParseError),
     }
 }
 
@@ -122,6 +128,7 @@ fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), I
 #[derive(Debug)]
 pub enum InputError {
     IllegalMove(String),
+    InputParseError,
     InvalidFen(FenError),
     InvalidMoveFlag,
     InvalidMoveString(String),
@@ -132,20 +139,17 @@ pub enum InputError {
 impl Display for InputError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            InputError::IllegalMove(move_string) => {
+            Self::IllegalMove(move_string) => {
                 write!(f, "Attempted to play illegal move {}", move_string)
             }
-            InputError::InvalidFen(error) => write!(f, "Failed to parse FEN: {}", error),
-            InputError::InvalidMoveFlag => write!(f, "Invalid move flag"),
-            InputError::InvalidMoveString(move_string) => {
+            Self::InvalidFen(error) => write!(f, "Failed to parse FEN: {}", error),
+            Self::InvalidMoveFlag => write!(f, "Invalid move flag"),
+            Self::InvalidMoveString(move_string) => {
                 write!(f, "Failed to parse move string {}", move_string)
             }
-            InputError::InvalidPositionArguments => {
-                write!(f, "Invalid position command arguments")
-            }
-            InputError::MoveNotFound(move_string) => {
-                write!(f, "Failed to find move {}", move_string)
-            }
+            Self::InvalidPositionArguments => write!(f, "Invalid position command arguments"),
+            Self::MoveNotFound(move_string) => write!(f, "Failed to find move {}", move_string),
+            Self::InputParseError => write!(f, "Failed to parse input"),
         }
     }
 }
@@ -161,10 +165,10 @@ pub enum FenError {
 impl Display for FenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            FenError::BoardPosition => write!(f, "unable to parse board position"),
-            FenError::SideToMove => write!(f, "unable to parse side to move"),
-            FenError::CastlingRights => write!(f, "unable to parse castling rights"),
-            FenError::EnPassantSquare => write!(f, "unable to parse en passant square"),
+            Self::BoardPosition => write!(f, "unable to parse board position"),
+            Self::SideToMove => write!(f, "unable to parse side to move"),
+            Self::CastlingRights => write!(f, "unable to parse castling rights"),
+            Self::EnPassantSquare => write!(f, "unable to parse en passant square"),
         }
     }
 }
