@@ -2,5 +2,5 @@ mod engine;
 mod uci;
 
 fn main() {
-    uci::command();
+    uci::engine();
 }

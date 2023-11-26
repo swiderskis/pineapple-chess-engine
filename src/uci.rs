@@ -10,17 +10,28 @@ struct Input<'a> {
 }
 
 impl<'a> Input<'a> {
-    fn new(input_vec: Vec<&'a str>) -> Self {
-        Self {
-            command: input_vec[0],
-            arguments: input_vec[1..].to_vec(),
-        }
+    fn new(input: Vec<&'a str>) -> Self {
+        let command = match input.first() {
+            Some(command) => command,
+            None => "",
+        };
+
+        let arguments = match input.get(1) {
+            Some(_) => input[1..].to_vec(),
+            None => vec![],
+        };
+
+        Self { command, arguments }
     }
 }
 
-pub fn command() {
+pub fn engine() {
     let mut engine = Engine::initialise();
 
+    command_loop(&mut engine);
+}
+
+fn command_loop(engine: &mut Engine) {
     loop {
         let mut input = String::new();
 
@@ -28,6 +39,7 @@ pub fn command() {
             Ok(_) => {}
             Err(error) => {
                 println!("Error parsing command: {}", error);
+
                 continue;
             }
         };
@@ -35,16 +47,16 @@ pub fn command() {
         let input: Vec<&str> = input.split_whitespace().collect();
         let input = Input::new(input);
 
-        match input.command.trim() {
+        match input.command {
             "uci" => uci(),
             "isready" => println!("readyok"),
-            "ucinewgame" => continue,
-            "position" => match position(&mut engine, input.arguments) {
+            "ucinewgame" => {}
+            "position" => match position(engine, input.arguments) {
                 Ok(_) => {}
                 Err(error) => println!("{}", error),
             },
             "quit" => break,
-            "" => continue,
+            "" => {}
             _ => println!("Unknown command"),
         }
     }
