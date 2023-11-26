@@ -35,14 +35,16 @@ pub fn engine() {
     loop {
         let mut input = String::new();
 
-        let input = match parse_input(&mut input) {
-            Ok(input) => input,
-            Err(error) => {
-                println!("{}", error);
+        match io::stdin().read_line(&mut input) {
+            Ok(_) => {}
+            Err(_) => {
+                println!("Failed to parse input");
 
                 continue;
             }
-        };
+        }
+
+        let input = Input::new(&input);
 
         match input.command {
             "uci" => uci(),
@@ -56,17 +58,6 @@ pub fn engine() {
             "" => {}
             _ => println!("Unknown command"),
         }
-    }
-}
-
-fn parse_input(input: &mut String) -> Result<Input<'_>, InputError> {
-    match io::stdin().read_line(input) {
-        Ok(_) => {
-            let input = Input::new(input);
-
-            Ok(input)
-        }
-        Err(_) => Err(InputError::InputParseError),
     }
 }
 
@@ -128,7 +119,6 @@ fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), I
 #[derive(Debug)]
 pub enum InputError {
     IllegalMove(String),
-    InputParseError,
     InvalidFen(FenError),
     InvalidMoveFlag,
     InvalidMoveString(String),
@@ -149,7 +139,6 @@ impl Display for InputError {
             }
             Self::InvalidPositionArguments => write!(f, "Invalid position command arguments"),
             Self::MoveNotFound(move_string) => write!(f, "Failed to find move {}", move_string),
-            Self::InputParseError => write!(f, "Failed to parse input"),
         }
     }
 }
