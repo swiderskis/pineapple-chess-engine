@@ -35,13 +35,10 @@ pub fn engine() {
     loop {
         let mut input = String::new();
 
-        match io::stdin().read_line(&mut input) {
-            Ok(_) => {}
-            Err(_) => {
-                println!("Failed to parse input");
+        if io::stdin().read_line(&mut input).is_err() {
+            println!("Failed to parse input");
 
-                continue;
-            }
+            continue;
         }
 
         let input = Input::new(&input);
@@ -50,10 +47,11 @@ pub fn engine() {
             "uci" => uci(),
             "isready" => println!("readyok"),
             "ucinewgame" => {}
-            "position" => match position(&mut engine, input.arguments) {
-                Ok(_) => {}
-                Err(error) => println!("{}", error),
-            },
+            "position" => {
+                if let Err(error) = position(&mut engine, input.arguments) {
+                    println!("{}", error);
+                }
+            }
             "quit" => break,
             "" => {}
             _ => println!("Unknown command"),

@@ -39,13 +39,14 @@ impl Engine {
     }
 
     pub fn find_move_from_string(&self, move_string: &str) -> Result<Move, InputError> {
-        if let Ok(move_search_params) = Self::parse_move_string(move_string) {
-            let mv = self.move_list.find_move(move_search_params)?;
+        match Self::parse_move_string(move_string) {
+            Ok(move_search_params) => {
+                let mv = self.move_list.find_move(move_search_params)?;
 
-            return Ok(mv);
+                Ok(mv)
+            }
+            Err(_) => Err(InputError::InvalidMoveString(move_string.to_string())),
         }
-
-        Err(InputError::InvalidMoveString(move_string.to_string()))
     }
 
     fn parse_move_string(move_string: &str) -> Result<MoveSearchParams, ParseError> {
