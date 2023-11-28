@@ -192,23 +192,6 @@ impl Game {
 
         match mv.move_type() {
             MoveType::Capture => {
-                let (a_file_square, h_file_square) = match opponent_side {
-                    Side::White => (Square::A1, Square::H1),
-                    Side::Black => (Square::A8, Square::H8),
-                };
-                let (short_castle, long_castle) = match opponent_side {
-                    Side::White => (CastlingType::WhiteShort, CastlingType::WhiteLong),
-                    Side::Black => (CastlingType::BlackShort, CastlingType::BlackLong),
-                };
-
-                if mv.target_square() == a_file_square {
-                    game_clone.castling_rights.remove_castling_type(long_castle)
-                } else if mv.target_square() == h_file_square {
-                    game_clone
-                        .castling_rights
-                        .remove_castling_type(short_castle)
-                }
-
                 for piece in Piece::iter() {
                     game_clone
                         .mut_piece_bitboard(piece, opponent_side)
@@ -235,29 +218,46 @@ impl Game {
                     .mut_piece_bitboard(Piece::Pawn, opponent_side)
                     .pop_bit(capture_square);
             }
-            MoveType::Castling => {
-                let (a_file_square, c_file_square, d_file_square, f_file_square, h_file_square) =
-                    match side {
-                        Side::White => (Square::A1, Square::C1, Square::D1, Square::F1, Square::H1),
-                        Side::Black => (Square::A8, Square::C8, Square::D8, Square::F8, Square::H8),
-                    };
-
-                if mv.target_square() == c_file_square {
-                    game_clone
-                        .mut_piece_bitboard(Piece::Rook, side)
-                        .pop_bit(a_file_square);
-                    game_clone
-                        .mut_piece_bitboard(Piece::Rook, side)
-                        .set_bit(d_file_square);
-                } else {
-                    game_clone
-                        .mut_piece_bitboard(Piece::Rook, side)
-                        .pop_bit(h_file_square);
-                    game_clone
-                        .mut_piece_bitboard(Piece::Rook, side)
-                        .set_bit(f_file_square);
-                }
-            }
+            MoveType::Castling => match side {
+                Side::White => match mv.target_square() {
+                    Square::C1 => {
+                        game_clone
+                            .mut_piece_bitboard(Piece::Rook, side)
+                            .pop_bit(Square::A1);
+                        game_clone
+                            .mut_piece_bitboard(Piece::Rook, side)
+                            .set_bit(Square::D1);
+                    }
+                    Square::G1 => {
+                        game_clone
+                            .mut_piece_bitboard(Piece::Rook, side)
+                            .pop_bit(Square::H1);
+                        game_clone
+                            .mut_piece_bitboard(Piece::Rook, side)
+                            .set_bit(Square::F1);
+                    }
+                    _ => {}
+                },
+                Side::Black => match mv.target_square() {
+                    Square::C8 => {
+                        game_clone
+                            .mut_piece_bitboard(Piece::Rook, side)
+                            .pop_bit(Square::A8);
+                        game_clone
+                            .mut_piece_bitboard(Piece::Rook, side)
+                            .set_bit(Square::D8);
+                    }
+                    Square::G8 => {
+                        game_clone
+                            .mut_piece_bitboard(Piece::Rook, side)
+                            .pop_bit(Square::H8);
+                        game_clone
+                            .mut_piece_bitboard(Piece::Rook, side)
+                            .set_bit(Square::F8);
+                    }
+                    _ => {}
+                },
+            },
             _ => {}
         }
 
@@ -265,41 +265,8 @@ impl Game {
             game_clone.en_passant_square = None;
         }
 
-        match side {
-            Side::White => match mv.source_square() {
-                Square::A1 => game_clone
-                    .castling_rights
-                    .remove_castling_type(CastlingType::WhiteLong),
-                Square::E1 => {
-                    game_clone
-                        .castling_rights
-                        .remove_castling_type(CastlingType::WhiteShort);
-                    game_clone
-                        .castling_rights
-                        .remove_castling_type(CastlingType::WhiteLong);
-                }
-                Square::H1 => game_clone
-                    .castling_rights
-                    .remove_castling_type(CastlingType::WhiteShort),
-                _ => {}
-            },
-            Side::Black => match mv.source_square() {
-                Square::A8 => game_clone
-                    .castling_rights
-                    .remove_castling_type(CastlingType::BlackLong),
-                Square::E8 => {
-                    game_clone
-                        .castling_rights
-                        .remove_castling_type(CastlingType::BlackShort);
-                    game_clone
-                        .castling_rights
-                        .remove_castling_type(CastlingType::BlackLong);
-                }
-                Square::H8 => game_clone
-                    .castling_rights
-                    .remove_castling_type(CastlingType::BlackShort),
-                _ => {}
-            },
+        if game_clone.castling_rights.0 != 0 {
+            Self::update_castling_rights(&mut game_clone, mv);
         }
 
         let king_square = game_clone
@@ -444,6 +411,68 @@ impl Game {
         match Square::from_str(en_passant_square_string.to_uppercase().as_str()) {
             Ok(square) => Ok(Some(square)),
             Err(_) => Err(InputError::InvalidFen(FenError::EnPassantSquare)),
+        }
+    }
+
+    fn update_castling_rights(game_clone: &mut Game, mv: &Move) {
+        let side = game_clone.side_to_move;
+
+        match side {
+            Side::White => match mv.source_square() {
+                Square::A1 => game_clone
+                    .castling_rights
+                    .remove_castling_type(CastlingType::WhiteLong),
+                Square::E1 => {
+                    game_clone
+                        .castling_rights
+                        .remove_castling_type(CastlingType::WhiteShort);
+                    game_clone
+                        .castling_rights
+                        .remove_castling_type(CastlingType::WhiteLong);
+                }
+                Square::H1 => game_clone
+                    .castling_rights
+                    .remove_castling_type(CastlingType::WhiteShort),
+                _ => {}
+            },
+            Side::Black => match mv.source_square() {
+                Square::A8 => game_clone
+                    .castling_rights
+                    .remove_castling_type(CastlingType::BlackLong),
+                Square::E8 => {
+                    game_clone
+                        .castling_rights
+                        .remove_castling_type(CastlingType::BlackShort);
+                    game_clone
+                        .castling_rights
+                        .remove_castling_type(CastlingType::BlackLong);
+                }
+                Square::H8 => game_clone
+                    .castling_rights
+                    .remove_castling_type(CastlingType::BlackShort),
+                _ => {}
+            },
+        }
+
+        match side {
+            Side::White => match mv.target_square() {
+                Square::A8 => game_clone
+                    .castling_rights
+                    .remove_castling_type(CastlingType::BlackLong),
+                Square::H8 => game_clone
+                    .castling_rights
+                    .remove_castling_type(CastlingType::BlackShort),
+                _ => {}
+            },
+            Side::Black => match mv.target_square() {
+                Square::A1 => game_clone
+                    .castling_rights
+                    .remove_castling_type(CastlingType::WhiteLong),
+                Square::H1 => game_clone
+                    .castling_rights
+                    .remove_castling_type(CastlingType::WhiteShort),
+                _ => {}
+            },
         }
     }
 

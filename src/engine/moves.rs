@@ -202,65 +202,71 @@ impl MoveList {
         let side = game.side_to_move();
         let opponent_side = side.opponent_side();
 
-        let (
-            b_file_square,
-            c_file_square,
-            d_file_square,
-            e_file_square,
-            f_file_square,
-            g_file_square,
-        ) = match side {
-            Side::White => (
-                Square::B1,
-                Square::C1,
-                Square::D1,
-                Square::E1,
-                Square::F1,
-                Square::G1,
-            ),
-            Side::Black => (
-                Square::B8,
-                Square::C8,
-                Square::D8,
-                Square::E8,
-                Square::F8,
-                Square::G8,
-            ),
-        };
-        let (short_castle, long_castle) = match side {
-            Side::White => (CastlingType::WhiteShort, CastlingType::WhiteLong),
-            Side::Black => (CastlingType::BlackShort, CastlingType::BlackLong),
-        };
+        match side {
+            Side::White => {
+                if game.castling_type_allowed(CastlingType::WhiteShort)
+                    && !game.is_square_occupied(Square::F1)
+                    && !game.is_square_occupied(Square::G1)
+                    && !game.is_square_attacked(opponent_side, Square::E1)
+                    && !game.is_square_attacked(opponent_side, Square::F1)
+                {
+                    self.push(Move::new(
+                        Square::E1,
+                        Square::G1,
+                        Piece::King,
+                        None,
+                        MoveType::Castling,
+                    ));
+                }
 
-        if game.castling_type_allowed(short_castle)
-            && !game.is_square_occupied(f_file_square)
-            && !game.is_square_occupied(g_file_square)
-            && !game.is_square_attacked(opponent_side, e_file_square)
-            && !game.is_square_attacked(opponent_side, f_file_square)
-        {
-            self.push(Move::new(
-                e_file_square,
-                g_file_square,
-                Piece::King,
-                None,
-                MoveType::Castling,
-            ));
-        }
+                if game.castling_type_allowed(CastlingType::WhiteLong)
+                    && !game.is_square_occupied(Square::B1)
+                    && !game.is_square_occupied(Square::C1)
+                    && !game.is_square_occupied(Square::D1)
+                    && !game.is_square_attacked(opponent_side, Square::D1)
+                    && !game.is_square_attacked(opponent_side, Square::E1)
+                {
+                    self.push(Move::new(
+                        Square::E1,
+                        Square::C1,
+                        Piece::King,
+                        None,
+                        MoveType::Castling,
+                    ));
+                }
+            }
+            Side::Black => {
+                if game.castling_type_allowed(CastlingType::BlackShort)
+                    && !game.is_square_occupied(Square::F8)
+                    && !game.is_square_occupied(Square::G8)
+                    && !game.is_square_attacked(opponent_side, Square::E8)
+                    && !game.is_square_attacked(opponent_side, Square::F8)
+                {
+                    self.push(Move::new(
+                        Square::E8,
+                        Square::G8,
+                        Piece::King,
+                        None,
+                        MoveType::Castling,
+                    ));
+                }
 
-        if game.castling_type_allowed(long_castle)
-            && !game.is_square_occupied(b_file_square)
-            && !game.is_square_occupied(c_file_square)
-            && !game.is_square_occupied(d_file_square)
-            && !game.is_square_attacked(opponent_side, d_file_square)
-            && !game.is_square_attacked(opponent_side, e_file_square)
-        {
-            self.push(Move::new(
-                e_file_square,
-                c_file_square,
-                Piece::King,
-                None,
-                MoveType::Castling,
-            ));
+                if game.castling_type_allowed(CastlingType::BlackLong)
+                    && !game.is_square_occupied(Square::B8)
+                    && !game.is_square_occupied(Square::C8)
+                    && !game.is_square_occupied(Square::D8)
+                    && !game.is_square_attacked(opponent_side, Square::D8)
+                    && !game.is_square_attacked(opponent_side, Square::E8)
+                {
+                    self.push(Move::new(
+                        Square::E8,
+                        Square::C8,
+                        Piece::King,
+                        None,
+                        MoveType::Castling,
+                    ));
+                }
+            }
         }
     }
 
