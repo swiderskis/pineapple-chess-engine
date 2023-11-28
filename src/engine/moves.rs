@@ -356,7 +356,7 @@ impl Move {
         self.move_type
     }
 
-    pub fn as_string(&self) -> String {
+    pub fn _as_string(&self) -> String {
         let source_square_string = self.source_square.to_lowercase_string();
         let target_square_string = self.target_square.to_lowercase_string();
 

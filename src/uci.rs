@@ -116,7 +116,7 @@ fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), I
 
 #[derive(Debug)]
 pub enum InputError {
-    IllegalMove(String),
+    IllegalMove,
     InvalidFen(FenError),
     InvalidMoveFlag,
     InvalidMoveString(String),
@@ -127,8 +127,8 @@ pub enum InputError {
 impl Display for InputError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::IllegalMove(move_string) => {
-                write!(f, "Attempted to play illegal move {}", move_string)
+            Self::IllegalMove => {
+                write!(f, "Attempted to play illegal move")
             }
             Self::InvalidFen(error) => write!(f, "Failed to parse FEN: {}", error),
             Self::InvalidMoveFlag => write!(f, "Invalid move flag"),

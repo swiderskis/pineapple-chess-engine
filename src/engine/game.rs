@@ -269,7 +269,7 @@ impl Game {
             let own_king_in_check = game_clone.is_square_attacked(opponent_side, king_square);
 
             if own_king_in_check {
-                return Err(InputError::IllegalMove(mv.as_string()));
+                return Err(InputError::IllegalMove);
             }
         }
 
@@ -916,7 +916,7 @@ fn _perft_test(game: &mut Game, depth: u32) {
 
         _perft(&mut game_clone, &mut nodes, depth - 1);
 
-        print!("{:<6}", mv.as_string());
+        print!("{:<6}", mv._as_string());
         print!("{:^7}", nodes);
         println!();
 
@@ -929,7 +929,7 @@ fn _perft_test(game: &mut Game, depth: u32) {
     println!("Time taken: {:?}", now.elapsed());
 }
 
-fn _perft(game: &mut Game, nodes: &mut u32, depth: u32) {
+fn _perft(game: &mut Game, nodes: &mut u64, depth: u32) {
     if depth == 0 {
         *nodes += 1;
 
