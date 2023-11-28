@@ -191,6 +191,7 @@ impl Game {
         let target_square_index = mv.target_square() as usize;
 
         match mv.move_type() {
+            MoveType::Quiet => {}
             MoveType::Capture => {
                 for piece in Piece::iter() {
                     game_clone
@@ -258,15 +259,6 @@ impl Game {
                     _ => {}
                 },
             },
-            _ => {}
-        }
-
-        if mv.move_type() != MoveType::DoublePawnPush {
-            game_clone.en_passant_square = None;
-        }
-
-        if game_clone.castling_rights.0 != 0 {
-            Self::update_castling_rights(&mut game_clone, mv);
         }
 
         let king_square = game_clone
@@ -279,6 +271,14 @@ impl Game {
             if own_king_in_check {
                 return Err(InputError::IllegalMove(mv.as_string()));
             }
+        }
+
+        if game_clone.castling_rights.0 != 0 {
+            Self::update_castling_rights(&mut game_clone, mv);
+        }
+
+        if mv.move_type() != MoveType::DoublePawnPush {
+            game_clone.en_passant_square = None;
         }
 
         game_clone.side_to_move = opponent_side;
