@@ -155,3 +155,30 @@ impl Display for FenError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn start_position() {
+        let mut engine = Engine::initialise();
+
+        let input = "position startpos moves e2e4 e7e5 g1f3";
+        let input = Input::new(input);
+
+        position(&mut engine, input.arguments).unwrap();
+    }
+
+    #[test]
+    fn killer_position() {
+        let mut engine = Engine::initialise();
+
+        let input =
+            "position fen r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 \
+            moves d5e6 a6e2 c3e2";
+        let input = Input::new(input);
+
+        position(&mut engine, input.arguments).unwrap();
+    }
+}
