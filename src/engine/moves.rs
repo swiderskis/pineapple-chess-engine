@@ -293,6 +293,16 @@ impl MoveList {
     pub fn _move_list(&self) -> &[Option<Move>; MAX_MOVE_LIST_SIZE] {
         &self.move_list
     }
+
+    pub fn _length(&self) -> u32 {
+        let mut count = 0;
+
+        for _ in self.move_list.iter().flatten() {
+            count += 1;
+        }
+
+        count
+    }
 }
 
 #[derive(Clone, Copy, Debug, FromPrimitive, PartialEq)]
@@ -371,6 +381,7 @@ impl Move {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct MoveSearchParams {
     source_square: Square,
     target_square: Square,

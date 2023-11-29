@@ -951,8 +951,7 @@ fn _perft(game: &mut Game, nodes: &mut u64, depth: u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::engine::moves::MoveSearchParams;
+    use super::{super::moves::MoveSearchParams, *};
 
     #[test]
     #[ignore]

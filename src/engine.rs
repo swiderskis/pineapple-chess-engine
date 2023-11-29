@@ -69,3 +69,115 @@ impl Engine {
         Ok(move_search_params)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_start_position() {
+        let mut engine = Engine::initialise();
+
+        engine.load_fen("startpos").unwrap();
+
+        assert_eq!(engine.move_list._length(), 20);
+    }
+
+    #[test]
+    fn load_tricky_position() {
+        let mut engine = Engine::initialise();
+
+        engine
+            .load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+            .unwrap();
+
+        assert_eq!(engine.move_list._length(), 48);
+    }
+
+    #[test]
+    fn start_position_moves() {
+        let mut engine = Engine::initialise();
+
+        engine.load_fen("startpos").unwrap();
+
+        let mv = engine.find_move_from_string("e2e4").unwrap();
+
+        engine.make_move(&mv).unwrap();
+
+        let mv = engine.find_move_from_string("e7e5").unwrap();
+
+        engine.make_move(&mv).unwrap();
+
+        let mv = engine.find_move_from_string("g1f3").unwrap();
+
+        engine.make_move(&mv).unwrap();
+    }
+
+    #[test]
+    fn killer_position_moves() {
+        let mut engine = Engine::initialise();
+
+        engine
+            .load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+            .unwrap();
+
+        let mv = engine.find_move_from_string("d5e6").unwrap();
+
+        engine.make_move(&mv).unwrap();
+
+        let mv = engine.find_move_from_string("a6e2").unwrap();
+
+        engine.make_move(&mv).unwrap();
+
+        let mv = engine.find_move_from_string("c3e2").unwrap();
+
+        engine.make_move(&mv).unwrap();
+    }
+
+    #[test]
+    fn parse_move() {
+        let move_string = "e2e4";
+
+        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+
+        let desired_move_search_params = MoveSearchParams::new(Square::E2, Square::E4, None);
+
+        assert_eq!(move_search_params, desired_move_search_params);
+
+        let move_string = "e7e8q";
+
+        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+
+        let desired_move_search_params =
+            MoveSearchParams::new(Square::E7, Square::E8, Some(Piece::Queen));
+
+        assert_eq!(move_search_params, desired_move_search_params);
+
+        let move_string = "e2e1r";
+
+        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+
+        let desired_move_search_params =
+            MoveSearchParams::new(Square::E2, Square::E1, Some(Piece::Rook));
+
+        assert_eq!(move_search_params, desired_move_search_params);
+
+        let move_string = "d7d8b";
+
+        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+
+        let desired_move_search_params =
+            MoveSearchParams::new(Square::D7, Square::D8, Some(Piece::Bishop));
+
+        assert_eq!(move_search_params, desired_move_search_params);
+
+        let move_string = "d2d1n";
+
+        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+
+        let desired_move_search_params =
+            MoveSearchParams::new(Square::D2, Square::D1, Some(Piece::Knight));
+
+        assert_eq!(move_search_params, desired_move_search_params);
+    }
+}
