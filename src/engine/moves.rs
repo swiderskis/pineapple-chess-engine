@@ -59,7 +59,7 @@ impl MoveList {
             }
         }
 
-        Err(InputError::MoveNotFound(move_search_params.as_string()))
+        Err(InputError::IllegalMove)
     }
 
     fn generate_pawn_moves(&mut self, game: &Game, source_square: Square) {
@@ -357,12 +357,12 @@ impl Move {
     }
 
     pub fn _as_string(&self) -> String {
-        let source_square_string = self.source_square.to_lowercase_string();
-        let target_square_string = self.target_square.to_lowercase_string();
+        let source_square_string = self.source_square._to_lowercase_string();
+        let target_square_string = self.target_square._to_lowercase_string();
 
         match self.promoted_piece {
             Some(promoted_piece) => {
-                let promoted_piece_string = promoted_piece.to_char(None).to_string();
+                let promoted_piece_string = promoted_piece._to_char(None).to_string();
 
                 source_square_string + &target_square_string + &promoted_piece_string
             }
@@ -390,13 +390,13 @@ impl MoveSearchParams {
         }
     }
 
-    pub fn as_string(&self) -> String {
-        let source_square_string = self.source_square.to_lowercase_string();
-        let target_square_string = self.target_square.to_lowercase_string();
+    pub fn _as_string(&self) -> String {
+        let source_square_string = self.source_square._to_lowercase_string();
+        let target_square_string = self.target_square._to_lowercase_string();
 
         match self.promoted_piece {
             Some(promoted_piece) => {
-                let promoted_piece_string = promoted_piece.to_char(None).to_string();
+                let promoted_piece_string = promoted_piece._to_char(None).to_string();
 
                 source_square_string + &target_square_string + &promoted_piece_string
             }

@@ -121,22 +121,18 @@ pub enum InputError {
     InvalidMoveFlag,
     InvalidMoveString(String),
     InvalidPositionArguments,
-    MoveNotFound(String),
 }
 
 impl Display for InputError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::IllegalMove => {
-                write!(f, "Attempted to play illegal move")
-            }
+            Self::IllegalMove => write!(f, "Attempted to play illegal move"),
             Self::InvalidFen(error) => write!(f, "Failed to parse FEN: {}", error),
             Self::InvalidMoveFlag => write!(f, "Invalid move flag"),
             Self::InvalidMoveString(move_string) => {
                 write!(f, "Failed to parse move string {}", move_string)
             }
             Self::InvalidPositionArguments => write!(f, "Invalid position command arguments"),
-            Self::MoveNotFound(move_string) => write!(f, "Failed to find move {}", move_string),
         }
     }
 }

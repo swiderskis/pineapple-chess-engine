@@ -483,7 +483,7 @@ impl Game {
             }
 
             match self._piece_at_square(square) {
-                Some((piece, side)) => print!("{:<2}", piece.to_char(Some(side))),
+                Some((piece, side)) => print!("{:<2}", piece._to_char(Some(side))),
                 None => print!(". "),
             }
 
@@ -694,7 +694,7 @@ impl Piece {
         }
     }
 
-    pub fn to_char(self, side: Option<Side>) -> char {
+    pub fn _to_char(self, side: Option<Side>) -> char {
         match side {
             Some(side) => match side {
                 Side::White => match self {
@@ -822,7 +822,7 @@ impl Square {
         self as usize % 8
     }
 
-    pub fn to_lowercase_string(self) -> String {
+    pub fn _to_lowercase_string(self) -> String {
         self.to_string().to_lowercase()
     }
 }
