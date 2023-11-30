@@ -571,10 +571,6 @@ impl Bitboard {
         self.0
     }
 
-    pub fn count_bits(self) -> u32 {
-        self.0.count_ones()
-    }
-
     // lsb = least significant bit
     pub fn get_lsb_square(self) -> Option<Square> {
         if self.0 == 0 {
@@ -582,6 +578,10 @@ impl Bitboard {
         }
 
         Square::from_u32(self.0.trailing_zeros())
+    }
+
+    pub fn _count_bits(self) -> u32 {
+        self.0.count_ones()
     }
 
     fn _print(self) {

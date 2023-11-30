@@ -137,6 +137,16 @@ const MAGIC_NUMBERS: MagicNumbers = MagicNumbers {
     ],
 };
 
+const BISHOP_ATTACK_MASK_BIT_COUNT: [u32; 64] = [
+    6, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 7, 9, 9, 7, 5, 5,
+    5, 5, 7, 9, 9, 7, 5, 5, 5, 5, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 5, 5, 5, 5, 5, 5, 6,
+];
+const ROOK_ATTACK_MASK_BIT_COUNT: [u32; 64] = [
+    12, 11, 11, 11, 11, 11, 11, 12, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11,
+    11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11, 11, 10, 10, 10, 10, 10, 10, 11,
+    11, 10, 10, 10, 10, 10, 10, 11, 12, 11, 11, 11, 11, 11, 11, 12,
+];
+
 #[derive(Clone, Copy)]
 enum LeaperPiece {
     Pawn = 0,
@@ -320,7 +330,7 @@ impl SliderAttackTables {
         let mut rook_attack_tables = vec![[Bitboard::new(0); 4096]; 64];
 
         for square in Square::iter() {
-            let bishop_occupancy_indices = 1 << bishop_attack_masks[square as usize].count_bits();
+            let bishop_occupancy_indices = 1 << BISHOP_ATTACK_MASK_BIT_COUNT[square as usize];
 
             for index in 0..bishop_occupancy_indices {
                 let occupancy = Self::set_occupancy(index, bishop_attack_masks[square as usize]);
@@ -336,7 +346,7 @@ impl SliderAttackTables {
                     Self::generate_attack_table(occupancy, SliderPiece::Bishop, square);
             }
 
-            let rook_occupancy_indices = 1 << rook_attack_masks[square as usize].count_bits();
+            let rook_occupancy_indices = 1 << ROOK_ATTACK_MASK_BIT_COUNT[square as usize];
 
             for index in 0..rook_occupancy_indices {
                 let occupancy = Self::set_occupancy(index, rook_attack_masks[square as usize]);
@@ -547,11 +557,16 @@ impl MagicNumbers {
         piece: SliderPiece,
         square: Square,
     ) -> usize {
+        let bit_count = match piece {
+            SliderPiece::Bishop => BISHOP_ATTACK_MASK_BIT_COUNT[square as usize],
+            SliderPiece::Rook => ROOK_ATTACK_MASK_BIT_COUNT[square as usize],
+        };
+
         let magic_index = (board & attack_mask)
             .value()
             .overflowing_mul(self.magic_number(piece, square))
             .0
-            >> (64 - attack_mask.count_bits());
+            >> (64 - bit_count);
 
         magic_index as usize
     }
@@ -605,7 +620,10 @@ impl MagicNumbers {
         let mut occupancies = [Bitboard::new(0); 4096];
         let mut attacks = [Bitboard::new(0); 4096];
 
-        let occupancy_count = attack_mask.count_bits();
+        let occupancy_count = match piece {
+            SliderPiece::Bishop => BISHOP_ATTACK_MASK_BIT_COUNT[square as usize],
+            SliderPiece::Rook => ROOK_ATTACK_MASK_BIT_COUNT[square as usize],
+        };
         let occupancy_indices = 1 << occupancy_count;
 
         for index in 0..occupancy_indices {
