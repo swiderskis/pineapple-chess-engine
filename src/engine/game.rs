@@ -1,5 +1,5 @@
 use super::{
-    attack_tables,
+    attack_tables::AttackTables,
     moves::{Move, MoveFlag, MoveList, MoveType},
 };
 use crate::uci::{FenError, InputError};
@@ -165,7 +165,12 @@ impl Game {
         Ok(())
     }
 
-    pub fn make_move(&mut self, mv: &Move, move_flag: MoveFlag) -> Result<(), InputError> {
+    pub fn make_move(
+        &mut self,
+        attack_tables: &AttackTables,
+        mv: &Move,
+        move_flag: MoveFlag,
+    ) -> Result<(), InputError> {
         if move_flag == MoveFlag::Capture && mv.move_type() != MoveType::Capture {
             return Err(InputError::InvalidMoveFlag);
         }
@@ -266,7 +271,8 @@ impl Game {
             .get_lsb_square();
 
         if let Some(king_square) = king_square {
-            let own_king_in_check = game_clone.is_square_attacked(opponent_side, king_square);
+            let own_king_in_check =
+                game_clone.is_square_attacked(attack_tables, opponent_side, king_square);
 
             if own_king_in_check {
                 return Err(InputError::IllegalMove);
@@ -288,9 +294,14 @@ impl Game {
         Ok(())
     }
 
-    pub fn is_square_attacked(&self, attacking_side: Side, square: Square) -> bool {
+    pub fn is_square_attacked(
+        &self,
+        attack_tables: &AttackTables,
+        attacking_side: Side,
+        square: Square,
+    ) -> bool {
         for piece in Piece::iter() {
-            let piece_attacks_square = attack_tables::ATTACK_TABLES.attack_table(
+            let piece_attacks_square = attack_tables.attack_table(
                 self.board(None),
                 piece,
                 attacking_side.opponent_side(),
@@ -897,24 +908,27 @@ impl CastlingType {
     }
 }
 
-fn _perft_test(game: &mut Game, depth: u32) {
+fn _perft_test(attack_tables: &AttackTables, game: &mut Game, depth: u32) {
     let mut total_nodes = 0;
     let now = Instant::now();
 
-    let move_list = MoveList::generate_moves(game);
+    let move_list = MoveList::generate_moves(attack_tables, game);
 
     println!("Move   Nodes   ");
 
     for mv in move_list._move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
-        if game_clone.make_move(mv, MoveFlag::All).is_err() {
+        if game_clone
+            .make_move(attack_tables, mv, MoveFlag::All)
+            .is_err()
+        {
             continue;
         }
 
         let mut nodes = 0;
 
-        _perft(&mut game_clone, &mut nodes, depth - 1);
+        _perft(attack_tables, &mut game_clone, &mut nodes, depth - 1);
 
         print!("{:<6}", mv._as_string());
         print!("{:^7}", nodes);
@@ -929,23 +943,26 @@ fn _perft_test(game: &mut Game, depth: u32) {
     println!("Time taken: {:?}", now.elapsed());
 }
 
-fn _perft(game: &mut Game, nodes: &mut u64, depth: u32) {
+fn _perft(attack_tables: &AttackTables, game: &mut Game, nodes: &mut u64, depth: u32) {
     if depth == 0 {
         *nodes += 1;
 
         return;
     }
 
-    let move_list = MoveList::generate_moves(game);
+    let move_list = MoveList::generate_moves(attack_tables, game);
 
     for mv in move_list._move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
-        if game_clone.make_move(mv, MoveFlag::All).is_err() {
+        if game_clone
+            .make_move(attack_tables, mv, MoveFlag::All)
+            .is_err()
+        {
             continue;
         }
 
-        _perft(&mut game_clone, nodes, depth - 1);
+        _perft(attack_tables, &mut game_clone, nodes, depth - 1);
     }
 }
 
@@ -957,12 +974,13 @@ mod tests {
     #[ignore]
     fn perft_start_position() {
         let mut game = Game::initialise();
+        let attack_tables = AttackTables::initialise();
 
         game.load_fen("startpos").unwrap();
 
         let mut nodes = 0;
 
-        _perft(&mut game, &mut nodes, 6);
+        _perft(&attack_tables, &mut game, &mut nodes, 6);
 
         assert_eq!(nodes, 119_060_324);
     }
@@ -971,13 +989,14 @@ mod tests {
     #[ignore]
     fn perft_tricky_position() {
         let mut game = Game::initialise();
+        let attack_tables = AttackTables::initialise();
 
         game.load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
             .unwrap();
 
         let mut nodes = 0;
 
-        _perft(&mut game, &mut nodes, 5);
+        _perft(&attack_tables, &mut game, &mut nodes, 5);
 
         assert_eq!(nodes, 193_690_690);
     }
@@ -1279,6 +1298,7 @@ mod tests {
     #[test]
     fn start_position_moves() {
         let mut game = Game::initialise();
+        let attack_tables = AttackTables::initialise();
 
         game.load_fen("startpos").unwrap();
 
@@ -1372,11 +1392,11 @@ mod tests {
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
 
-        let move_list = MoveList::generate_moves(&game);
+        let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::E2, Square::E4, None);
         let mv = move_list.find_move(move_search_params).unwrap();
 
-        game.make_move(&mv, MoveFlag::All).unwrap();
+        game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
         desired_white_pawns_bitboard.pop_bit(Square::E2);
         desired_white_pawns_bitboard.set_bit(Square::E4);
@@ -1403,11 +1423,11 @@ mod tests {
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
 
-        let move_list = MoveList::generate_moves(&game);
+        let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::E7, Square::E5, None);
         let mv = move_list.find_move(move_search_params).unwrap();
 
-        game.make_move(&mv, MoveFlag::All).unwrap();
+        game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
         desired_black_pawns_bitboard.pop_bit(Square::E7);
         desired_black_pawns_bitboard.set_bit(Square::E5);
@@ -1434,11 +1454,11 @@ mod tests {
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
 
-        let move_list = MoveList::generate_moves(&game);
+        let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::G1, Square::F3, None);
         let mv = move_list.find_move(move_search_params).unwrap();
 
-        game.make_move(&mv, MoveFlag::All).unwrap();
+        game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
         desired_white_knights_bitboard.pop_bit(Square::G1);
         desired_white_knights_bitboard.set_bit(Square::F3);
@@ -1469,6 +1489,7 @@ mod tests {
     #[test]
     fn tricky_position_moves() {
         let mut game = Game::initialise();
+        let attack_tables = AttackTables::initialise();
 
         game.load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
             .unwrap();
@@ -1563,11 +1584,11 @@ mod tests {
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
 
-        let move_list = MoveList::generate_moves(&game);
+        let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::D5, Square::E6, None);
         let mv = move_list.find_move(move_search_params).unwrap();
 
-        game.make_move(&mv, MoveFlag::All).unwrap();
+        game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
         desired_white_pawns_bitboard.pop_bit(Square::D5);
         desired_white_pawns_bitboard.set_bit(Square::E6);
@@ -1595,11 +1616,11 @@ mod tests {
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
 
-        let move_list = MoveList::generate_moves(&game);
+        let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::A6, Square::E2, None);
         let mv = move_list.find_move(move_search_params).unwrap();
 
-        game.make_move(&mv, MoveFlag::All).unwrap();
+        game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
         desired_black_bishops_bitboard.pop_bit(Square::A6);
         desired_black_bishops_bitboard.set_bit(Square::E2);
@@ -1627,11 +1648,11 @@ mod tests {
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
 
-        let move_list = MoveList::generate_moves(&game);
+        let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::C3, Square::E2, None);
         let mv = move_list.find_move(move_search_params).unwrap();
 
-        game.make_move(&mv, MoveFlag::All).unwrap();
+        game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
         desired_white_knights_bitboard.pop_bit(Square::C3);
         desired_white_knights_bitboard.set_bit(Square::E2);

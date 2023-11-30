@@ -1,5 +1,5 @@
 use crate::engine::Engine;
-use std::{fmt::Display, io};
+use std::fmt::Display;
 
 const _TRICKY_POSITION: &str =
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
@@ -35,7 +35,7 @@ pub fn engine() {
     loop {
         let mut input = String::new();
 
-        if io::stdin().read_line(&mut input).is_err() {
+        if std::io::stdin().read_line(&mut input).is_err() {
             println!("Failed to parse input");
 
             continue;

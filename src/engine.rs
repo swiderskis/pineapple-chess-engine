@@ -3,6 +3,7 @@ mod game;
 mod moves;
 
 use self::{
+    attack_tables::AttackTables,
     game::{Game, Piece, Square},
     moves::{Move, MoveFlag, MoveList, MoveSearchParams},
 };
@@ -14,26 +15,33 @@ use strum::ParseError;
 pub struct Engine {
     game: Game,
     move_list: MoveList,
+    attack_tables: AttackTables,
 }
 
 impl Engine {
     pub fn initialise() -> Self {
         let game = Game::initialise();
-        let move_list = MoveList::generate_moves(&game);
+        let attack_tables = AttackTables::initialise();
+        let move_list = MoveList::generate_moves(&attack_tables, &game);
 
-        Self { game, move_list }
+        Self {
+            game,
+            move_list,
+            attack_tables,
+        }
     }
 
     pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
         self.game.load_fen(fen)?;
-        self.move_list = MoveList::generate_moves(&self.game);
+        self.move_list = MoveList::generate_moves(&self.attack_tables, &self.game);
 
         Ok(())
     }
 
     pub fn make_move(&mut self, mv: &Move) -> Result<(), InputError> {
-        self.game.make_move(mv, MoveFlag::All)?;
-        self.move_list = MoveList::generate_moves(&self.game);
+        self.game
+            .make_move(&self.attack_tables, mv, MoveFlag::All)?;
+        self.move_list = MoveList::generate_moves(&self.attack_tables, &self.game);
 
         Ok(())
     }

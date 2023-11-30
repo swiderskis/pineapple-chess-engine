@@ -1,8 +1,5 @@
 use super::game::{Bitboard, Piece, Side, Square};
-use once_cell::sync::Lazy;
 use strum::IntoEnumIterator;
-
-pub static ATTACK_TABLES: Lazy<AttackTables> = Lazy::new(AttackTables::initialise);
 
 // Magic numbers generated using generate_magic_numbers() with random_state = 1804289383
 const MAGIC_NUMBERS: MagicNumbers = MagicNumbers {
@@ -153,13 +150,14 @@ enum SliderPiece {
     Rook = 3,
 }
 
+#[derive(Clone)]
 pub struct AttackTables {
     leaper_attack_tables: LeaperAttackTables,
     slider_attack_tables: SliderAttackTables,
 }
 
 impl AttackTables {
-    fn initialise() -> Self {
+    pub fn initialise() -> Self {
         Self {
             leaper_attack_tables: LeaperAttackTables::initialise(),
             slider_attack_tables: SliderAttackTables::initialise(),
@@ -227,6 +225,7 @@ impl AttackTables {
     }
 }
 
+#[derive(Clone)]
 struct LeaperAttackTables {
     white_pawn_attack_tables: [Bitboard; 64],
     black_pawn_attack_tables: [Bitboard; 64],
@@ -304,6 +303,7 @@ impl LeaperAttackTables {
     }
 }
 
+#[derive(Clone)]
 struct SliderAttackTables {
     bishop_attack_masks: [Bitboard; 64],
     rook_attack_masks: [Bitboard; 64],
