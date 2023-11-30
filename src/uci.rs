@@ -52,6 +52,11 @@ pub fn engine() {
                     println!("{}", error);
                 }
             }
+            "go" => {
+                if let Err(error) = go(&mut engine, input.arguments) {
+                    println!("{}", error);
+                }
+            }
             "quit" => break,
             "" => {}
             _ => println!("Unknown command"),
@@ -106,6 +111,24 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
     Ok(())
 }
 
+fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
+    match arguments[0] {
+        "depth" => {
+            let depth: u8 = match arguments[1].parse() {
+                Ok(depth) => depth,
+                Err(_) => return Err(InputError::InvalidGoArgument),
+            };
+
+            let best_move = engine.evaluate(depth)?;
+
+            println!("bestmove {}", best_move);
+
+            Ok(())
+        }
+        _ => Err(InputError::InvalidGoArgument),
+    }
+}
+
 fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), InputError> {
     let mv = engine.find_move_from_string(move_string)?;
 
@@ -118,21 +141,28 @@ fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), I
 pub enum InputError {
     IllegalMove,
     InvalidFen(FenError),
+    InvalidGoArgument,
     InvalidMoveFlag,
     InvalidMoveString(String),
     InvalidPositionArguments,
+    UninitialisedPosition,
 }
 
 impl Display for InputError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::IllegalMove => write!(f, "Attempted to play illegal move"),
+            Self::IllegalMove => write!(f, "Attempted to play an illegal move"),
             Self::InvalidFen(error) => write!(f, "Failed to parse FEN: {}", error),
+            Self::InvalidGoArgument => write!(f, "Invalid go command argument"),
             Self::InvalidMoveFlag => write!(f, "Invalid move flag"),
             Self::InvalidMoveString(move_string) => {
                 write!(f, "Failed to parse move string {}", move_string)
             }
             Self::InvalidPositionArguments => write!(f, "Invalid position command arguments"),
+            Self::UninitialisedPosition => write!(
+                f,
+                "Attempted to evaluate board without initialising a position"
+            ),
         }
     }
 }

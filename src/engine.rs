@@ -38,6 +38,13 @@ impl Engine {
         Ok(())
     }
 
+    pub fn evaluate(&self, _depth: u8) -> Result<String, InputError> {
+        match &self.move_list._move_list()[0] {
+            Some(mv) => Ok(mv.as_string()),
+            None => Err(InputError::UninitialisedPosition),
+        }
+    }
+
     pub fn make_move(&mut self, mv: &Move) -> Result<(), InputError> {
         self.game
             .make_move(&self.attack_tables, mv, MoveFlag::All)?;

@@ -908,7 +908,7 @@ impl CastlingType {
     }
 }
 
-fn _perft_test(attack_tables: &AttackTables, game: &mut Game, depth: u32) {
+fn _perft_test(attack_tables: &AttackTables, game: &mut Game, depth: u8) {
     let mut total_nodes = 0;
     let now = Instant::now();
 
@@ -930,7 +930,7 @@ fn _perft_test(attack_tables: &AttackTables, game: &mut Game, depth: u32) {
 
         _perft(attack_tables, &mut game_clone, &mut nodes, depth - 1);
 
-        print!("{:<6}", mv._as_string());
+        print!("{:<6}", mv.as_string());
         print!("{:^7}", nodes);
         println!();
 
@@ -943,7 +943,7 @@ fn _perft_test(attack_tables: &AttackTables, game: &mut Game, depth: u32) {
     println!("Time taken: {:?}", now.elapsed());
 }
 
-fn _perft(attack_tables: &AttackTables, game: &mut Game, nodes: &mut u64, depth: u32) {
+fn _perft(attack_tables: &AttackTables, game: &mut Game, nodes: &mut u64, depth: u8) {
     if depth == 0 {
         *nodes += 1;
 
