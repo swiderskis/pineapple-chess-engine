@@ -46,7 +46,11 @@ pub fn engine() {
         match input.command {
             "uci" => uci(),
             "isready" => println!("readyok"),
-            "ucinewgame" => {}
+            "ucinewgame" => {
+                if let Err(error) = position(&mut engine, vec!["startpos"]) {
+                    println!("{}", error);
+                }
+            }
             "position" => {
                 if let Err(error) = position(&mut engine, input.arguments) {
                     println!("{}", error);
@@ -111,22 +115,12 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
     Ok(())
 }
 
-fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
-    match arguments[0] {
-        "depth" => {
-            let depth: u8 = match arguments[1].parse() {
-                Ok(depth) => depth,
-                Err(_) => return Err(InputError::InvalidGoArgument),
-            };
+fn go(engine: &mut Engine, _arguments: Vec<&str>) -> Result<(), InputError> {
+    let best_move = engine.evaluate(0)?;
 
-            let best_move = engine.evaluate(depth)?;
+    println!("bestmove {}", best_move);
 
-            println!("bestmove {}", best_move);
-
-            Ok(())
-        }
-        _ => Err(InputError::InvalidGoArgument),
-    }
+    Ok(())
 }
 
 fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), InputError> {
@@ -141,7 +135,7 @@ fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), I
 pub enum InputError {
     IllegalMove,
     InvalidFen(FenError),
-    InvalidGoArgument,
+    _InvalidGoArgument,
     InvalidMoveFlag,
     InvalidMoveString(String),
     InvalidPositionArguments,
@@ -153,7 +147,7 @@ impl Display for InputError {
         match self {
             Self::IllegalMove => write!(f, "Attempted to play an illegal move"),
             Self::InvalidFen(error) => write!(f, "Failed to parse FEN: {}", error),
-            Self::InvalidGoArgument => write!(f, "Invalid go command argument"),
+            Self::_InvalidGoArgument => write!(f, "Invalid go command argument"),
             Self::InvalidMoveFlag => write!(f, "Invalid move flag"),
             Self::InvalidMoveString(move_string) => {
                 write!(f, "Failed to parse move string {}", move_string)

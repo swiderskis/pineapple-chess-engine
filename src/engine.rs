@@ -39,10 +39,15 @@ impl Engine {
     }
 
     pub fn evaluate(&self, _depth: u8) -> Result<String, InputError> {
-        match &self.move_list._move_list()[0] {
-            Some(mv) => Ok(mv.as_string()),
-            None => Err(InputError::UninitialisedPosition),
+        for mv in self.move_list._move_list().iter().flatten() {
+            let mut game_clone = self.clone();
+
+            if game_clone.make_move(mv).is_ok() {
+                return Ok(mv.as_string());
+            }
         }
+
+        Err(InputError::UninitialisedPosition)
     }
 
     pub fn make_move(&mut self, mv: &Move) -> Result<(), InputError> {
