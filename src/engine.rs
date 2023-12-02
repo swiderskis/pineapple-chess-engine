@@ -1,4 +1,5 @@
 mod attack_tables;
+mod evaluation;
 mod game;
 mod moves;
 
@@ -11,7 +12,6 @@ use crate::uci::InputError;
 use std::str::FromStr;
 use strum::ParseError;
 
-#[derive(Clone)]
 pub struct Engine {
     game: Game,
     move_list: MoveList,
@@ -20,14 +20,10 @@ pub struct Engine {
 
 impl Engine {
     pub fn initialise() -> Self {
-        let game = Game::initialise();
-        let attack_tables = AttackTables::initialise();
-        let move_list = MoveList::generate_moves(&attack_tables, &game);
-
         Self {
-            game,
-            move_list,
-            attack_tables,
+            game: Game::initialise(),
+            move_list: MoveList::new(),
+            attack_tables: AttackTables::initialise(),
         }
     }
 
@@ -36,18 +32,6 @@ impl Engine {
         self.move_list = MoveList::generate_moves(&self.attack_tables, &self.game);
 
         Ok(())
-    }
-
-    pub fn evaluate(&self, _depth: u8) -> Result<String, InputError> {
-        for mv in self.move_list._move_list().iter().flatten() {
-            let mut game_clone = self.clone();
-
-            if game_clone.make_move(mv).is_ok() {
-                return Ok(mv.as_string());
-            }
-        }
-
-        Err(InputError::UninitialisedPosition)
     }
 
     pub fn make_move(&mut self, mv: &Move) -> Result<(), InputError> {

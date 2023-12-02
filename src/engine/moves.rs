@@ -21,7 +21,7 @@ pub struct MoveList {
 }
 
 impl MoveList {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             move_list: [(); MAX_MOVE_LIST_SIZE].map(|_| None),
             current_move_list_size: 0,
@@ -62,6 +62,10 @@ impl MoveList {
         }
 
         Err(InputError::IllegalMove)
+    }
+
+    pub fn move_list(&self) -> &[Option<Move>; MAX_MOVE_LIST_SIZE] {
+        &self.move_list
     }
 
     fn generate_pawn_moves(
@@ -298,10 +302,6 @@ impl MoveList {
     fn push(&mut self, mv: Move) {
         self.move_list[self.current_move_list_size] = Some(mv);
         self.current_move_list_size += 1;
-    }
-
-    pub fn _move_list(&self) -> &[Option<Move>; MAX_MOVE_LIST_SIZE] {
-        &self.move_list
     }
 
     pub fn _length(&self) -> u32 {

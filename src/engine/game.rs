@@ -487,7 +487,24 @@ impl Game {
         }
     }
 
-    fn _print(&self) {
+    pub fn piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
+        [
+            (self.white_pawns, Piece::Pawn, Side::White),
+            (self.white_knights, Piece::Knight, Side::White),
+            (self.white_bishops, Piece::Bishop, Side::White),
+            (self.white_rooks, Piece::Rook, Side::White),
+            (self.white_queens, Piece::Queen, Side::White),
+            (self.white_king, Piece::King, Side::White),
+            (self.black_pawns, Piece::Pawn, Side::Black),
+            (self.black_knights, Piece::Knight, Side::Black),
+            (self.black_bishops, Piece::Bishop, Side::Black),
+            (self.black_rooks, Piece::Rook, Side::Black),
+            (self.black_queens, Piece::Queen, Side::Black),
+            (self.black_king, Piece::King, Side::Black),
+        ]
+    }
+
+    pub fn _print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
                 print!("{:<4}", (64 - square as usize) / 8);
@@ -512,30 +529,13 @@ impl Game {
     }
 
     fn _piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
-        for (bitboard, piece, side) in self._piece_bitboards() {
+        for (bitboard, piece, side) in self.piece_bitboards() {
             if bitboard.bit_occupied(square) {
                 return Some((piece, side));
             }
         }
 
         None
-    }
-
-    fn _piece_bitboards(&self) -> [(Bitboard, Piece, Side); 12] {
-        [
-            (self.white_pawns, Piece::Pawn, Side::White),
-            (self.white_knights, Piece::Knight, Side::White),
-            (self.white_bishops, Piece::Bishop, Side::White),
-            (self.white_rooks, Piece::Rook, Side::White),
-            (self.white_queens, Piece::Queen, Side::White),
-            (self.white_king, Piece::King, Side::White),
-            (self.black_pawns, Piece::Pawn, Side::Black),
-            (self.black_knights, Piece::Knight, Side::Black),
-            (self.black_bishops, Piece::Bishop, Side::Black),
-            (self.black_rooks, Piece::Rook, Side::Black),
-            (self.black_queens, Piece::Queen, Side::Black),
-            (self.black_king, Piece::King, Side::Black),
-        ]
     }
 }
 
@@ -580,7 +580,7 @@ impl Bitboard {
         Square::from_u32(self.0.trailing_zeros())
     }
 
-    pub fn _count_bits(self) -> u32 {
+    pub fn count_bits(self) -> u32 {
         self.0.count_ones()
     }
 
@@ -739,8 +739,8 @@ impl Piece {
 
 #[derive(Clone, Copy, Debug, Display, PartialEq)]
 pub enum Side {
-    White,
-    Black,
+    White = 1,
+    Black = -1,
 }
 
 impl Side {
@@ -916,7 +916,7 @@ fn _perft_test(attack_tables: &AttackTables, game: &mut Game, depth: u8) {
 
     println!("Move   Nodes   ");
 
-    for mv in move_list._move_list().iter().flatten() {
+    for mv in move_list.move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
         if game_clone
@@ -952,7 +952,7 @@ fn _perft(attack_tables: &AttackTables, game: &mut Game, nodes: &mut u64, depth:
 
     let move_list = MoveList::generate_moves(attack_tables, game);
 
-    for mv in move_list._move_list().iter().flatten() {
+    for mv in move_list.move_list().iter().flatten() {
         let mut game_clone = game.clone();
 
         if game_clone

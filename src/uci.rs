@@ -1,8 +1,6 @@
 use crate::engine::Engine;
 use std::fmt::Display;
 
-const _TRICKY_POSITION: &str =
-    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
 const FEN_MOVES_STARTING_INDEX: usize = 7;
 const STARTPOS_MOVES_STARTING_INDEX: usize = 1;
 
@@ -116,7 +114,7 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
 }
 
 fn go(engine: &mut Engine, _arguments: Vec<&str>) -> Result<(), InputError> {
-    let best_move = engine.evaluate(0)?;
+    let best_move = engine.find_best_move()?;
 
     println!("bestmove {}", best_move);
 
