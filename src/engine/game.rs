@@ -580,7 +580,7 @@ impl Bitboard {
         Square::from_u32(self.0.trailing_zeros())
     }
 
-    pub fn count_bits(self) -> u32 {
+    pub fn _count_bits(self) -> u32 {
         self.0.count_ones()
     }
 
