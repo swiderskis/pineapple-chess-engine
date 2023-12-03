@@ -1,9 +1,8 @@
-use super::{
-    game::{Game, Piece, Side},
-    moves::MoveFlag,
-    Engine,
-};
+use super::{game::Game, moves::MoveFlag, Engine};
 use crate::uci::InputError;
+
+// piece value obtained by indexing into array using Piece enum
+const PIECE_VALUE: [Evaluation; 6] = [100, 300, 350, 500, 900, 10_000];
 
 type Evaluation = i32;
 
@@ -41,24 +40,11 @@ impl Engine {
 
         for (bitboard, piece, side) in game.piece_bitboards() {
             let piece_count = bitboard.count_bits() as i32;
-            let piece_count_evalutation = piece_count * Self::piece_value(piece, side);
+            let piece_count_evalutation = piece_count * PIECE_VALUE[piece as usize] * side as i32;
 
             evaluation += piece_count_evalutation;
         }
 
         evaluation
-    }
-
-    fn piece_value(piece: Piece, side: Side) -> Evaluation {
-        let score = match piece {
-            Piece::Pawn => 100,
-            Piece::Knight => 300,
-            Piece::Bishop => 350,
-            Piece::Rook => 500,
-            Piece::Queen => 900,
-            Piece::King => 10_000,
-        };
-
-        score * side as Evaluation
     }
 }
