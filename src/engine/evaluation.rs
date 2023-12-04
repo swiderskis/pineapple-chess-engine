@@ -94,7 +94,7 @@ impl Engine {
             while let Some(square) = bitboard.get_lsb_square() {
                 let sided_square_index = match side {
                     Side::White => square as usize,
-                    Side::Black => 63 - square as usize,
+                    Side::Black => square.horizontal_mirror() as usize,
                 };
 
                 evaluation.add(PIECE_VALUE[piece as usize], side);

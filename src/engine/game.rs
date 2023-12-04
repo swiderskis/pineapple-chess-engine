@@ -833,6 +833,13 @@ impl Square {
         self as usize % 8
     }
 
+    pub fn horizontal_mirror(self) -> Square {
+        let mirror_rank = 7 - self.rank();
+        let square_index = mirror_rank * 8 + self.file();
+
+        Square::from_usize(square_index).unwrap()
+    }
+
     pub fn _to_lowercase_string(self) -> String {
         self.to_string().to_lowercase()
     }
