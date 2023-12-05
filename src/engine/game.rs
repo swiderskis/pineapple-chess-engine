@@ -13,6 +13,8 @@ use std::{
 use strum::{IntoEnumIterator, ParseError};
 use strum_macros::{Display, EnumIter, EnumString};
 
+const MAX_HALFMOVE_CLOCK: u8 = 99;
+
 #[derive(Clone)]
 pub struct Game {
     white_pawns: Bitboard,
@@ -30,6 +32,7 @@ pub struct Game {
     side_to_move: Side,
     castling_rights: CastlingRights,
     en_passant_square: Option<Square>,
+    halfmove_clock: u8,
 }
 
 impl Game {
@@ -50,6 +53,7 @@ impl Game {
             side_to_move: Side::White,
             castling_rights: CastlingRights(0),
             en_passant_square: None,
+            halfmove_clock: 0,
         }
     }
 
@@ -139,10 +143,18 @@ impl Game {
             "b" => Side::Black,
             _ => return Err(InputError::InvalidFen(FenError::SideToMove)),
         };
-
         let castling_rights = CastlingRights::initialise(fen[2])?;
-
         let en_passant_square = Self::parse_en_passant_square(fen[3])?;
+        let halfmove_clock: u8 = match fen[4].parse() {
+            Ok(halfmove_clock) => {
+                if halfmove_clock > MAX_HALFMOVE_CLOCK {
+                    return Err(InputError::InvalidFen(FenError::InvalidHalfmoveClock));
+                }
+
+                halfmove_clock
+            }
+            Err(_) => return Err(InputError::InvalidFen(FenError::ParseHalfmoveClock)),
+        };
 
         self.white_pawns = white_pawns;
         self.white_knights = white_knights;
@@ -161,6 +173,7 @@ impl Game {
         self.side_to_move = side_to_move;
         self.castling_rights = castling_rights;
         self.en_passant_square = en_passant_square;
+        self.halfmove_clock = halfmove_clock;
 
         Ok(())
     }
@@ -752,72 +765,17 @@ impl Side {
     }
 }
 
+#[rustfmt::skip]
 #[derive(Clone, Copy, Debug, Display, EnumIter, EnumString, FromPrimitive, PartialEq)]
 pub enum Square {
-    A8,
-    B8,
-    C8,
-    D8,
-    E8,
-    F8,
-    G8,
-    H8,
-    A7,
-    B7,
-    C7,
-    D7,
-    E7,
-    F7,
-    G7,
-    H7,
-    A6,
-    B6,
-    C6,
-    D6,
-    E6,
-    F6,
-    G6,
-    H6,
-    A5,
-    B5,
-    C5,
-    D5,
-    E5,
-    F5,
-    G5,
-    H5,
-    A4,
-    B4,
-    C4,
-    D4,
-    E4,
-    F4,
-    G4,
-    H4,
-    A3,
-    B3,
-    C3,
-    D3,
-    E3,
-    F3,
-    G3,
-    H3,
-    A2,
-    B2,
-    C2,
-    D2,
-    E2,
-    F2,
-    G2,
-    H2,
-    A1,
-    B1,
-    C1,
-    D1,
-    E1,
-    F1,
-    G1,
-    H1,
+    A8, B8, C8, D8, E8, F8, G8, H8,
+    A7, B7, C7, D7, E7, F7, G7, H7,
+    A6, B6, C6, D6, E6, F6, G6, H6,
+    A5, B5, C5, D5, E5, F5, G5, H5,
+    A4, B4, C4, D4, E4, F4, G4, H4,
+    A3, B3, C3, D3, E3, F3, G3, H3,
+    A2, B2, C2, D2, E2, F2, G2, H2,
+    A1, B1, C1, D1, E1, F1, G1, H1,
 }
 
 impl Square {
@@ -1009,6 +967,105 @@ mod tests {
     }
 
     #[test]
+    fn load_start_position() {
+        let mut game = Game::initialise();
+
+        game.load_fen("startpos").unwrap();
+
+        let mut desired_white_pawns_bitboard = Bitboard(0);
+
+        desired_white_pawns_bitboard.set_bit(Square::A2);
+        desired_white_pawns_bitboard.set_bit(Square::B2);
+        desired_white_pawns_bitboard.set_bit(Square::C2);
+        desired_white_pawns_bitboard.set_bit(Square::D2);
+        desired_white_pawns_bitboard.set_bit(Square::E2);
+        desired_white_pawns_bitboard.set_bit(Square::F2);
+        desired_white_pawns_bitboard.set_bit(Square::G2);
+        desired_white_pawns_bitboard.set_bit(Square::H2);
+
+        let mut desired_white_knights_bitboard = Bitboard(0);
+
+        desired_white_knights_bitboard.set_bit(Square::B1);
+        desired_white_knights_bitboard.set_bit(Square::G1);
+
+        let mut desired_white_bishops_bitboard = Bitboard(0);
+
+        desired_white_bishops_bitboard.set_bit(Square::C1);
+        desired_white_bishops_bitboard.set_bit(Square::F1);
+
+        let mut desired_white_rooks_bitboard = Bitboard(0);
+
+        desired_white_rooks_bitboard.set_bit(Square::A1);
+        desired_white_rooks_bitboard.set_bit(Square::H1);
+
+        let mut desired_white_queens_bitboard = Bitboard(0);
+
+        desired_white_queens_bitboard.set_bit(Square::D1);
+
+        let mut desired_white_king_bitboard = Bitboard(0);
+
+        desired_white_king_bitboard.set_bit(Square::E1);
+
+        let mut desired_black_pawns_bitboard = Bitboard(0);
+
+        desired_black_pawns_bitboard.set_bit(Square::A7);
+        desired_black_pawns_bitboard.set_bit(Square::B7);
+        desired_black_pawns_bitboard.set_bit(Square::C7);
+        desired_black_pawns_bitboard.set_bit(Square::D7);
+        desired_black_pawns_bitboard.set_bit(Square::E7);
+        desired_black_pawns_bitboard.set_bit(Square::F7);
+        desired_black_pawns_bitboard.set_bit(Square::G7);
+        desired_black_pawns_bitboard.set_bit(Square::H7);
+
+        let mut desired_black_knights_bitboard = Bitboard(0);
+
+        desired_black_knights_bitboard.set_bit(Square::B8);
+        desired_black_knights_bitboard.set_bit(Square::G8);
+
+        let mut desired_black_bishops_bitboard = Bitboard(0);
+
+        desired_black_bishops_bitboard.set_bit(Square::C8);
+        desired_black_bishops_bitboard.set_bit(Square::F8);
+
+        let mut desired_black_rooks_bitboard = Bitboard(0);
+
+        desired_black_rooks_bitboard.set_bit(Square::A8);
+        desired_black_rooks_bitboard.set_bit(Square::H8);
+
+        let mut desired_black_queens_bitboard = Bitboard(0);
+
+        desired_black_queens_bitboard.set_bit(Square::D8);
+
+        let mut desired_black_king_bitboard = Bitboard(0);
+
+        desired_black_king_bitboard.set_bit(Square::E8);
+
+        let desired_side_to_move = Side::White;
+        let desired_castling_rights = CastlingRights(0b1111);
+        let desired_en_passant_square = None;
+        let desired_halfmove_clock = 0;
+
+        assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
+        assert_eq!(game.white_knights, desired_white_knights_bitboard);
+        assert_eq!(game.white_bishops, desired_white_bishops_bitboard);
+        assert_eq!(game.white_rooks, desired_white_rooks_bitboard);
+        assert_eq!(game.white_queens, desired_white_queens_bitboard);
+        assert_eq!(game.white_king, desired_white_king_bitboard);
+
+        assert_eq!(game.black_pawns, desired_black_pawns_bitboard);
+        assert_eq!(game.black_knights, desired_black_knights_bitboard);
+        assert_eq!(game.black_bishops, desired_black_bishops_bitboard);
+        assert_eq!(game.black_rooks, desired_black_rooks_bitboard);
+        assert_eq!(game.black_queens, desired_black_queens_bitboard);
+        assert_eq!(game.black_king, desired_black_king_bitboard);
+
+        assert_eq!(game.side_to_move, desired_side_to_move);
+        assert_eq!(game.castling_rights, desired_castling_rights);
+        assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
+    }
+
+    #[test]
     fn load_tricky_position() {
         let mut game = Game::initialise();
 
@@ -1086,6 +1143,7 @@ mod tests {
         let desired_side_to_move = Side::White;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = None;
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1104,6 +1162,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
     }
 
     #[test]
@@ -1184,6 +1243,7 @@ mod tests {
         let desired_side_to_move = Side::White;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = Some(Square::E6);
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1202,6 +1262,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
     }
 
     #[test]
@@ -1282,6 +1343,7 @@ mod tests {
         let desired_side_to_move = Side::Black;
         let desired_castling_rights = CastlingRights(0b0000);
         let desired_en_passant_square = None;
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1300,6 +1362,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
     }
 
     #[test]
@@ -1380,6 +1443,7 @@ mod tests {
         let desired_side_to_move = Side::White;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = None;
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1398,6 +1462,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::E2, Square::E4, None);
@@ -1411,6 +1476,7 @@ mod tests {
         let desired_side_to_move = Side::Black;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = Some(Square::E3);
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1429,6 +1495,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::E7, Square::E5, None);
@@ -1442,6 +1509,7 @@ mod tests {
         let desired_side_to_move = Side::White;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = Some(Square::E6);
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1460,6 +1528,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::G1, Square::F3, None);
@@ -1473,6 +1542,7 @@ mod tests {
         let desired_side_to_move = Side::Black;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = None;
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1491,6 +1561,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
     }
 
     #[test]
@@ -1572,6 +1643,7 @@ mod tests {
         let desired_side_to_move = Side::White;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = None;
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1590,6 +1662,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::D5, Square::E6, None);
@@ -1604,6 +1677,7 @@ mod tests {
         let desired_side_to_move = Side::Black;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = None;
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1622,6 +1696,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::A6, Square::E2, None);
@@ -1636,6 +1711,7 @@ mod tests {
         let desired_side_to_move = Side::White;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = None;
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1654,6 +1730,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
         let move_search_params = MoveSearchParams::new(Square::C3, Square::E2, None);
@@ -1668,6 +1745,7 @@ mod tests {
         let desired_side_to_move = Side::Black;
         let desired_castling_rights = CastlingRights(0b1111);
         let desired_en_passant_square = None;
+        let desired_halfmove_clock = 0;
 
         assert_eq!(game.white_pawns, desired_white_pawns_bitboard);
         assert_eq!(game.white_knights, desired_white_knights_bitboard);
@@ -1686,6 +1764,7 @@ mod tests {
         assert_eq!(game.side_to_move, desired_side_to_move);
         assert_eq!(game.castling_rights, desired_castling_rights);
         assert_eq!(game.en_passant_square, desired_en_passant_square);
+        assert_eq!(game.halfmove_clock, desired_halfmove_clock);
     }
 
     #[test]

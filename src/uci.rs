@@ -1,5 +1,5 @@
 use crate::engine::Engine;
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 const FEN_MOVES_STARTING_INDEX: usize = 7;
 const STARTPOS_MOVES_STARTING_INDEX: usize = 1;
@@ -74,7 +74,7 @@ fn uci() {
 
 fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
     if arguments.is_empty() {
-        return Err(InputError::InvalidPositionArguments);
+        return Err(InputError::InvalidPositionArgument);
     }
 
     let moves_starting_index = match arguments[0] {
@@ -94,13 +94,13 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
 
             STARTPOS_MOVES_STARTING_INDEX
         }
-        _ => return Err(InputError::InvalidPositionArguments),
+        _ => return Err(InputError::InvalidPositionArgument),
     };
 
     match arguments.get(moves_starting_index) {
         Some(argument) => {
             if *argument != "moves" {
-                return Err(InputError::InvalidPositionArguments);
+                return Err(InputError::InvalidPositionArgument);
             }
         }
         None => return Ok(()),
@@ -113,8 +113,22 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
     Ok(())
 }
 
-fn go(engine: &mut Engine, _arguments: Vec<&str>) -> Result<(), InputError> {
-    let best_move = engine.find_best_move()?;
+fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
+    let mut depth = 1;
+
+    for (index, argument) in arguments.iter().enumerate() {
+        match *argument {
+            "depth" => {
+                depth = get_argument_value(&arguments, index, InputError::InvalidGoArgument)?;
+                if depth == 0 {
+                    return Err(InputError::InvalidGoArgument);
+                }
+            }
+            _ => continue,
+        }
+    }
+
+    let best_move = engine.find_best_move(depth)?;
 
     println!("bestmove {}", best_move);
 
@@ -129,14 +143,28 @@ fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), I
     Ok(())
 }
 
+fn get_argument_value<T: FromStr>(
+    arguments: &[&str],
+    index: usize,
+    error: InputError,
+) -> Result<T, InputError> {
+    match arguments.get(index + 1) {
+        Some(value_str) => match value_str.parse() {
+            Ok(value) => Ok(value),
+            Err(_) => Err(error),
+        },
+        None => Err(error),
+    }
+}
+
 #[derive(Debug)]
 pub enum InputError {
     IllegalMove,
     InvalidFen(FenError),
-    _InvalidGoArgument,
+    InvalidGoArgument,
     InvalidMoveFlag,
     InvalidMoveString(String),
-    InvalidPositionArguments,
+    InvalidPositionArgument,
     UninitialisedPosition,
 }
 
@@ -145,12 +173,12 @@ impl Display for InputError {
         match self {
             Self::IllegalMove => write!(f, "Attempted to play an illegal move"),
             Self::InvalidFen(error) => write!(f, "Failed to parse FEN: {}", error),
-            Self::_InvalidGoArgument => write!(f, "Invalid go command argument"),
+            Self::InvalidGoArgument => write!(f, "Invalid go command argument"),
             Self::InvalidMoveFlag => write!(f, "Invalid move flag"),
             Self::InvalidMoveString(move_string) => {
                 write!(f, "Failed to parse move string {}", move_string)
             }
-            Self::InvalidPositionArguments => write!(f, "Invalid position command arguments"),
+            Self::InvalidPositionArgument => write!(f, "Invalid position command arguments"),
             Self::UninitialisedPosition => write!(
                 f,
                 "Attempted to evaluate board without initialising a position"
@@ -165,6 +193,8 @@ pub enum FenError {
     SideToMove,
     CastlingRights,
     EnPassantSquare,
+    ParseHalfmoveClock,
+    InvalidHalfmoveClock,
 }
 
 impl Display for FenError {
@@ -174,6 +204,8 @@ impl Display for FenError {
             Self::SideToMove => write!(f, "unable to parse side to move"),
             Self::CastlingRights => write!(f, "unable to parse castling rights"),
             Self::EnPassantSquare => write!(f, "unable to parse en passant square"),
+            Self::ParseHalfmoveClock => write!(f, "unable to parse ply"),
+            Self::InvalidHalfmoveClock => write!(f, "invalid ply value provided"),
         }
     }
 }
