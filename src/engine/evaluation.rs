@@ -7,7 +7,7 @@ use crate::uci::InputError;
 use std::ops::Neg;
 
 // Piece value obtained by indexing into array using Piece enum
-const PIECE_VALUE: PieceValue = PieceValue([100, 300, 350, 500, 900, 10_000]);
+const PIECE_VALUE: [i32; 6] = [100, 300, 350, 500, 900, 10_000];
 
 #[rustfmt::skip]
 const PAWN_POSITION_VALUE: PositionValue = PositionValue([
@@ -169,7 +169,7 @@ impl Engine {
             };
 
             while let Some(square) = bitboard.get_lsb_square() {
-                evaluation.add(PIECE_VALUE.value(piece), side);
+                evaluation.add(PIECE_VALUE[piece as usize], side);
                 evaluation.add(position_value.value(side, square), side);
 
                 bitboard.pop_bit(square);
@@ -177,14 +177,6 @@ impl Engine {
         }
 
         evaluation.sided_value(game.side_to_move())
-    }
-}
-
-struct PieceValue([i32; 6]);
-
-impl PieceValue {
-    fn value(&self, piece: Piece) -> i32 {
-        self.0[piece as usize]
     }
 }
 
