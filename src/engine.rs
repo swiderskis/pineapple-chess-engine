@@ -6,7 +6,7 @@ mod moves;
 use self::{
     attack_tables::AttackTables,
     game::{Game, Piece, Square},
-    moves::{Move, MoveFlag, MoveList, MoveSearchParams},
+    moves::{Move, MoveFlag, MoveList, MoveSearch},
 };
 use crate::uci::InputError;
 use std::str::FromStr;
@@ -44,8 +44,8 @@ impl Engine {
 
     pub fn find_move_from_string(&self, move_string: &str) -> Result<Move, InputError> {
         match Self::parse_move_string(move_string) {
-            Ok(move_search_params) => {
-                let mv = self.move_list.find_move(move_search_params)?;
+            Ok(move_search) => {
+                let mv = self.move_list.find_move(move_search)?;
 
                 Ok(mv)
             }
@@ -53,7 +53,7 @@ impl Engine {
         }
     }
 
-    fn parse_move_string(move_string: &str) -> Result<MoveSearchParams, ParseError> {
+    fn parse_move_string(move_string: &str) -> Result<MoveSearch, ParseError> {
         let (source_square_string, remaining_move_string) = move_string.split_at(2);
         let (target_square_string, promoted_piece_string) = remaining_move_string.split_at(2);
 
@@ -67,10 +67,9 @@ impl Engine {
             None
         };
 
-        let move_search_params =
-            MoveSearchParams::new(source_square, target_square, promoted_piece);
+        let move_search = MoveSearch::new(source_square, target_square, promoted_piece);
 
-        Ok(move_search_params)
+        Ok(move_search)
     }
 }
 
@@ -142,46 +141,42 @@ mod tests {
     fn parse_move() {
         let move_string = "e2e4";
 
-        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+        let move_search = Engine::parse_move_string(move_string).unwrap();
 
-        let desired_move_search_params = MoveSearchParams::new(Square::E2, Square::E4, None);
+        let desired_move_search = MoveSearch::new(Square::E2, Square::E4, None);
 
-        assert_eq!(move_search_params, desired_move_search_params);
+        assert_eq!(move_search, desired_move_search);
 
         let move_string = "e7e8q";
 
-        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+        let move_search = Engine::parse_move_string(move_string).unwrap();
 
-        let desired_move_search_params =
-            MoveSearchParams::new(Square::E7, Square::E8, Some(Piece::Queen));
+        let desired_move_search = MoveSearch::new(Square::E7, Square::E8, Some(Piece::Queen));
 
-        assert_eq!(move_search_params, desired_move_search_params);
+        assert_eq!(move_search, desired_move_search);
 
         let move_string = "e2e1r";
 
-        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+        let move_search = Engine::parse_move_string(move_string).unwrap();
 
-        let desired_move_search_params =
-            MoveSearchParams::new(Square::E2, Square::E1, Some(Piece::Rook));
+        let desired_move_search = MoveSearch::new(Square::E2, Square::E1, Some(Piece::Rook));
 
-        assert_eq!(move_search_params, desired_move_search_params);
+        assert_eq!(move_search, desired_move_search);
 
         let move_string = "d7d8b";
 
-        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+        let move_search = Engine::parse_move_string(move_string).unwrap();
 
-        let desired_move_search_params =
-            MoveSearchParams::new(Square::D7, Square::D8, Some(Piece::Bishop));
+        let desired_move_search = MoveSearch::new(Square::D7, Square::D8, Some(Piece::Bishop));
 
-        assert_eq!(move_search_params, desired_move_search_params);
+        assert_eq!(move_search, desired_move_search);
 
         let move_string = "d2d1n";
 
-        let move_search_params = Engine::parse_move_string(move_string).unwrap();
+        let move_search = Engine::parse_move_string(move_string).unwrap();
 
-        let desired_move_search_params =
-            MoveSearchParams::new(Square::D2, Square::D1, Some(Piece::Knight));
+        let desired_move_search = MoveSearch::new(Square::D2, Square::D1, Some(Piece::Knight));
 
-        assert_eq!(move_search_params, desired_move_search_params);
+        assert_eq!(move_search, desired_move_search);
     }
 }

@@ -51,11 +51,11 @@ impl MoveList {
         move_list
     }
 
-    pub fn find_move(&self, move_search_params: MoveSearchParams) -> Result<Move, InputError> {
+    pub fn find_move(&self, move_search: MoveSearch) -> Result<Move, InputError> {
         for mv in self.move_list.iter().flatten() {
-            if mv.source_square() == move_search_params.source_square
-                && mv.target_square() == move_search_params.target_square
-                && mv.promoted_piece() == move_search_params.promoted_piece
+            if mv.source_square() == move_search.source_square
+                && mv.target_square() == move_search.target_square
+                && mv.promoted_piece() == move_search.promoted_piece
             {
                 return Ok(mv.clone());
             }
@@ -392,13 +392,13 @@ impl Move {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct MoveSearchParams {
+pub struct MoveSearch {
     source_square: Square,
     target_square: Square,
     promoted_piece: Option<Piece>,
 }
 
-impl MoveSearchParams {
+impl MoveSearch {
     pub fn new(
         source_square: Square,
         target_square: Square,

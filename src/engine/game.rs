@@ -933,7 +933,7 @@ fn _perft(attack_tables: &AttackTables, game: &mut Game, nodes: &mut u64, depth:
 
 #[cfg(test)]
 mod tests {
-    use super::{super::moves::MoveSearchParams, *};
+    use super::{super::moves::MoveSearch, *};
 
     #[test]
     #[ignore]
@@ -1465,8 +1465,8 @@ mod tests {
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
-        let move_search_params = MoveSearchParams::new(Square::E2, Square::E4, None);
-        let mv = move_list.find_move(move_search_params).unwrap();
+        let move_search = MoveSearch::new(Square::E2, Square::E4, None);
+        let mv = move_list.find_move(move_search).unwrap();
 
         game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
@@ -1498,8 +1498,8 @@ mod tests {
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
-        let move_search_params = MoveSearchParams::new(Square::E7, Square::E5, None);
-        let mv = move_list.find_move(move_search_params).unwrap();
+        let move_search = MoveSearch::new(Square::E7, Square::E5, None);
+        let mv = move_list.find_move(move_search).unwrap();
 
         game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
@@ -1531,8 +1531,8 @@ mod tests {
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
-        let move_search_params = MoveSearchParams::new(Square::G1, Square::F3, None);
-        let mv = move_list.find_move(move_search_params).unwrap();
+        let move_search = MoveSearch::new(Square::G1, Square::F3, None);
+        let mv = move_list.find_move(move_search).unwrap();
 
         game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
@@ -1665,8 +1665,8 @@ mod tests {
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
-        let move_search_params = MoveSearchParams::new(Square::D5, Square::E6, None);
-        let mv = move_list.find_move(move_search_params).unwrap();
+        let move_search = MoveSearch::new(Square::D5, Square::E6, None);
+        let mv = move_list.find_move(move_search).unwrap();
 
         game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
@@ -1699,8 +1699,8 @@ mod tests {
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
-        let move_search_params = MoveSearchParams::new(Square::A6, Square::E2, None);
-        let mv = move_list.find_move(move_search_params).unwrap();
+        let move_search = MoveSearch::new(Square::A6, Square::E2, None);
+        let mv = move_list.find_move(move_search).unwrap();
 
         game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 
@@ -1733,8 +1733,8 @@ mod tests {
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
         let move_list = MoveList::generate_moves(&attack_tables, &game);
-        let move_search_params = MoveSearchParams::new(Square::C3, Square::E2, None);
-        let mv = move_list.find_move(move_search_params).unwrap();
+        let move_search = MoveSearch::new(Square::C3, Square::E2, None);
+        let mv = move_list.find_move(move_search).unwrap();
 
         game.make_move(&attack_tables, &mv, MoveFlag::All).unwrap();
 

@@ -20,7 +20,7 @@ impl<'a> Input<'a> {
 
         let arguments = match input.get(1) {
             Some(_) => input[1..].to_vec(),
-            None => vec![],
+            None => Vec::new(),
         };
 
         Self { command, arguments }
