@@ -120,6 +120,7 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
         match *argument {
             "depth" => {
                 depth = get_argument_value(&arguments, index, InputError::InvalidGoArgument)?;
+
                 if depth == 0 {
                     return Err(InputError::InvalidGoArgument);
                 }

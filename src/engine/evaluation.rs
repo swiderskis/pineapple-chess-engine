@@ -1,19 +1,16 @@
 use super::{
-    game::{Game, Piece, Side},
+    game::{Game, Piece, Side, Square},
     moves::{MoveFlag, MoveList},
     Engine,
 };
 use crate::uci::InputError;
 use std::ops::Neg;
 
-// piece value obtained by indexing into array using Piece enum
-const PIECE_VALUE: [i32; 6] = [100, 300, 350, 500, 900, 10_000];
+// Piece value obtained by indexing into array using Piece enum
+const PIECE_VALUE: PieceValue = PieceValue([100, 300, 350, 500, 900, 10_000]);
 
-// position values obtained by indexing in using Square enum
-// indexing must be done with side taken into consideration
-// if side is black, index (63 - square) should be used
 #[rustfmt::skip]
-const PAWN_POSITION_VALUE: [i32; 64] = [
+const PAWN_POSITION_VALUE: PositionValue = PositionValue([
      0,  0,  0,   0,   0,  0,  0,  0,
     30, 30, 30,  40,  40, 30, 30, 30,
     20, 20, 20,  30,  30, 30, 20, 20,
@@ -22,9 +19,9 @@ const PAWN_POSITION_VALUE: [i32; 64] = [
      0,  0,  0,   5,   5,  0,  0,  0,
      0,  0,  0, -10, -10,  0,  0,  0,
      0,  0,  0,   0,   0,  0,  0,  0,
-];
+]);
 #[rustfmt::skip]
-const KNIGHT_POSITION_VALUE: [i32; 64] = [
+const KNIGHT_POSITION_VALUE: PositionValue = PositionValue([
     -5,   0,  0,  0,  0,  0,   0, -5,
     -5,   0,  0, 10, 10,  0,   0, -5,
     -5,   5, 20, 20, 20, 20,   5, -5,
@@ -33,9 +30,9 @@ const KNIGHT_POSITION_VALUE: [i32; 64] = [
     -5,   5, 20, 10, 10, 20,   5, -5,
     -5,   0,  0,  0,  0,  0,   0, -5,
     -5, -10,  0,  0,  0,  0, -10, -5,
-];
+]);
 #[rustfmt::skip]
-const BISHOP_POSITION_VALUE: [i32; 64] = [
+const BISHOP_POSITION_VALUE: PositionValue = PositionValue([
     0,  0,   0,  0,  0,   0,  0, 0,
     0,  0,   0,  0,  0,   0,  0, 0,
     0,  0,   0, 10, 10,   0,  0, 0,
@@ -44,9 +41,9 @@ const BISHOP_POSITION_VALUE: [i32; 64] = [
     0, 10,   0,  0,  0,   0, 10, 0,
     0, 30,   0,  0,  0,   0, 30, 0,
     0,  0, -10,  0,  0, -10,  0, 0,
-];
+]);
 #[rustfmt::skip]
-const ROOK_POSITION_VALUE: [i32; 64] = [
+const ROOK_POSITION_VALUE: PositionValue = PositionValue([
     50, 50, 50, 50, 50, 50, 50, 50,
     50, 50, 50, 50, 50, 50, 50, 50,
      0,  0, 10, 20, 20, 10,  0,  0,
@@ -55,9 +52,9 @@ const ROOK_POSITION_VALUE: [i32; 64] = [
      0,  0, 10, 20, 20, 10,  0,  0,
      0,  0, 10, 20, 20, 10,  0,  0,
      0,  0,  0, 20, 20,  0,  0,  0,
-];
+]);
 #[rustfmt::skip]
-const KING_POSITION_VALUE: [i32; 64] = [
+const KING_POSITION_VALUE: PositionValue = PositionValue([
     0, 0,  0,  0,   0,  0,  0, 0,
     0, 0,  5,  5,   5,  5,  0, 0,
     0, 5,  5, 10,  10,  5,  5, 0,
@@ -66,7 +63,7 @@ const KING_POSITION_VALUE: [i32; 64] = [
     0, 0,  5, 10,  10,  5,  0, 0,
     0, 5,  5, -5,  -5,  0,  5, 0,
     0, 0,  5,  0, -15,  0, 10, 0,
-];
+]);
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 struct Evaluation(i32);
@@ -120,7 +117,7 @@ impl Engine {
         }
     }
 
-    // negamax alpha beta search algorithm
+    // Negamax alpha beta search algorithm
     fn search(
         &self,
         game: &Game,
@@ -167,23 +164,39 @@ impl Engine {
                 Piece::Knight => KNIGHT_POSITION_VALUE,
                 Piece::Bishop => BISHOP_POSITION_VALUE,
                 Piece::Rook => ROOK_POSITION_VALUE,
-                Piece::Queen => [0; 64],
+                Piece::Queen => PositionValue([0; 64]),
                 Piece::King => KING_POSITION_VALUE,
             };
 
             while let Some(square) = bitboard.get_lsb_square() {
-                let sided_square_index = match side {
-                    Side::White => square as usize,
-                    Side::Black => square.horizontal_mirror() as usize,
-                };
-
-                evaluation.add(PIECE_VALUE[piece as usize], side);
-                evaluation.add(position_value[sided_square_index], side);
+                evaluation.add(PIECE_VALUE.value(piece), side);
+                evaluation.add(position_value.value(side, square), side);
 
                 bitboard.pop_bit(square);
             }
         }
 
         evaluation.sided_value(game.side_to_move())
+    }
+}
+
+struct PieceValue([i32; 6]);
+
+impl PieceValue {
+    fn value(&self, piece: Piece) -> i32 {
+        self.0[piece as usize]
+    }
+}
+
+struct PositionValue([i32; 64]);
+
+impl PositionValue {
+    fn value(&self, side: Side, square: Square) -> i32 {
+        let sided_square_index = match side {
+            Side::White => square as usize,
+            Side::Black => square.horizontal_mirror() as usize,
+        };
+
+        self.0[sided_square_index]
     }
 }
