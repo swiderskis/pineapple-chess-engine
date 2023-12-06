@@ -1,6 +1,6 @@
 use super::{
     game::{Game, Piece, Side, Square},
-    moves::{Move, MoveFlag, MoveList},
+    moves::{Move, MoveList},
     Engine,
 };
 use crate::uci::InputError;
@@ -99,7 +99,7 @@ impl Engine {
 
         for mv in self.move_list.move_list().iter().flatten() {
             let mut game_clone = self.game.clone();
-            let move_result = game_clone.make_move(&self.attack_tables, mv, MoveFlag::All);
+            let move_result = game_clone.make_move(mv, &self.attack_tables);
 
             if move_result.is_err() {
                 continue;
@@ -109,8 +109,8 @@ impl Engine {
                 &game_clone,
                 -max_evaluation,
                 -min_evaluation,
-                depth - 1,
                 current_ply + 1,
+                depth - 1,
             );
 
             if evaluation > min_evaluation {
@@ -131,20 +131,20 @@ impl Engine {
         game: &Game,
         mut min_evaluation: Evaluation,
         max_evaluation: Evaluation,
-        depth: u8,
         current_ply: i32,
+        depth: u8,
     ) -> Evaluation {
         if depth == 0 {
             return Self::evaluate(game).sided_value(game.side_to_move());
         }
 
-        let move_list = MoveList::generate_moves(&self.attack_tables, game);
+        let move_list = MoveList::generate_moves(game, &self.attack_tables);
 
         let mut no_legal_moves = true;
 
         for mv in move_list.move_list().iter().flatten() {
             let mut game_clone = game.clone();
-            let move_result = game_clone.make_move(&self.attack_tables, mv, MoveFlag::All);
+            let move_result = game_clone.make_move(mv, &self.attack_tables);
 
             if move_result.is_err() {
                 continue;
@@ -156,8 +156,8 @@ impl Engine {
                 &game_clone,
                 -max_evaluation,
                 -min_evaluation,
-                depth - 1,
                 current_ply + 1,
+                depth - 1,
             );
 
             if evaluation >= max_evaluation {

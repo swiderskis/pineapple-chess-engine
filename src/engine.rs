@@ -6,7 +6,7 @@ mod moves;
 use self::{
     attack_tables::AttackTables,
     game::{Game, Piece, Square},
-    moves::{Move, MoveFlag, MoveList, MoveSearch},
+    moves::{Move, MoveList, MoveSearch},
 };
 use crate::uci::InputError;
 use std::str::FromStr;
@@ -29,15 +29,14 @@ impl Engine {
 
     pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
         self.game.load_fen(fen)?;
-        self.move_list = MoveList::generate_moves(&self.attack_tables, &self.game);
+        self.move_list = MoveList::generate_moves(&self.game, &self.attack_tables);
 
         Ok(())
     }
 
     pub fn make_move(&mut self, mv: &Move) -> Result<(), InputError> {
-        self.game
-            .make_move(&self.attack_tables, mv, MoveFlag::All)?;
-        self.move_list = MoveList::generate_moves(&self.attack_tables, &self.game);
+        self.game.make_move(mv, &self.attack_tables)?;
+        self.move_list = MoveList::generate_moves(&self.game, &self.attack_tables);
 
         Ok(())
     }
