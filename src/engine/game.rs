@@ -883,11 +883,9 @@ fn _perft_test(attack_tables: &AttackTables, game: &mut Game, depth: u8) {
 
     for mv in move_list.move_list().iter().flatten() {
         let mut game_clone = game.clone();
+        let move_result = game_clone.make_move(attack_tables, mv, MoveFlag::All);
 
-        if game_clone
-            .make_move(attack_tables, mv, MoveFlag::All)
-            .is_err()
-        {
+        if move_result.is_err() {
             continue;
         }
 
@@ -919,11 +917,9 @@ fn _perft(attack_tables: &AttackTables, game: &mut Game, nodes: &mut u64, depth:
 
     for mv in move_list.move_list().iter().flatten() {
         let mut game_clone = game.clone();
+        let move_result = game_clone.make_move(attack_tables, mv, MoveFlag::All);
 
-        if game_clone
-            .make_move(attack_tables, mv, MoveFlag::All)
-            .is_err()
-        {
+        if move_result.is_err() {
             continue;
         }
 
@@ -936,7 +932,6 @@ mod tests {
     use super::{super::moves::MoveSearch, *};
 
     #[test]
-    #[ignore]
     fn perft_start_position() {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
@@ -951,7 +946,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn perft_tricky_position() {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();

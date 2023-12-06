@@ -49,7 +49,7 @@ impl Engine {
 
                 Ok(mv)
             }
-            Err(_) => Err(InputError::InvalidMoveString(move_string.to_string())),
+            Err(_) => Err(InputError::InvalidMoveString),
         }
     }
 

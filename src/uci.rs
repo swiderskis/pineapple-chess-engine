@@ -74,7 +74,7 @@ fn uci() {
 
 fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
     if arguments.is_empty() {
-        return Err(InputError::InvalidPositionArgument);
+        return Err(InputError::InvalidPositionArguments);
     }
 
     let moves_starting_index = match arguments[0] {
@@ -94,13 +94,13 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
 
             STARTPOS_MOVES_STARTING_INDEX
         }
-        _ => return Err(InputError::InvalidPositionArgument),
+        _ => return Err(InputError::InvalidPositionArguments),
     };
 
     match arguments.get(moves_starting_index) {
         Some(argument) => {
             if *argument != "moves" {
-                return Err(InputError::InvalidPositionArgument);
+                return Err(InputError::InvalidPositionArguments);
             }
         }
         None => return Ok(()),
@@ -119,17 +119,17 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
     for (index, argument) in arguments.iter().enumerate() {
         match *argument {
             "depth" => {
-                depth = get_argument_value(&arguments, index, InputError::InvalidGoArgument)?;
+                depth = get_argument_value(&arguments, index, InputError::InvalidGoArguments)?;
 
                 if depth == 0 {
-                    return Err(InputError::InvalidGoArgument);
+                    return Err(InputError::InvalidGoArguments);
                 }
             }
             _ => continue,
         }
     }
 
-    let best_move = engine.find_best_move(depth)?;
+    let best_move = engine.find_best_move(depth)?.as_string();
 
     println!("bestmove {}", best_move);
 
@@ -162,11 +162,11 @@ fn get_argument_value<T: FromStr>(
 pub enum InputError {
     IllegalMove,
     InvalidFen(FenError),
-    InvalidGoArgument,
+    InvalidGoArguments,
     InvalidMoveFlag,
-    InvalidMoveString(String),
-    InvalidPositionArgument,
-    UninitialisedPosition,
+    InvalidMoveString,
+    InvalidPosition,
+    InvalidPositionArguments,
 }
 
 impl Display for InputError {
@@ -174,16 +174,11 @@ impl Display for InputError {
         match self {
             Self::IllegalMove => write!(f, "Attempted to play an illegal move"),
             Self::InvalidFen(error) => write!(f, "Failed to parse FEN: {}", error),
-            Self::InvalidGoArgument => write!(f, "Invalid go command argument"),
+            Self::InvalidGoArguments => write!(f, "Invalid go command arguments"),
             Self::InvalidMoveFlag => write!(f, "Invalid move flag"),
-            Self::InvalidMoveString(move_string) => {
-                write!(f, "Failed to parse move string {}", move_string)
-            }
-            Self::InvalidPositionArgument => write!(f, "Invalid position command arguments"),
-            Self::UninitialisedPosition => write!(
-                f,
-                "Attempted to evaluate board without initialising a position"
-            ),
+            Self::InvalidMoveString => write!(f, "Failed to parse move string"),
+            Self::InvalidPosition => write!(f, "Invalid board position"),
+            Self::InvalidPositionArguments => write!(f, "Invalid position command arguments"),
         }
     }
 }
@@ -206,7 +201,7 @@ impl Display for FenError {
             Self::CastlingRights => write!(f, "unable to parse castling rights"),
             Self::EnPassantSquare => write!(f, "unable to parse en passant square"),
             Self::ParseHalfmoveClock => write!(f, "unable to parse ply"),
-            Self::InvalidHalfmoveClock => write!(f, "invalid ply value provided"),
+            Self::InvalidHalfmoveClock => write!(f, "invalid halfmove value provided"),
         }
     }
 }
