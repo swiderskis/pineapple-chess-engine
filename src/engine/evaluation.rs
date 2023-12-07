@@ -106,7 +106,7 @@ impl Engine {
                 continue;
             }
 
-            let evaluation = -self.best_move_search(
+            let evaluation = -self.negamax_best_move_search(
                 &game_clone,
                 -max_evaluation,
                 -min_evaluation,
@@ -126,13 +126,12 @@ impl Engine {
         }
     }
 
-    // Negamax alpha beta search algorithm
-    fn best_move_search(
+    fn negamax_best_move_search(
         &self,
         game: &Game,
-        mut min_evaluation: Evaluation,
-        max_evaluation: Evaluation,
-        current_ply: i32,
+        mut min_evaluation: Evaluation, // alpha
+        max_evaluation: Evaluation,     // beta
+        current_ply: u8,
         depth: u8,
     ) -> Evaluation {
         if depth == 0 {
@@ -153,7 +152,7 @@ impl Engine {
 
             no_legal_moves = false;
 
-            let evaluation = -self.best_move_search(
+            let evaluation = -self.negamax_best_move_search(
                 &game_clone,
                 -max_evaluation,
                 -min_evaluation,
@@ -181,7 +180,7 @@ impl Engine {
                     game.is_square_attacked(&self.attack_tables, attacking_side, king_square);
 
                 if king_in_check {
-                    return -Evaluation(CHECKMATE_VALUE - current_ply);
+                    return -Evaluation(CHECKMATE_VALUE - current_ply as i32);
                 } else {
                     return Evaluation(STALEMATE_VALUE);
                 }
