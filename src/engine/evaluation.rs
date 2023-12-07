@@ -1,12 +1,13 @@
 use super::{
     game::{Game, Piece, Side, Square},
-    moves::{Move, MoveList},
+    moves::{Move, MoveList, MoveType},
     Engine,
 };
 use crate::uci::InputError;
 use std::ops::Neg;
 
-const CHECKMATE_VALUE: i32 = -i32::MAX;
+const MAX_EVALUATION_VALUE: i32 = i32::MAX;
+const CHECKMATE_VALUE: i32 = i32::MAX - 1;
 const STALEMATE_VALUE: i32 = 0;
 
 // Piece value obtained by indexing into array using Piece enum
@@ -91,8 +92,8 @@ impl Neg for Evaluation {
 
 impl Engine {
     pub fn find_best_move(&self, depth: u8) -> Result<Move, InputError> {
-        let mut min_evaluation = Evaluation(-i32::MAX);
-        let max_evaluation = Evaluation(i32::MAX);
+        let mut min_evaluation = Evaluation(-MAX_EVALUATION_VALUE);
+        let max_evaluation = Evaluation(MAX_EVALUATION_VALUE);
         let current_ply = 0;
 
         let mut best_move = None;
@@ -135,7 +136,7 @@ impl Engine {
         depth: u8,
     ) -> Evaluation {
         if depth == 0 {
-            return Self::evaluate(game).sided_value(game.side_to_move());
+            return self.quiescence_search(game, min_evaluation, max_evaluation);
         }
 
         let move_list = MoveList::generate_moves(game, &self.attack_tables);
@@ -180,10 +181,54 @@ impl Engine {
                     game.is_square_attacked(&self.attack_tables, attacking_side, king_square);
 
                 if king_in_check {
-                    return Evaluation(CHECKMATE_VALUE + current_ply);
+                    return -Evaluation(CHECKMATE_VALUE - current_ply);
                 } else {
                     return Evaluation(STALEMATE_VALUE);
                 }
+            }
+        }
+
+        min_evaluation
+    }
+
+    fn quiescence_search(
+        &self,
+        game: &Game,
+        mut min_evaluation: Evaluation,
+        max_evaluation: Evaluation,
+    ) -> Evaluation {
+        let evaluation = Self::evaluate(game).sided_value(game.side_to_move());
+
+        if evaluation >= max_evaluation {
+            return max_evaluation;
+        }
+
+        if evaluation > min_evaluation {
+            min_evaluation = evaluation;
+        }
+
+        let move_list = MoveList::generate_moves(game, &self.attack_tables);
+
+        for mv in move_list.move_list().iter().flatten() {
+            if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {
+                continue;
+            }
+
+            let mut game_clone = game.clone();
+            let move_result = game_clone.make_move(mv, &self.attack_tables);
+
+            if move_result.is_err() {
+                continue;
+            }
+
+            let evaluation = -self.quiescence_search(&game_clone, -max_evaluation, -min_evaluation);
+
+            if evaluation >= max_evaluation {
+                return max_evaluation;
+            }
+
+            if evaluation > min_evaluation {
+                min_evaluation = evaluation;
             }
         }
 
@@ -238,6 +283,14 @@ mod tests {
 
         engine.load_fen("4k3/8/5K2/8/1Q6/8/8/8 w - - 2 1").unwrap();
 
+        let best_move = engine.find_best_move(5).unwrap();
+
+        assert_eq!(best_move.as_string(), "b4e7");
+
+        let mut engine = Engine::initialise();
+
+        engine.load_fen("4k3/8/5K2/8/1Q6/8/8/8 w - - 2 1").unwrap();
+
         let best_move = engine.find_best_move(6).unwrap();
 
         assert_eq!(best_move.as_string(), "b4e7");
@@ -249,6 +302,14 @@ mod tests {
 
         engine.load_fen("8/8/8/6Q1/8/2K5/8/3k4 w - - 2 1").unwrap();
 
+        let best_move = engine.find_best_move(5).unwrap();
+
+        assert_eq!(best_move.as_string(), "g5d2");
+
+        let mut engine = Engine::initialise();
+
+        engine.load_fen("8/8/8/6Q1/8/2K5/8/3k4 w - - 2 1").unwrap();
+
         let best_move = engine.find_best_move(6).unwrap();
 
         assert_eq!(best_move.as_string(), "g5d2");
@@ -256,6 +317,16 @@ mod tests {
 
     #[test]
     fn stalemate_white() {
+        let mut engine = Engine::initialise();
+
+        engine
+            .load_fen("Q6K/4b3/6q1/8/8/6pp/6pk/8 w - - 0 1")
+            .unwrap();
+
+        let best_move = engine.find_best_move(5).unwrap();
+
+        assert_eq!(best_move.as_string(), "a8g2");
+
         let mut engine = Engine::initialise();
 
         engine
@@ -275,6 +346,16 @@ mod tests {
             .load_fen("8/KP6/PP6/8/8/1Q6/3B4/k6q b - - 0 1")
             .unwrap();
 
+        let best_move = engine.find_best_move(5).unwrap();
+
+        assert_eq!(best_move.as_string(), "h1b7");
+
+        let mut engine = Engine::initialise();
+
+        engine
+            .load_fen("8/KP6/PP6/8/8/1Q6/3B4/k6q b - - 0 1")
+            .unwrap();
+
         let best_move = engine.find_best_move(6).unwrap();
 
         assert_eq!(best_move.as_string(), "h1b7");
@@ -282,6 +363,15 @@ mod tests {
 
     #[test]
     fn zugzwang_white() {
+        let mut engine = Engine::initialise();
+
+        engine.load_fen("6k1/5R2/6K1/8/8/8/8/8 w - - 0 1").unwrap();
+
+        let best_move = engine.find_best_move(5).unwrap();
+        let possible_best_moves = ["f7f6", "f7f5", "f7f4,", "f7f3,", "f7f2", "f7f1"];
+
+        assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
+
         let mut engine = Engine::initialise();
 
         engine.load_fen("6k1/5R2/6K1/8/8/8/8/8 w - - 0 1").unwrap();
@@ -294,6 +384,15 @@ mod tests {
 
     #[test]
     fn zugzwang_black() {
+        let mut engine = Engine::initialise();
+
+        engine.load_fen("8/8/8/8/8/1k6/2r5/1K6 b - - 0 1").unwrap();
+
+        let best_move = engine.find_best_move(5).unwrap();
+        let possible_best_moves = ["c2c3", "c2c4", "c2c5", "c2c6", "c2c7", "c2c8"];
+
+        assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
+
         let mut engine = Engine::initialise();
 
         engine.load_fen("8/8/8/8/8/1k6/2r5/1K6 b - - 0 1").unwrap();
