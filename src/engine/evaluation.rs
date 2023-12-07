@@ -94,9 +94,11 @@ impl Engine {
     pub fn find_best_move(&self, depth: u8) -> Result<Move, InputError> {
         let mut min_evaluation = Evaluation(-MAX_EVALUATION_VALUE);
         let max_evaluation = Evaluation(MAX_EVALUATION_VALUE);
-        let current_ply = 0;
 
         let mut best_move = None;
+
+        let current_ply = 0;
+        let mut total_nodes = 0;
 
         for mv in self.move_list.move_list().iter().flatten() {
             let mut game_clone = self.game.clone();
@@ -106,22 +108,34 @@ impl Engine {
                 continue;
             }
 
+            let mut nodes = 0;
+
             let evaluation = -self.negamax_best_move_search(
                 &game_clone,
                 -max_evaluation,
                 -min_evaluation,
                 current_ply + 1,
                 depth - 1,
+                &mut nodes,
             );
 
             if evaluation > min_evaluation {
-                min_evaluation = evaluation;
                 best_move = Some(mv);
+                min_evaluation = evaluation;
             }
+
+            total_nodes += nodes;
         }
 
         match best_move {
-            Some(mv) => Ok(mv.clone()),
+            Some(mv) => {
+                println!(
+                    "info score cp {} depth {} nodes {}",
+                    min_evaluation.0, depth, total_nodes
+                );
+
+                Ok(mv.clone())
+            }
             None => Err(InputError::InvalidPosition),
         }
     }
@@ -133,10 +147,13 @@ impl Engine {
         max_evaluation: Evaluation,     // beta
         current_ply: u8,
         depth: u8,
+        nodes: &mut u64,
     ) -> Evaluation {
         if depth == 0 {
-            return self.quiescence_search(game, min_evaluation, max_evaluation);
+            return self.quiescence_search(game, min_evaluation, max_evaluation, nodes);
         }
+
+        *nodes += 1;
 
         let move_list = MoveList::generate_moves(game, &self.attack_tables);
 
@@ -158,6 +175,7 @@ impl Engine {
                 -min_evaluation,
                 current_ply + 1,
                 depth - 1,
+                nodes,
             );
 
             if evaluation >= max_evaluation {
@@ -195,7 +213,10 @@ impl Engine {
         game: &Game,
         mut min_evaluation: Evaluation,
         max_evaluation: Evaluation,
+        nodes: &mut u64,
     ) -> Evaluation {
+        *nodes += 1;
+
         let evaluation = Self::evaluate(game).sided_value(game.side_to_move());
 
         if evaluation >= max_evaluation {
@@ -220,7 +241,8 @@ impl Engine {
                 continue;
             }
 
-            let evaluation = -self.quiescence_search(&game_clone, -max_evaluation, -min_evaluation);
+            let evaluation =
+                -self.quiescence_search(&game_clone, -max_evaluation, -min_evaluation, nodes);
 
             if evaluation >= max_evaluation {
                 return max_evaluation;
