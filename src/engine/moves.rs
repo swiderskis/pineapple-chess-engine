@@ -7,25 +7,28 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 
-// Max legal moves from a position is currently thought to be 218
-// https://www.chessprogramming.org/Encoding_Moves#MoveIndex
-// 256 is given as a buffer due to pseudo-legal moves
-pub const MAX_MOVE_LIST_SIZE: usize = 256;
+type Score = u16;
+
+// MVV = most valuable victim
+// LVA = least valuable attacker
+// Score obtained by indexing to array as such: [attacker][victim]
+const MVV_LVA_SCORE: [[Score; 6]; 6] = [
+    [105, 205, 305, 405, 505, 0],
+    [104, 204, 304, 404, 504, 0],
+    [103, 203, 303, 403, 503, 0],
+    [102, 202, 302, 402, 502, 0],
+    [101, 201, 301, 401, 501, 0],
+    [100, 200, 300, 400, 500, 0],
+];
 
 const PROMOTION_PIECES: [Piece; 4] = [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
 
 #[derive(Clone)]
-pub struct MoveList {
-    move_list: [Option<Move>; MAX_MOVE_LIST_SIZE],
-    current_move_list_size: usize,
-}
+pub struct MoveList(Vec<Move>);
 
 impl MoveList {
     pub fn new() -> Self {
-        Self {
-            move_list: [(); MAX_MOVE_LIST_SIZE].map(|_| None),
-            current_move_list_size: 0,
-        }
+        Self(Vec::new())
     }
 
     pub fn generate_moves(game: &Game, attack_tables: &AttackTables) -> Self {
@@ -51,8 +54,22 @@ impl MoveList {
         move_list
     }
 
+    pub fn sort(self, game: &Game) -> Self {
+        let mut sorted_move_list: Vec<ScoredMove> = self
+            .into_vec()
+            .into_iter()
+            .map(|mv| ScoredMove::score_move(mv, game))
+            .collect();
+
+        sorted_move_list.sort();
+
+        let move_list = sorted_move_list.into_iter().map(|mv| mv.0).collect();
+
+        Self(move_list)
+    }
+
     pub fn find_move(&self, move_search: MoveSearch) -> Result<Move, InputError> {
-        for mv in self.move_list.iter().flatten() {
+        for mv in &self.0 {
             if mv.source_square() == move_search.source_square
                 && mv.target_square() == move_search.target_square
                 && mv.promoted_piece() == move_search.promoted_piece
@@ -64,8 +81,12 @@ impl MoveList {
         Err(InputError::IllegalMove)
     }
 
-    pub fn move_list(&self) -> &[Option<Move>; MAX_MOVE_LIST_SIZE] {
-        &self.move_list
+    pub fn into_vec(self) -> Vec<Move> {
+        self.0
+    }
+
+    pub fn vec(&self) -> &Vec<Move> {
+        &self.0
     }
 
     fn generate_pawn_moves(
@@ -96,7 +117,7 @@ impl MoveList {
 
         if pawn_ready_to_promote && !game.is_square_occupied(target_square) {
             for promoted_piece in PROMOTION_PIECES {
-                self.push(Move::new(
+                self.0.push(Move::new(
                     source_square,
                     target_square,
                     Piece::Pawn,
@@ -105,7 +126,7 @@ impl MoveList {
                 ));
             }
         } else if !game.is_square_occupied(target_square) {
-            self.push(Move::new(
+            self.0.push(Move::new(
                 source_square,
                 target_square,
                 Piece::Pawn,
@@ -123,7 +144,7 @@ impl MoveList {
 
             if let Some(target_square) = double_push_target_square {
                 if !game.is_square_occupied(target_square) {
-                    self.push(Move::new(
+                    self.0.push(Move::new(
                         source_square,
                         target_square,
                         Piece::Pawn,
@@ -139,7 +160,7 @@ impl MoveList {
         while let Some(target_square) = attacks.get_lsb_square() {
             if pawn_ready_to_promote {
                 for promoted_piece in PROMOTION_PIECES {
-                    self.push(Move::new(
+                    self.0.push(Move::new(
                         source_square,
                         target_square,
                         Piece::Pawn,
@@ -148,7 +169,7 @@ impl MoveList {
                     ));
                 }
             } else {
-                self.push(Move::new(
+                self.0.push(Move::new(
                     source_square,
                     target_square,
                     Piece::Pawn,
@@ -168,7 +189,7 @@ impl MoveList {
                 attack_table & Bitboard::from_square(target_square) != 0u64;
 
             if en_passant_square_attacked {
-                self.push(Move::new(
+                self.0.push(Move::new(
                     source_square,
                     target_square,
                     Piece::Pawn,
@@ -195,7 +216,7 @@ impl MoveList {
                 MoveType::Quiet
             };
 
-            self.push(Move::new(
+            self.0.push(Move::new(
                 source_square,
                 target_square,
                 piece,
@@ -223,7 +244,7 @@ impl MoveList {
                     && !game.is_square_attacked(attack_tables, opponent_side, Square::E1)
                     && !game.is_square_attacked(attack_tables, opponent_side, Square::F1)
                 {
-                    self.push(Move::new(
+                    self.0.push(Move::new(
                         Square::E1,
                         Square::G1,
                         Piece::King,
@@ -239,7 +260,7 @@ impl MoveList {
                     && !game.is_square_attacked(attack_tables, opponent_side, Square::D1)
                     && !game.is_square_attacked(attack_tables, opponent_side, Square::E1)
                 {
-                    self.push(Move::new(
+                    self.0.push(Move::new(
                         Square::E1,
                         Square::C1,
                         Piece::King,
@@ -255,7 +276,7 @@ impl MoveList {
                     && !game.is_square_attacked(attack_tables, opponent_side, Square::E8)
                     && !game.is_square_attacked(attack_tables, opponent_side, Square::F8)
                 {
-                    self.push(Move::new(
+                    self.0.push(Move::new(
                         Square::E8,
                         Square::G8,
                         Piece::King,
@@ -271,7 +292,7 @@ impl MoveList {
                     && !game.is_square_attacked(attack_tables, opponent_side, Square::D8)
                     && !game.is_square_attacked(attack_tables, opponent_side, Square::E8)
                 {
-                    self.push(Move::new(
+                    self.0.push(Move::new(
                         Square::E8,
                         Square::C8,
                         Piece::King,
@@ -299,19 +320,50 @@ impl MoveList {
         attack_table & valid_attack_squares
     }
 
-    fn push(&mut self, mv: Move) {
-        self.move_list[self.current_move_list_size] = Some(mv);
-        self.current_move_list_size += 1;
+    pub fn _length(&self) -> usize {
+        self.0.len()
     }
+}
 
-    pub fn _length(&self) -> u32 {
-        let mut count = 0;
+#[derive(Debug)]
+struct ScoredMove(Move, Score);
 
-        for _ in self.move_list.iter().flatten() {
-            count += 1;
+impl ScoredMove {
+    fn score_move(mv: Move, game: &Game) -> Self {
+        match mv.move_type() {
+            MoveType::Capture => match game.piece_at_square(mv.target_square()) {
+                Some((victim, _)) => {
+                    let attacker = mv.piece();
+                    Self(mv, MVV_LVA_SCORE[attacker as usize][victim as usize])
+                }
+                None => Self(mv, 0),
+            },
+            MoveType::EnPassant => Self(
+                mv,
+                MVV_LVA_SCORE[Piece::Pawn as usize][Piece::Pawn as usize],
+            ),
+            _ => Self(mv, 0),
         }
+    }
+}
 
-        count
+impl Eq for ScoredMove {}
+
+impl Ord for ScoredMove {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.1.cmp(&self.1)
+    }
+}
+
+impl PartialEq for ScoredMove {
+    fn eq(&self, other: &Self) -> bool {
+        self.1 == other.1
+    }
+}
+
+impl PartialOrd for ScoredMove {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(other.1.cmp(&self.1))
     }
 }
 
@@ -438,19 +490,19 @@ mod tests {
         let white_square = Square::D3;
         let black_square = Square::D6;
 
-        let mut white_moves = MoveList::new();
-        let mut black_moves = MoveList::new();
+        let mut white_move_list = MoveList::new();
+        let mut black_move_list = MoveList::new();
 
-        white_moves.generate_pawn_moves(&white_game, white_square, &attack_tables);
-        black_moves.generate_pawn_moves(&black_game, black_square, &attack_tables);
+        white_move_list.generate_pawn_moves(&white_game, white_square, &attack_tables);
+        black_move_list.generate_pawn_moves(&black_game, black_square, &attack_tables);
 
         let white_pawn_push = Move::new(Square::D3, Square::D4, Piece::Pawn, None, MoveType::Quiet);
         let black_pawn_push = Move::new(Square::D6, Square::D5, Piece::Pawn, None, MoveType::Quiet);
 
-        let white_moves_correct = white_moves.move_list.contains(&Some(white_pawn_push))
-            && white_moves.current_move_list_size == 1;
-        let black_moves_correct = black_moves.move_list.contains(&Some(black_pawn_push))
-            && black_moves.current_move_list_size == 1;
+        let white_moves_correct =
+            white_move_list.0.contains(&white_pawn_push) && white_move_list.0.len() == 1;
+        let black_moves_correct =
+            black_move_list.0.contains(&black_pawn_push) && black_move_list.0.len() == 1;
 
         assert!(white_moves_correct);
         assert!(black_moves_correct);
@@ -466,14 +518,14 @@ mod tests {
         let white_square = Square::D3;
         let black_square = Square::D6;
 
-        let mut white_moves = MoveList::new();
-        let mut black_moves = MoveList::new();
+        let mut white_move_list = MoveList::new();
+        let mut black_move_list = MoveList::new();
 
-        white_moves.generate_pawn_moves(&white_game, white_square, &attack_tables);
-        black_moves.generate_pawn_moves(&black_game, black_square, &attack_tables);
+        white_move_list.generate_pawn_moves(&white_game, white_square, &attack_tables);
+        black_move_list.generate_pawn_moves(&black_game, black_square, &attack_tables);
 
-        let white_moves_correct = white_moves.current_move_list_size == 0;
-        let black_moves_correct = black_moves.current_move_list_size == 0;
+        let white_moves_correct = white_move_list.0.is_empty();
+        let black_moves_correct = black_move_list.0.is_empty();
 
         assert!(white_moves_correct);
         assert!(black_moves_correct);
@@ -492,11 +544,11 @@ mod tests {
         let white_square = Square::D2;
         let black_square = Square::D7;
 
-        let mut white_moves = MoveList::new();
-        let mut black_moves = MoveList::new();
+        let mut white_move_list = MoveList::new();
+        let mut black_move_list = MoveList::new();
 
-        white_moves.generate_pawn_moves(&white_game, white_square, &attack_tables);
-        black_moves.generate_pawn_moves(&black_game, black_square, &attack_tables);
+        white_move_list.generate_pawn_moves(&white_game, white_square, &attack_tables);
+        black_move_list.generate_pawn_moves(&black_game, black_square, &attack_tables);
 
         let white_single_pawn_push =
             Move::new(Square::D2, Square::D3, Piece::Pawn, None, MoveType::Quiet);
@@ -518,20 +570,12 @@ mod tests {
             MoveType::DoublePawnPush,
         );
 
-        let white_moves_correct = white_moves
-            .move_list
-            .contains(&Some(white_single_pawn_push))
-            && white_moves
-                .move_list
-                .contains(&Some(white_double_pawn_push))
-            && white_moves.current_move_list_size == 2;
-        let black_moves_correct = black_moves
-            .move_list
-            .contains(&Some(black_single_pawn_push))
-            && black_moves
-                .move_list
-                .contains(&Some(black_double_pawn_push))
-            && black_moves.current_move_list_size == 2;
+        let white_moves_correct = white_move_list.0.contains(&white_single_pawn_push)
+            && white_move_list.0.contains(&white_double_pawn_push)
+            && white_move_list.0.len() == 2;
+        let black_moves_correct = black_move_list.0.contains(&black_single_pawn_push)
+            && black_move_list.0.contains(&black_double_pawn_push)
+            && black_move_list.0.len() == 2;
 
         assert!(white_moves_correct);
         assert!(black_moves_correct);
@@ -544,25 +588,21 @@ mod tests {
             .load_fen("8/3p4/8/3P4/8/8/8/8 b - - 0 1")
             .unwrap();
 
-        let mut white_moves = MoveList::new();
-        let mut black_moves = MoveList::new();
+        let mut white_move_list = MoveList::new();
+        let mut black_move_list = MoveList::new();
 
-        white_moves.generate_pawn_moves(&white_game, white_square, &attack_tables);
-        black_moves.generate_pawn_moves(&black_game, black_square, &attack_tables);
+        white_move_list.generate_pawn_moves(&white_game, white_square, &attack_tables);
+        black_move_list.generate_pawn_moves(&black_game, black_square, &attack_tables);
 
         let white_single_pawn_push =
             Move::new(Square::D2, Square::D3, Piece::Pawn, None, MoveType::Quiet);
         let black_single_pawn_push =
             Move::new(Square::D7, Square::D6, Piece::Pawn, None, MoveType::Quiet);
 
-        let white_moves_correct = white_moves
-            .move_list
-            .contains(&Some(white_single_pawn_push))
-            && white_moves.current_move_list_size == 1;
-        let black_moves_correct = black_moves
-            .move_list
-            .contains(&Some(black_single_pawn_push))
-            && black_moves.current_move_list_size == 1;
+        let white_moves_correct =
+            white_move_list.0.contains(&white_single_pawn_push) && white_move_list.0.len() == 1;
+        let black_moves_correct =
+            black_move_list.0.contains(&black_single_pawn_push) && black_move_list.0.len() == 1;
 
         assert!(white_moves_correct);
         assert!(black_moves_correct);
@@ -575,14 +615,14 @@ mod tests {
             .load_fen("8/3p4/3P4/8/8/8/8/8 b - - 0 1")
             .unwrap();
 
-        let mut white_moves = MoveList::new();
-        let mut black_moves = MoveList::new();
+        let mut white_move_list = MoveList::new();
+        let mut black_move_list = MoveList::new();
 
-        white_moves.generate_pawn_moves(&white_game, white_square, &attack_tables);
-        black_moves.generate_pawn_moves(&black_game, black_square, &attack_tables);
+        white_move_list.generate_pawn_moves(&white_game, white_square, &attack_tables);
+        black_move_list.generate_pawn_moves(&black_game, black_square, &attack_tables);
 
-        let white_moves_correct = white_moves.current_move_list_size == 0;
-        let black_moves_correct = black_moves.current_move_list_size == 0;
+        let white_moves_correct = white_move_list.0.is_empty();
+        let black_moves_correct = black_move_list.0.is_empty();
 
         assert!(white_moves_correct);
         assert!(black_moves_correct);
@@ -605,17 +645,17 @@ mod tests {
         let white_square = Square::D4;
         let black_square = Square::D5;
 
-        let mut white_moves = MoveList::new();
-        let mut black_moves = MoveList::new();
+        let mut white_move_list = MoveList::new();
+        let mut black_move_list = MoveList::new();
 
-        white_moves.generate_pawn_moves(&white_game, white_square, &attack_tables);
-        black_moves.generate_pawn_moves(&black_game, black_square, &attack_tables);
+        white_move_list.generate_pawn_moves(&white_game, white_square, &attack_tables);
+        black_move_list.generate_pawn_moves(&black_game, black_square, &attack_tables);
 
         let white_capture = Move::new(Square::D4, Square::E5, Piece::Pawn, None, MoveType::Capture);
         let black_capture = Move::new(Square::D5, Square::E4, Piece::Pawn, None, MoveType::Capture);
 
-        assert!(white_moves.move_list.contains(&Some(white_capture)));
-        assert!(black_moves.move_list.contains(&Some(black_capture)));
+        assert!(white_move_list.0.contains(&white_capture));
+        assert!(black_move_list.0.contains(&black_capture));
     }
 
     #[test]
@@ -631,11 +671,11 @@ mod tests {
         let white_square = Square::D7;
         let black_square = Square::D2;
 
-        let mut white_moves = MoveList::new();
-        let mut black_moves = MoveList::new();
+        let mut white_move_list = MoveList::new();
+        let mut black_move_list = MoveList::new();
 
-        white_moves.generate_pawn_moves(&white_game, white_square, &attack_tables);
-        black_moves.generate_pawn_moves(&black_game, black_square, &attack_tables);
+        white_move_list.generate_pawn_moves(&white_game, white_square, &attack_tables);
+        black_move_list.generate_pawn_moves(&black_game, black_square, &attack_tables);
 
         let white_promotion_queen = Move::new(
             Square::D7,
@@ -695,24 +735,16 @@ mod tests {
             MoveType::Quiet,
         );
 
-        let white_moves_correct = white_moves.move_list.contains(&Some(white_promotion_queen))
-            && white_moves.move_list.contains(&Some(white_promotion_rook))
-            && white_moves
-                .move_list
-                .contains(&Some(white_promotion_bishop))
-            && white_moves
-                .move_list
-                .contains(&Some(white_promotion_knight))
-            && white_moves.current_move_list_size == 4;
-        let black_moves_correct = black_moves.move_list.contains(&Some(black_promotion_queen))
-            && black_moves.move_list.contains(&Some(black_promotion_rook))
-            && black_moves
-                .move_list
-                .contains(&Some(black_promotion_bishop))
-            && black_moves
-                .move_list
-                .contains(&Some(black_promotion_knight))
-            && black_moves.current_move_list_size == 4;
+        let white_moves_correct = white_move_list.0.contains(&white_promotion_queen)
+            && white_move_list.0.contains(&white_promotion_rook)
+            && white_move_list.0.contains(&white_promotion_bishop)
+            && white_move_list.0.contains(&white_promotion_knight)
+            && white_move_list.0.len() == 4;
+        let black_moves_correct = black_move_list.0.contains(&black_promotion_queen)
+            && black_move_list.0.contains(&black_promotion_rook)
+            && black_move_list.0.contains(&black_promotion_bishop)
+            && black_move_list.0.contains(&black_promotion_knight)
+            && black_move_list.0.len() == 4;
 
         assert!(white_moves_correct);
         assert!(black_moves_correct);
@@ -735,11 +767,11 @@ mod tests {
         let white_square = Square::D5;
         let black_square = Square::D4;
 
-        let mut white_moves = MoveList::new();
-        let mut black_moves = MoveList::new();
+        let mut white_move_list = MoveList::new();
+        let mut black_move_list = MoveList::new();
 
-        white_moves.generate_pawn_moves(&white_game, white_square, &attack_tables);
-        black_moves.generate_pawn_moves(&black_game, black_square, &attack_tables);
+        white_move_list.generate_pawn_moves(&white_game, white_square, &attack_tables);
+        black_move_list.generate_pawn_moves(&black_game, black_square, &attack_tables);
 
         let white_en_passant = Move::new(
             Square::D5,
@@ -756,8 +788,8 @@ mod tests {
             MoveType::EnPassant,
         );
 
-        let white_moves_correct = white_moves.move_list.contains(&Some(white_en_passant));
-        let black_moves_correct = black_moves.move_list.contains(&Some(black_en_passant));
+        let white_moves_correct = white_move_list.0.contains(&white_en_passant);
+        let black_moves_correct = black_move_list.0.contains(&black_en_passant);
 
         assert!(white_moves_correct);
         assert!(black_moves_correct);
@@ -771,9 +803,9 @@ mod tests {
         game.load_fen("8/8/2p5/5P2/3N4/1p6/2p1P3/8 w - - 0 1")
             .unwrap();
 
-        let mut moves = MoveList::new();
+        let mut move_list = MoveList::new();
 
-        moves.generate_piece_moves(&game, Piece::Knight, Square::D4, &attack_tables);
+        move_list.generate_piece_moves(&game, Piece::Knight, Square::D4, &attack_tables);
 
         let desired_c6_move = Move::new(
             Square::D4,
@@ -803,13 +835,13 @@ mod tests {
             MoveType::Capture,
         );
 
-        let knight_moves_correct = moves.move_list.contains(&Some(desired_c6_move))
-            && moves.move_list.contains(&Some(desired_e6_move))
-            && moves.move_list.contains(&Some(desired_b5_move))
-            && moves.move_list.contains(&Some(desired_b3_move))
-            && moves.move_list.contains(&Some(desired_f3_move))
-            && moves.move_list.contains(&Some(desired_c2_move))
-            && moves.current_move_list_size == 6;
+        let knight_moves_correct = move_list.0.contains(&desired_c6_move)
+            && move_list.0.contains(&desired_e6_move)
+            && move_list.0.contains(&desired_b5_move)
+            && move_list.0.contains(&desired_b3_move)
+            && move_list.0.contains(&desired_f3_move)
+            && move_list.0.contains(&desired_c2_move)
+            && move_list.0.len() == 6;
 
         assert!(knight_moves_correct);
     }
@@ -823,9 +855,9 @@ mod tests {
 
         let source_square = Square::D4;
 
-        let mut moves = MoveList::new();
+        let mut move_list = MoveList::new();
 
-        moves.generate_piece_moves(&game, Piece::Bishop, source_square, &attack_tables);
+        move_list.generate_piece_moves(&game, Piece::Bishop, source_square, &attack_tables);
 
         let desired_a7_move =
             Move::new(Square::D4, Square::A7, Piece::Bishop, None, MoveType::Quiet);
@@ -856,17 +888,17 @@ mod tests {
         let desired_e3_move =
             Move::new(Square::D4, Square::E3, Piece::Bishop, None, MoveType::Quiet);
 
-        let bishop_moves_correct = moves.move_list.contains(&Some(desired_a7_move))
-            && moves.move_list.contains(&Some(desired_b6_move))
-            && moves.move_list.contains(&Some(desired_c5_move))
-            && moves.move_list.contains(&Some(desired_g7_move))
-            && moves.move_list.contains(&Some(desired_f6_move))
-            && moves.move_list.contains(&Some(desired_e5_move))
-            && moves.move_list.contains(&Some(desired_c3_move))
-            && moves.move_list.contains(&Some(desired_b2_move))
-            && moves.move_list.contains(&Some(desired_a1_move))
-            && moves.move_list.contains(&Some(desired_e3_move))
-            && moves.current_move_list_size == 10;
+        let bishop_moves_correct = move_list.0.contains(&desired_a7_move)
+            && move_list.0.contains(&desired_b6_move)
+            && move_list.0.contains(&desired_c5_move)
+            && move_list.0.contains(&desired_g7_move)
+            && move_list.0.contains(&desired_f6_move)
+            && move_list.0.contains(&desired_e5_move)
+            && move_list.0.contains(&desired_c3_move)
+            && move_list.0.contains(&desired_b2_move)
+            && move_list.0.contains(&desired_a1_move)
+            && move_list.0.contains(&desired_e3_move)
+            && move_list.0.len() == 10;
 
         assert!(bishop_moves_correct);
     }
@@ -880,9 +912,9 @@ mod tests {
 
         let source_square = Square::D4;
 
-        let mut moves = MoveList::new();
+        let mut move_list = MoveList::new();
 
-        moves.generate_piece_moves(&game, Piece::Rook, source_square, &attack_tables);
+        move_list.generate_piece_moves(&game, Piece::Rook, source_square, &attack_tables);
 
         let desired_d8_move =
             Move::new(Square::D4, Square::D8, Piece::Rook, None, MoveType::Capture);
@@ -900,18 +932,18 @@ mod tests {
         let desired_d2_move = Move::new(Square::D4, Square::D2, Piece::Rook, None, MoveType::Quiet);
         let desired_d1_move = Move::new(Square::D4, Square::D1, Piece::Rook, None, MoveType::Quiet);
 
-        let rook_moves_correct = moves.move_list.contains(&Some(desired_d8_move))
-            && moves.move_list.contains(&Some(desired_d7_move))
-            && moves.move_list.contains(&Some(desired_d6_move))
-            && moves.move_list.contains(&Some(desired_d5_move))
-            && moves.move_list.contains(&Some(desired_a4_move))
-            && moves.move_list.contains(&Some(desired_b4_move))
-            && moves.move_list.contains(&Some(desired_c4_move))
-            && moves.move_list.contains(&Some(desired_e4_move))
-            && moves.move_list.contains(&Some(desired_d3_move))
-            && moves.move_list.contains(&Some(desired_d2_move))
-            && moves.move_list.contains(&Some(desired_d1_move))
-            && moves.current_move_list_size == 11;
+        let rook_moves_correct = move_list.0.contains(&desired_d8_move)
+            && move_list.0.contains(&desired_d7_move)
+            && move_list.0.contains(&desired_d6_move)
+            && move_list.0.contains(&desired_d5_move)
+            && move_list.0.contains(&desired_a4_move)
+            && move_list.0.contains(&desired_b4_move)
+            && move_list.0.contains(&desired_c4_move)
+            && move_list.0.contains(&desired_e4_move)
+            && move_list.0.contains(&desired_d3_move)
+            && move_list.0.contains(&desired_d2_move)
+            && move_list.0.contains(&desired_d1_move)
+            && move_list.0.len() == 11;
 
         assert!(rook_moves_correct)
     }
@@ -926,9 +958,9 @@ mod tests {
 
         let source_square = Square::D4;
 
-        let mut moves = MoveList::new();
+        let mut move_list = MoveList::new();
 
-        moves.generate_piece_moves(&game, Piece::Queen, source_square, &attack_tables);
+        move_list.generate_piece_moves(&game, Piece::Queen, source_square, &attack_tables);
 
         let desired_a7_move =
             Move::new(Square::D4, Square::A7, Piece::Queen, None, MoveType::Quiet);
@@ -990,28 +1022,28 @@ mod tests {
         let desired_e3_move =
             Move::new(Square::D4, Square::E3, Piece::Queen, None, MoveType::Quiet);
 
-        let queen_moves_correct = moves.move_list.contains(&Some(desired_a7_move))
-            && moves.move_list.contains(&Some(desired_b6_move))
-            && moves.move_list.contains(&Some(desired_c5_move))
-            && moves.move_list.contains(&Some(desired_d8_move))
-            && moves.move_list.contains(&Some(desired_d7_move))
-            && moves.move_list.contains(&Some(desired_d6_move))
-            && moves.move_list.contains(&Some(desired_d5_move))
-            && moves.move_list.contains(&Some(desired_g7_move))
-            && moves.move_list.contains(&Some(desired_f6_move))
-            && moves.move_list.contains(&Some(desired_e5_move))
-            && moves.move_list.contains(&Some(desired_a4_move))
-            && moves.move_list.contains(&Some(desired_b4_move))
-            && moves.move_list.contains(&Some(desired_c4_move))
-            && moves.move_list.contains(&Some(desired_e4_move))
-            && moves.move_list.contains(&Some(desired_c3_move))
-            && moves.move_list.contains(&Some(desired_b2_move))
-            && moves.move_list.contains(&Some(desired_a1_move))
-            && moves.move_list.contains(&Some(desired_d3_move))
-            && moves.move_list.contains(&Some(desired_d2_move))
-            && moves.move_list.contains(&Some(desired_d1_move))
-            && moves.move_list.contains(&Some(desired_e3_move))
-            && moves.current_move_list_size == 21;
+        let queen_moves_correct = move_list.0.contains(&desired_a7_move)
+            && move_list.0.contains(&desired_b6_move)
+            && move_list.0.contains(&desired_c5_move)
+            && move_list.0.contains(&desired_d8_move)
+            && move_list.0.contains(&desired_d7_move)
+            && move_list.0.contains(&desired_d6_move)
+            && move_list.0.contains(&desired_d5_move)
+            && move_list.0.contains(&desired_g7_move)
+            && move_list.0.contains(&desired_f6_move)
+            && move_list.0.contains(&desired_e5_move)
+            && move_list.0.contains(&desired_a4_move)
+            && move_list.0.contains(&desired_b4_move)
+            && move_list.0.contains(&desired_c4_move)
+            && move_list.0.contains(&desired_e4_move)
+            && move_list.0.contains(&desired_c3_move)
+            && move_list.0.contains(&desired_b2_move)
+            && move_list.0.contains(&desired_a1_move)
+            && move_list.0.contains(&desired_d3_move)
+            && move_list.0.contains(&desired_d2_move)
+            && move_list.0.contains(&desired_d1_move)
+            && move_list.0.contains(&desired_e3_move)
+            && move_list.0.len() == 21;
 
         assert!(queen_moves_correct);
     }
@@ -1025,9 +1057,9 @@ mod tests {
 
         let source_square = Square::D4;
 
-        let mut moves = MoveList::new();
+        let mut move_list = MoveList::new();
 
-        moves.generate_piece_moves(&game, Piece::King, source_square, &attack_tables);
+        move_list.generate_piece_moves(&game, Piece::King, source_square, &attack_tables);
 
         let desired_c5_move =
             Move::new(Square::D4, Square::C5, Piece::King, None, MoveType::Capture);
@@ -1038,13 +1070,13 @@ mod tests {
         let desired_d3_move = Move::new(Square::D4, Square::D3, Piece::King, None, MoveType::Quiet);
         let desired_e3_move = Move::new(Square::D4, Square::E3, Piece::King, None, MoveType::Quiet);
 
-        let king_moves_correct = moves.move_list.contains(&Some(desired_c5_move))
-            && moves.move_list.contains(&Some(desired_e5_move))
-            && moves.move_list.contains(&Some(desired_e4_move))
-            && moves.move_list.contains(&Some(desired_c3_move))
-            && moves.move_list.contains(&Some(desired_d3_move))
-            && moves.move_list.contains(&Some(desired_e3_move))
-            && moves.current_move_list_size == 6;
+        let king_moves_correct = move_list.0.contains(&desired_c5_move)
+            && move_list.0.contains(&desired_e5_move)
+            && move_list.0.contains(&desired_e4_move)
+            && move_list.0.contains(&desired_c3_move)
+            && move_list.0.contains(&desired_d3_move)
+            && move_list.0.contains(&desired_e3_move)
+            && move_list.0.len() == 6;
 
         assert!(king_moves_correct);
     }
@@ -1056,9 +1088,9 @@ mod tests {
 
         game.load_fen("8/8/8/8/8/8/8/R3K2R w KQ - 0 1").unwrap();
 
-        let mut moves = MoveList::new();
+        let mut move_list = MoveList::new();
 
-        moves.generate_castling_moves(&game, &attack_tables);
+        move_list.generate_castling_moves(&game, &attack_tables);
 
         let desired_short_castle = Move::new(
             Square::E1,
@@ -1075,17 +1107,17 @@ mod tests {
             MoveType::Castling,
         );
 
-        let castling_moves_correct = moves.move_list.contains(&Some(desired_short_castle))
-            && moves.move_list.contains(&Some(desired_long_castle))
-            && moves.current_move_list_size == 2;
+        let castling_moves_correct = move_list.0.contains(&desired_short_castle)
+            && move_list.0.contains(&desired_long_castle)
+            && move_list.0.len() == 2;
 
         assert!(castling_moves_correct);
 
         game.load_fen("8/8/8/8/8/5r2/8/R3K2R w KQ - 0 1").unwrap();
 
-        let mut moves = MoveList::new();
+        let mut move_list = MoveList::new();
 
-        moves.generate_castling_moves(&game, &attack_tables);
+        move_list.generate_castling_moves(&game, &attack_tables);
 
         let desired_long_castle = Move::new(
             Square::E1,
@@ -1095,25 +1127,25 @@ mod tests {
             MoveType::Castling,
         );
 
-        let castling_moves_correct = moves.move_list.contains(&Some(desired_long_castle))
-            && moves.current_move_list_size == 1;
+        let castling_moves_correct =
+            move_list.0.contains(&desired_long_castle) && move_list.0.len() == 1;
 
         assert!(castling_moves_correct);
 
         game.load_fen("8/8/8/8/8/5q2/8/R3K2R w KQ - 0 1").unwrap();
 
-        let mut moves = MoveList::new();
+        let mut move_list = MoveList::new();
 
-        moves.generate_castling_moves(&game, &attack_tables);
+        move_list.generate_castling_moves(&game, &attack_tables);
 
-        assert!(moves.current_move_list_size == 0);
+        assert!(move_list.0.is_empty());
 
         game.load_fen("8/8/8/8/8/8/8/R3K2R w - - 0 1").unwrap();
 
-        let mut moves = MoveList::new();
+        let mut move_list = MoveList::new();
 
-        moves.generate_castling_moves(&game, &attack_tables);
+        move_list.generate_castling_moves(&game, &attack_tables);
 
-        assert!(moves.current_move_list_size == 0);
+        assert!(move_list.0.is_empty());
     }
 }

@@ -145,7 +145,7 @@ impl Game {
         };
         let castling_rights = CastlingRights::initialise(fen[2])?;
         let en_passant_square = Self::parse_en_passant_square(fen[3])?;
-        let halfmove_clock: u8 = match fen[4].parse() {
+        let halfmove_clock = match fen[4].parse() {
             Ok(halfmove_clock) => {
                 if halfmove_clock > MAX_HALFMOVE_CLOCK {
                     return Err(InputError::InvalidFen(FenError::InvalidHalfmoveClock));
@@ -504,13 +504,23 @@ impl Game {
         ]
     }
 
+    pub fn piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
+        for (bitboard, piece, side) in self.piece_bitboards() {
+            if bitboard.bit_occupied(square) {
+                return Some((piece, side));
+            }
+        }
+
+        None
+    }
+
     pub fn _print(&self) {
         for square in Square::iter() {
             if square.file() == 0 {
                 print!("{:<4}", (64 - square as usize) / 8);
             }
 
-            match self._piece_at_square(square) {
+            match self.piece_at_square(square) {
                 Some((piece, side)) => print!("{:<2}", piece._to_char(Some(side))),
                 None => print!(". "),
             }
@@ -526,16 +536,6 @@ impl Game {
         println!("Side to move: {:?}", self.side_to_move);
         println!("En passant square: {:?}", self.en_passant_square);
         println!("Castling rights: {}", self.castling_rights._as_string());
-    }
-
-    fn _piece_at_square(&self, square: Square) -> Option<(Piece, Side)> {
-        for (bitboard, piece, side) in self.piece_bitboards() {
-            if bitboard.bit_occupied(square) {
-                return Some((piece, side));
-            }
-        }
-
-        None
     }
 }
 
@@ -682,7 +682,7 @@ impl<T: Unsigned + AsPrimitive<u64>> ShrAssign<T> for Bitboard {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, EnumIter, FromPrimitive, PartialEq)]
+#[derive(Clone, Copy, Debug, EnumIter, FromPrimitive, PartialEq)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -737,7 +737,7 @@ impl Piece {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Side {
     White = 1,
     Black = -1,
@@ -868,7 +868,7 @@ fn _perft_test(game: &mut Game, attack_tables: &AttackTables, depth: u8) {
 
     println!("Move   Nodes   ");
 
-    for mv in move_list.move_list().iter().flatten() {
+    for mv in move_list.vec() {
         let mut game_clone = game.clone();
         let move_result = game_clone.make_move(mv, attack_tables);
 
@@ -902,7 +902,7 @@ fn _perft(game: &mut Game, attack_tables: &AttackTables, nodes: &mut u64, depth:
 
     let move_list = MoveList::generate_moves(game, attack_tables);
 
-    for mv in move_list.move_list().iter().flatten() {
+    for mv in move_list.vec() {
         let mut game_clone = game.clone();
         let move_result = game_clone.make_move(mv, attack_tables);
 

@@ -29,14 +29,14 @@ impl Engine {
 
     pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
         self.game.load_fen(fen)?;
-        self.move_list = MoveList::generate_moves(&self.game, &self.attack_tables);
+        self.move_list = MoveList::generate_moves(&self.game, &self.attack_tables).sort(&self.game);
 
         Ok(())
     }
 
     pub fn make_move(&mut self, mv: &Move) -> Result<(), InputError> {
         self.game.make_move(mv, &self.attack_tables)?;
-        self.move_list = MoveList::generate_moves(&self.game, &self.attack_tables);
+        self.move_list = MoveList::generate_moves(&self.game, &self.attack_tables).sort(&self.game);
 
         Ok(())
     }

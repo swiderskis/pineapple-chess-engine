@@ -6,12 +6,14 @@ use super::{
 use crate::uci::InputError;
 use std::ops::Neg;
 
-const MAX_EVALUATION_VALUE: i32 = i32::MAX;
-const CHECKMATE_VALUE: i32 = i32::MAX - 1;
-const STALEMATE_VALUE: i32 = 0;
+type Value = i16;
+
+const MAX_EVALUATION_VALUE: Value = Value::MAX;
+const CHECKMATE_VALUE: Value = Value::MAX - 1;
+const STALEMATE_VALUE: Value = 0;
 
 // Piece value obtained by indexing into array using Piece enum
-const PIECE_VALUE: [i32; 6] = [100, 300, 350, 500, 900, 10_000];
+const PIECE_VALUE: [Value; 6] = [100, 300, 350, 500, 900, 0];
 
 #[rustfmt::skip]
 const PAWN_POSITION_VALUE: PositionValue = PositionValue([
@@ -69,27 +71,6 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
     0, 0,  5,  0, -15,  0, 10, 0,
 ]);
 
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
-struct Evaluation(i32);
-
-impl Evaluation {
-    fn add(&mut self, value: i32, side: Side) {
-        self.0 += value * side as i32
-    }
-
-    fn sided_value(&self, side: Side) -> Evaluation {
-        Self(self.0 * side as i32)
-    }
-}
-
-impl Neg for Evaluation {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Self(-self.0)
-    }
-}
-
 impl Engine {
     pub fn find_best_move(&self, depth: u8) -> Result<Move, InputError> {
         let mut min_evaluation = Evaluation(-MAX_EVALUATION_VALUE);
@@ -100,7 +81,7 @@ impl Engine {
         let current_ply = 0;
         let mut total_nodes = 0;
 
-        for mv in self.move_list.move_list().iter().flatten() {
+        for mv in self.move_list.vec() {
             let mut game_clone = self.game.clone();
             let move_result = game_clone.make_move(mv, &self.attack_tables);
 
@@ -155,11 +136,11 @@ impl Engine {
 
         *nodes += 1;
 
-        let move_list = MoveList::generate_moves(game, &self.attack_tables);
+        let move_list = MoveList::generate_moves(game, &self.attack_tables).sort(game);
 
         let mut no_legal_moves = true;
 
-        for mv in move_list.move_list().iter().flatten() {
+        for mv in move_list.vec() {
             let mut game_clone = game.clone();
             let move_result = game_clone.make_move(mv, &self.attack_tables);
 
@@ -198,7 +179,7 @@ impl Engine {
                     game.is_square_attacked(&self.attack_tables, attacking_side, king_square);
 
                 if king_in_check {
-                    return -Evaluation(CHECKMATE_VALUE - current_ply as i32);
+                    return -Evaluation(CHECKMATE_VALUE - current_ply as Value);
                 } else {
                     return Evaluation(STALEMATE_VALUE);
                 }
@@ -227,9 +208,9 @@ impl Engine {
             min_evaluation = evaluation;
         }
 
-        let move_list = MoveList::generate_moves(game, &self.attack_tables);
+        let move_list = MoveList::generate_moves(game, &self.attack_tables).sort(game);
 
-        for mv in move_list.move_list().iter().flatten() {
+        for mv in move_list.vec() {
             if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {
                 continue;
             }
@@ -281,10 +262,31 @@ impl Engine {
     }
 }
 
-struct PositionValue([i32; 64]);
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
+struct Evaluation(Value);
+
+impl Evaluation {
+    fn add(&mut self, value: Value, side: Side) {
+        self.0 += value * side as Value
+    }
+
+    fn sided_value(&self, side: Side) -> Evaluation {
+        Self(self.0 * side as Value)
+    }
+}
+
+impl Neg for Evaluation {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self(-self.0)
+    }
+}
+
+struct PositionValue([Value; 64]);
 
 impl PositionValue {
-    fn value(&self, side: Side, square: Square) -> i32 {
+    fn value(&self, side: Side, square: Square) -> Value {
         let sided_square_index = match side {
             Side::White => square as usize,
             Side::Black => square.horizontal_mirror() as usize,
