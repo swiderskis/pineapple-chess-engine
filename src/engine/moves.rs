@@ -5,6 +5,7 @@ use super::{
 };
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
+use std::cmp::Reverse;
 use strum::IntoEnumIterator;
 
 type Score = u16;
@@ -31,7 +32,7 @@ impl MoveList {
         Self(Vec::new())
     }
 
-    pub fn generate_moves(game: &Game, attack_tables: &AttackTables) -> Self {
+    pub fn generate_unsorted_moves(game: &Game, attack_tables: &AttackTables) -> Self {
         let mut move_list = Self::new();
 
         let side = game.side_to_move();
@@ -54,18 +55,14 @@ impl MoveList {
         move_list
     }
 
-    pub fn sort(self, game: &Game) -> Self {
-        let mut sorted_move_list: Vec<ScoredMove> = self
-            .into_vec()
-            .into_iter()
-            .map(|mv| ScoredMove::score_move(mv, game))
-            .collect();
+    pub fn generate_sorted_moves(game: &Game, attack_tables: &AttackTables) -> Self {
+        let mut move_list = Self::generate_unsorted_moves(game, attack_tables);
 
-        sorted_move_list.sort();
+        move_list
+            .mut_vec()
+            .sort_by_key(|b| Reverse(b.score_move(game)));
 
-        let move_list = sorted_move_list.into_iter().map(|mv| mv.0).collect();
-
-        Self(move_list)
+        move_list
     }
 
     pub fn find_move(&self, move_search: MoveSearch) -> Result<Move, InputError> {
@@ -81,12 +78,12 @@ impl MoveList {
         Err(InputError::IllegalMove)
     }
 
-    pub fn into_vec(self) -> Vec<Move> {
-        self.0
-    }
-
     pub fn vec(&self) -> &Vec<Move> {
         &self.0
+    }
+
+    pub fn mut_vec(&mut self) -> &mut Vec<Move> {
+        &mut self.0
     }
 
     fn generate_pawn_moves(
@@ -325,48 +322,6 @@ impl MoveList {
     }
 }
 
-#[derive(Debug)]
-struct ScoredMove(Move, Score);
-
-impl ScoredMove {
-    fn score_move(mv: Move, game: &Game) -> Self {
-        match mv.move_type() {
-            MoveType::Capture => match game.piece_at_square(mv.target_square()) {
-                Some((victim, _)) => {
-                    let attacker = mv.piece();
-                    Self(mv, MVV_LVA_SCORE[attacker as usize][victim as usize])
-                }
-                None => Self(mv, 0),
-            },
-            MoveType::EnPassant => Self(
-                mv,
-                MVV_LVA_SCORE[Piece::Pawn as usize][Piece::Pawn as usize],
-            ),
-            _ => Self(mv, 0),
-        }
-    }
-}
-
-impl Eq for ScoredMove {}
-
-impl Ord for ScoredMove {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.1.cmp(&self.1)
-    }
-}
-
-impl PartialEq for ScoredMove {
-    fn eq(&self, other: &Self) -> bool {
-        self.1 == other.1
-    }
-}
-
-impl PartialOrd for ScoredMove {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(other.1.cmp(&self.1))
-    }
-}
-
 #[derive(Clone, Copy, Debug, FromPrimitive, PartialEq)]
 pub enum MoveType {
     Quiet,
@@ -433,6 +388,21 @@ impl Move {
                 source_square_string + &target_square_string + &promoted_piece_string
             }
             None => source_square_string + &target_square_string,
+        }
+    }
+
+    fn score_move(&self, game: &Game) -> Score {
+        match self.move_type() {
+            MoveType::Capture => match game.piece_at_square(self.target_square()) {
+                Some((victim, _)) => {
+                    let attacker = self.piece();
+
+                    MVV_LVA_SCORE[attacker as usize][victim as usize]
+                }
+                None => 0,
+            },
+            MoveType::EnPassant => MVV_LVA_SCORE[Piece::Pawn as usize][Piece::Pawn as usize],
+            _ => 0,
         }
     }
 }

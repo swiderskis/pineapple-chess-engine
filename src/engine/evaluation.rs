@@ -136,7 +136,7 @@ impl Engine {
 
         *nodes += 1;
 
-        let move_list = MoveList::generate_moves(game, &self.attack_tables).sort(game);
+        let move_list = MoveList::generate_sorted_moves(game, &self.attack_tables);
 
         let mut no_legal_moves = true;
 
@@ -208,7 +208,7 @@ impl Engine {
             min_evaluation = evaluation;
         }
 
-        let move_list = MoveList::generate_moves(game, &self.attack_tables).sort(game);
+        let move_list = MoveList::generate_sorted_moves(game, &self.attack_tables);
 
         for mv in move_list.vec() {
             if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {

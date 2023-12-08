@@ -864,7 +864,7 @@ fn _perft_test(game: &mut Game, attack_tables: &AttackTables, depth: u8) {
     let mut total_nodes = 0;
     let now = Instant::now();
 
-    let move_list = MoveList::generate_moves(game, attack_tables);
+    let move_list = MoveList::generate_unsorted_moves(game, attack_tables);
 
     println!("Move   Nodes   ");
 
@@ -900,7 +900,7 @@ fn _perft(game: &mut Game, attack_tables: &AttackTables, nodes: &mut u64, depth:
         return;
     }
 
-    let move_list = MoveList::generate_moves(game, attack_tables);
+    let move_list = MoveList::generate_unsorted_moves(game, attack_tables);
 
     for mv in move_list.vec() {
         let mut game_clone = game.clone();
@@ -1445,7 +1445,7 @@ mod tests {
         assert_eq!(game.en_passant_square, desired_en_passant_square);
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
-        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_list = MoveList::generate_unsorted_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E2, Square::E4, None);
         let mv = move_list.find_move(move_search).unwrap();
 
@@ -1478,7 +1478,7 @@ mod tests {
         assert_eq!(game.en_passant_square, desired_en_passant_square);
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
-        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_list = MoveList::generate_unsorted_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E7, Square::E5, None);
         let mv = move_list.find_move(move_search).unwrap();
 
@@ -1511,7 +1511,7 @@ mod tests {
         assert_eq!(game.en_passant_square, desired_en_passant_square);
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
-        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_list = MoveList::generate_unsorted_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::G1, Square::F3, None);
         let mv = move_list.find_move(move_search).unwrap();
 
@@ -1645,7 +1645,7 @@ mod tests {
         assert_eq!(game.en_passant_square, desired_en_passant_square);
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
-        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_list = MoveList::generate_unsorted_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::D5, Square::E6, None);
         let mv = move_list.find_move(move_search).unwrap();
 
@@ -1679,7 +1679,7 @@ mod tests {
         assert_eq!(game.en_passant_square, desired_en_passant_square);
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
-        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_list = MoveList::generate_unsorted_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::A6, Square::E2, None);
         let mv = move_list.find_move(move_search).unwrap();
 
@@ -1713,7 +1713,7 @@ mod tests {
         assert_eq!(game.en_passant_square, desired_en_passant_square);
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
-        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_list = MoveList::generate_unsorted_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::C3, Square::E2, None);
         let mv = move_list.find_move(move_search).unwrap();
 
