@@ -60,7 +60,7 @@ impl MoveList {
 
         move_list
             .mut_vec()
-            .sort_by_key(|b| Reverse(b.score_move(game)));
+            .sort_by_key(|mv| Reverse(mv.score(game)));
 
         move_list
     }
@@ -391,7 +391,7 @@ impl Move {
         }
     }
 
-    fn score_move(&self, game: &Game) -> Score {
+    fn score(&self, game: &Game) -> Score {
         match self.move_type() {
             MoveType::Capture => match game.piece_at_square(self.target_square()) {
                 Some((victim, _)) => {
