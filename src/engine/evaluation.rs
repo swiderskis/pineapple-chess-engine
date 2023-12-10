@@ -72,14 +72,31 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
 ]);
 
 impl Engine {
-    pub fn find_best_move(&self, depth: u8) -> Result<Move, InputError> {
-        let mut min_evaluation = Evaluation(-MAX_EVALUATION_VALUE);
+    pub fn find_best_move(&self, mut depth: u8) -> Result<Move, InputError> {
+        let mut min_evaluation = -Evaluation(MAX_EVALUATION_VALUE);
         let max_evaluation = Evaluation(MAX_EVALUATION_VALUE);
 
-        let mut best_move = None;
-
-        let current_ply = 0;
         let mut total_nodes = 0;
+
+        let king_square = self
+            .game
+            .piece_bitboard(Piece::King, self.game.side_to_move())
+            .get_lsb_square();
+        let king_in_check = match king_square {
+            Some(king_square) => {
+                let attacking_side = self.game.side_to_move().opponent_side();
+
+                self.game
+                    .is_square_attacked(&self.attack_tables, attacking_side, king_square)
+            }
+            None => false,
+        };
+
+        if king_in_check {
+            depth += 1;
+        }
+
+        let mut best_move = None;
 
         for mv in self.move_list.vec() {
             let mut game_clone = self.game.clone();
@@ -95,7 +112,7 @@ impl Engine {
                 &game_clone,
                 -max_evaluation,
                 -min_evaluation,
-                current_ply + 1,
+                1,
                 depth - 1,
                 &mut nodes,
             );
@@ -126,8 +143,8 @@ impl Engine {
         game: &Game,
         mut min_evaluation: Evaluation, // alpha
         max_evaluation: Evaluation,     // beta
-        current_ply: u8,
-        depth: u8,
+        current_ply: Value,
+        mut depth: u8,
         nodes: &mut u64,
     ) -> Evaluation {
         if depth == 0 {
@@ -136,8 +153,23 @@ impl Engine {
 
         *nodes += 1;
 
-        let move_list = MoveList::generate_sorted_moves(game, &self.attack_tables);
+        let king_square = game
+            .piece_bitboard(Piece::King, game.side_to_move())
+            .get_lsb_square();
+        let king_in_check = match king_square {
+            Some(king_square) => {
+                let attacking_side = game.side_to_move().opponent_side();
 
+                game.is_square_attacked(&self.attack_tables, attacking_side, king_square)
+            }
+            None => false,
+        };
+
+        if king_in_check {
+            depth += 1;
+        }
+
+        let move_list = MoveList::generate_sorted_moves(game, &self.attack_tables);
         let mut no_legal_moves = true;
 
         for mv in move_list.vec() {
@@ -168,25 +200,13 @@ impl Engine {
             }
         }
 
-        if no_legal_moves {
-            let king_square = game
-                .piece_bitboard(Piece::King, game.side_to_move())
-                .get_lsb_square();
-
-            if let Some(king_square) = king_square {
-                let attacking_side = game.side_to_move().opponent_side();
-                let king_in_check =
-                    game.is_square_attacked(&self.attack_tables, attacking_side, king_square);
-
-                if king_in_check {
-                    return -Evaluation(CHECKMATE_VALUE - current_ply as Value);
-                } else {
-                    return Evaluation(STALEMATE_VALUE);
-                }
-            }
+        if no_legal_moves && king_in_check {
+            -Evaluation(CHECKMATE_VALUE - current_ply)
+        } else if no_legal_moves {
+            Evaluation(STALEMATE_VALUE)
+        } else {
+            min_evaluation
         }
-
-        min_evaluation
     }
 
     fn quiescence_search(
