@@ -120,7 +120,7 @@ impl Engine {
             );
 
             if evaluation > min_evaluation {
-                self.historical_move_score
+                self.historic_move_score
                     .push(mv, self.game.side_to_move(), depth);
 
                 best_move = Some(mv);
@@ -197,14 +197,18 @@ impl Engine {
             );
 
             if evaluation >= max_evaluation {
-                self.killer_moves.push(mv, ply);
+                if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {
+                    self.killer_moves.push(mv, ply);
+                }
 
                 return max_evaluation;
             }
 
             if evaluation > min_evaluation {
-                self.historical_move_score
-                    .push(mv, game.side_to_move(), depth);
+                if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {
+                    self.historic_move_score
+                        .push(mv, game.side_to_move(), depth);
+                }
 
                 min_evaluation = evaluation;
             }

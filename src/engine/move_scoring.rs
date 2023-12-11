@@ -49,9 +49,9 @@ impl KillerMoves {
     }
 }
 
-pub struct HistoricalMoveScore([[[Score; 64]; 6]; 2]);
+pub struct HistoricMoveScore([[[Score; 64]; 6]; 2]);
 
-impl HistoricalMoveScore {
+impl HistoricMoveScore {
     pub fn initialise() -> Self {
         Self([[[0; 64]; 6]; 2])
     }
@@ -97,7 +97,7 @@ impl Move {
             MoveType::EnPassant => MVV_LVA_SCORE[Piece::Pawn as usize][Piece::Pawn as usize],
             _ => engine.killer_moves.score_move(self, ply).unwrap_or(
                 engine
-                    .historical_move_score
+                    .historic_move_score
                     .score_move(self, game.side_to_move()),
             ),
         }

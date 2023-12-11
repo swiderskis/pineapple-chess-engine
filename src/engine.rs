@@ -7,7 +7,7 @@ mod moves;
 use self::{
     attack_tables::AttackTables,
     game::Game,
-    move_scoring::{HistoricalMoveScore, KillerMoves},
+    move_scoring::{HistoricMoveScore, KillerMoves},
     moves::MoveList,
 };
 use crate::uci::InputError;
@@ -16,7 +16,7 @@ pub struct Engine {
     game: Game,
     attack_tables: AttackTables,
     killer_moves: KillerMoves,
-    historical_move_score: HistoricalMoveScore,
+    historic_move_score: HistoricMoveScore,
 }
 
 impl Engine {
@@ -25,14 +25,14 @@ impl Engine {
             game: Game::initialise(),
             attack_tables: AttackTables::initialise(),
             killer_moves: KillerMoves::initialise(),
-            historical_move_score: HistoricalMoveScore::initialise(),
+            historic_move_score: HistoricMoveScore::initialise(),
         }
     }
 
     pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
         self.game.load_fen(fen)?;
         self.killer_moves = KillerMoves::initialise();
-        self.historical_move_score = HistoricalMoveScore::initialise();
+        self.historic_move_score = HistoricMoveScore::initialise();
 
         Ok(())
     }
