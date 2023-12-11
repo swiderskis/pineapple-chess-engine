@@ -6,7 +6,7 @@ use super::{
 use crate::uci::InputError;
 use std::ops::Neg;
 
-type Value = i16;
+pub type Value = i16;
 
 const MAX_EVALUATION_VALUE: Value = Value::MAX;
 const CHECKMATE_VALUE: Value = Value::MAX - 1;
@@ -72,7 +72,7 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
 ]);
 
 impl Engine {
-    pub fn find_best_move(&self, mut depth: u8) -> Result<Move, InputError> {
+    pub fn find_best_move(&mut self, mut depth: u8) -> Result<Move, InputError> {
         let mut min_evaluation = -Evaluation(MAX_EVALUATION_VALUE);
         let max_evaluation = Evaluation(MAX_EVALUATION_VALUE);
 
@@ -98,7 +98,9 @@ impl Engine {
 
         let mut best_move = None;
 
-        for mv in self.move_list.vec() {
+        let move_list = MoveList::generate_sorted_moves(&self.game, self, 0);
+
+        for mv in move_list.vec() {
             let mut game_clone = self.game.clone();
             let move_result = game_clone.make_move(mv, &self.attack_tables);
 
@@ -112,12 +114,15 @@ impl Engine {
                 &game_clone,
                 -max_evaluation,
                 -min_evaluation,
+                &mut nodes,
                 1,
                 depth - 1,
-                &mut nodes,
             );
 
             if evaluation > min_evaluation {
+                self.historical_move_score
+                    .push(mv, self.game.side_to_move(), depth);
+
                 best_move = Some(mv);
                 min_evaluation = evaluation;
             }
@@ -139,13 +144,13 @@ impl Engine {
     }
 
     fn negamax_best_move_search(
-        &self,
+        &mut self,
         game: &Game,
         mut min_evaluation: Evaluation, // alpha
         max_evaluation: Evaluation,     // beta
-        current_ply: Value,
-        mut depth: u8,
         nodes: &mut u64,
+        ply: Value,
+        mut depth: u8,
     ) -> Evaluation {
         if depth == 0 {
             return self.quiescence_search(game, min_evaluation, max_evaluation, nodes);
@@ -169,7 +174,7 @@ impl Engine {
             depth += 1;
         }
 
-        let move_list = MoveList::generate_sorted_moves(game, &self.attack_tables);
+        let move_list = MoveList::generate_sorted_moves(game, self, ply);
         let mut no_legal_moves = true;
 
         for mv in move_list.vec() {
@@ -186,22 +191,27 @@ impl Engine {
                 &game_clone,
                 -max_evaluation,
                 -min_evaluation,
-                current_ply + 1,
-                depth - 1,
                 nodes,
+                ply + 1,
+                depth - 1,
             );
 
             if evaluation >= max_evaluation {
+                self.killer_moves.push(mv, ply);
+
                 return max_evaluation;
             }
 
             if evaluation > min_evaluation {
+                self.historical_move_score
+                    .push(mv, game.side_to_move(), depth);
+
                 min_evaluation = evaluation;
             }
         }
 
         if no_legal_moves && king_in_check {
-            -Evaluation(CHECKMATE_VALUE - current_ply)
+            -Evaluation(CHECKMATE_VALUE - ply)
         } else if no_legal_moves {
             Evaluation(STALEMATE_VALUE)
         } else {
@@ -228,7 +238,7 @@ impl Engine {
             min_evaluation = evaluation;
         }
 
-        let move_list = MoveList::generate_sorted_moves(game, &self.attack_tables);
+        let move_list = MoveList::generate_sorted_moves(game, self, 0);
 
         for mv in move_list.vec() {
             if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {
@@ -287,11 +297,11 @@ struct Evaluation(Value);
 
 impl Evaluation {
     fn add(&mut self, value: Value, side: Side) {
-        self.0 += value * side as Value
+        self.0 += value * side.to_value()
     }
 
     fn sided_value(&self, side: Side) -> Evaluation {
-        Self(self.0 * side as Value)
+        Self(self.0 * side.to_value())
     }
 }
 

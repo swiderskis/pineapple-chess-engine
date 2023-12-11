@@ -137,9 +137,7 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
 }
 
 fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), InputError> {
-    let mv = engine.find_move_from_string(move_string)?;
-
-    engine.make_move(&mv)?;
+    engine.make_move(move_string)?;
 
     Ok(())
 }

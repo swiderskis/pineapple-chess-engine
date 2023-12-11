@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use super::{
     attack_tables::AttackTables,
     game::{Bitboard, CastlingType, Game, Piece, Side, Square},
@@ -5,22 +7,7 @@ use super::{
 };
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
-use std::cmp::Reverse;
-use strum::IntoEnumIterator;
-
-type Score = u16;
-
-// MVV = most valuable victim
-// LVA = least valuable attacker
-// Score obtained by indexing to array as such: [attacker][victim]
-const MVV_LVA_SCORE: [[Score; 6]; 6] = [
-    [105, 205, 305, 405, 505, 0],
-    [104, 204, 304, 404, 504, 0],
-    [103, 203, 303, 403, 503, 0],
-    [102, 202, 302, 402, 502, 0],
-    [101, 201, 301, 401, 501, 0],
-    [100, 200, 300, 400, 500, 0],
-];
+use strum::{IntoEnumIterator, ParseError};
 
 const PROMOTION_PIECES: [Piece; 4] = [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
 
@@ -32,7 +19,7 @@ impl MoveList {
         Self(Vec::new())
     }
 
-    pub fn generate_unsorted_moves(game: &Game, attack_tables: &AttackTables) -> Self {
+    pub fn generate_moves(game: &Game, attack_tables: &AttackTables) -> Self {
         let mut move_list = Self::new();
 
         let side = game.side_to_move();
@@ -55,14 +42,15 @@ impl MoveList {
         move_list
     }
 
-    pub fn generate_sorted_moves(game: &Game, attack_tables: &AttackTables) -> Self {
-        let mut move_list = Self::generate_unsorted_moves(game, attack_tables);
+    pub fn find_move_from_string(&self, move_string: &str) -> Result<Move, InputError> {
+        match Self::parse_move_string(move_string) {
+            Ok(move_search) => {
+                let mv = self.find_move(move_search)?;
 
-        move_list
-            .mut_vec()
-            .sort_by_key(|mv| Reverse(mv.score(game)));
-
-        move_list
+                Ok(mv)
+            }
+            Err(_) => Err(InputError::InvalidMoveString),
+        }
     }
 
     pub fn find_move(&self, move_search: MoveSearch) -> Result<Move, InputError> {
@@ -317,6 +305,25 @@ impl MoveList {
         attack_table & valid_attack_squares
     }
 
+    fn parse_move_string(move_string: &str) -> Result<MoveSearch, ParseError> {
+        let (source_square_string, remaining_move_string) = move_string.split_at(2);
+        let (target_square_string, promoted_piece_string) = remaining_move_string.split_at(2);
+
+        let source_square = Square::from_str(source_square_string.to_uppercase().as_str())?;
+        let target_square = Square::from_str(target_square_string.to_uppercase().as_str())?;
+
+        let promoted_piece = if let Some(promoted_piece_char) = promoted_piece_string.chars().nth(0)
+        {
+            Some(Piece::from_char(promoted_piece_char)?)
+        } else {
+            None
+        };
+
+        let move_search = MoveSearch::new(source_square, target_square, promoted_piece);
+
+        Ok(move_search)
+    }
+
     pub fn _length(&self) -> usize {
         self.0.len()
     }
@@ -388,21 +395,6 @@ impl Move {
                 source_square_string + &target_square_string + &promoted_piece_string
             }
             None => source_square_string + &target_square_string,
-        }
-    }
-
-    fn score(&self, game: &Game) -> Score {
-        match self.move_type() {
-            MoveType::Capture => match game.piece_at_square(self.target_square()) {
-                Some((victim, _)) => {
-                    let attacker = self.piece();
-
-                    MVV_LVA_SCORE[attacker as usize][victim as usize]
-                }
-                None => 0,
-            },
-            MoveType::EnPassant => MVV_LVA_SCORE[Piece::Pawn as usize][Piece::Pawn as usize],
-            _ => 0,
         }
     }
 }
@@ -1117,5 +1109,48 @@ mod tests {
         move_list.generate_castling_moves(&game, &attack_tables);
 
         assert!(move_list.0.is_empty());
+    }
+
+    #[test]
+    fn parse_move() {
+        let move_string = "e2e4";
+
+        let move_search = MoveList::parse_move_string(move_string).unwrap();
+
+        let desired_move_search = MoveSearch::new(Square::E2, Square::E4, None);
+
+        assert_eq!(move_search, desired_move_search);
+
+        let move_string = "e7e8q";
+
+        let move_search = MoveList::parse_move_string(move_string).unwrap();
+
+        let desired_move_search = MoveSearch::new(Square::E7, Square::E8, Some(Piece::Queen));
+
+        assert_eq!(move_search, desired_move_search);
+
+        let move_string = "e2e1r";
+
+        let move_search = MoveList::parse_move_string(move_string).unwrap();
+
+        let desired_move_search = MoveSearch::new(Square::E2, Square::E1, Some(Piece::Rook));
+
+        assert_eq!(move_search, desired_move_search);
+
+        let move_string = "d7d8b";
+
+        let move_search = MoveList::parse_move_string(move_string).unwrap();
+
+        let desired_move_search = MoveSearch::new(Square::D7, Square::D8, Some(Piece::Bishop));
+
+        assert_eq!(move_search, desired_move_search);
+
+        let move_string = "d2d1n";
+
+        let move_search = MoveList::parse_move_string(move_string).unwrap();
+
+        let desired_move_search = MoveSearch::new(Square::D2, Square::D1, Some(Piece::Knight));
+
+        assert_eq!(move_search, desired_move_search);
     }
 }
