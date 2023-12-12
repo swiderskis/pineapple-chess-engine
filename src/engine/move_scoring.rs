@@ -8,13 +8,16 @@ use std::cmp::Reverse;
 
 type Score = u16;
 
+const PIECE_TYPES: usize = 6;
+const SIDE_COUNT: usize = 2;
+
 const KILLER_MOVE_ARRAY_SIZE: usize = 2;
 const MAX_PLY: usize = 64;
 
 // MVV = most valuable victim
 // LVA = least valuable attacker
 // Score obtained by indexing to array as such: [attacker][victim]
-const MVV_LVA_SCORE: [[Score; 6]; 6] = [
+const MVV_LVA_SCORE: [[Score; PIECE_TYPES]; PIECE_TYPES] = [
     [10500, 20500, 30500, 40500, 50500, 0],
     [10400, 20400, 30400, 40400, 50400, 0],
     [10300, 20300, 30300, 40300, 50300, 0],
@@ -49,11 +52,11 @@ impl KillerMoves {
     }
 }
 
-pub struct HistoricMoveScore([[[Score; 64]; 6]; 2]);
+pub struct HistoricMoveScore([[[Score; 64]; PIECE_TYPES]; SIDE_COUNT]);
 
 impl HistoricMoveScore {
     pub fn initialise() -> Self {
-        Self([[[0; 64]; 6]; 2])
+        Self([[[0; 64]; PIECE_TYPES]; SIDE_COUNT])
     }
 
     pub fn push(&mut self, mv: &Move, side: Side, depth: u8) {
