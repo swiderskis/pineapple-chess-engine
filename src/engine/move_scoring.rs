@@ -43,10 +43,6 @@ impl KillerMoves {
         self.0[ply as usize][0] = Some(mv);
     }
 
-    pub fn clear(&mut self) {
-        *self = KillerMoves::initialise()
-    }
-
     fn score_move(&self, mv: Move, ply: Value) -> Option<Score> {
         for (index, killer_move) in self.0[ply as usize].iter().flatten().enumerate() {
             if *killer_move == mv {
@@ -74,10 +70,6 @@ impl HistoricMoveScore {
         let target_square = mv.target_square();
 
         self.0[side as usize][piece as usize][target_square as usize] += depth as Score;
-    }
-
-    pub fn clear(&mut self) {
-        *self = HistoricMoveScore::initialise()
     }
 
     fn score_move(&self, mv: Move, side: Side) -> Score {

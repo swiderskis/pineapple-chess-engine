@@ -306,10 +306,6 @@ impl PrincipalVariation {
         }
     }
 
-    pub fn clear(&mut self) {
-        *self = PrincipalVariation::initialise()
-    }
-
     fn write_move(&mut self, mv: Move, ply: Value) {
         let ply = ply as usize;
 

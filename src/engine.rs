@@ -36,7 +36,6 @@ impl Engine {
 
     pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
         self.game.load_fen(fen)?;
-        self.clear_parameters();
 
         Ok(())
     }
@@ -48,12 +47,6 @@ impl Engine {
         self.game.make_move(mv, &self.attack_tables)?;
 
         Ok(())
-    }
-
-    fn clear_parameters(&mut self) {
-        self.killer_moves.clear();
-        self.historic_move_score.clear();
-        self.principal_variation.clear();
     }
 }
 
