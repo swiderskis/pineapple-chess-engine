@@ -3,6 +3,7 @@ use super::{
     moves::{Move, MoveList, MoveType},
     Engine,
 };
+use crate::engine;
 use crate::uci::InputError;
 use std::ops::Neg;
 
@@ -73,8 +74,8 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
 
 impl Engine {
     pub fn find_best_move(&mut self, mut depth: u8) -> Result<Move, InputError> {
-        let mut min_evaluation = -Evaluation(MAX_EVALUATION_VALUE);
-        let max_evaluation = Evaluation(MAX_EVALUATION_VALUE);
+        let mut evaluation_limits = EvaluationLimits::initialise();
+        let ply = 0;
 
         let mut total_nodes = 0;
 
@@ -96,13 +97,11 @@ impl Engine {
             depth += 1;
         }
 
-        let mut best_move = None;
-
         let move_list = MoveList::generate_sorted_moves(&self.game, self, 0);
 
         for mv in move_list.vec() {
             let mut game_clone = self.game.clone();
-            let move_result = game_clone.make_move(mv, &self.attack_tables);
+            let move_result = game_clone.make_move(*mv, &self.attack_tables);
 
             if move_result.is_err() {
                 continue;
@@ -112,32 +111,34 @@ impl Engine {
 
             let evaluation = -self.negamax_best_move_search(
                 &game_clone,
-                -max_evaluation,
-                -min_evaluation,
+                -evaluation_limits,
                 &mut nodes,
-                1,
+                ply + 1,
                 depth - 1,
             );
 
-            if evaluation > min_evaluation {
+            if evaluation > evaluation_limits.min {
+                self.principal_variation.write_move(*mv, ply);
                 self.historic_move_score
-                    .push(mv, self.game.side_to_move(), depth);
+                    .push(*mv, self.game.side_to_move(), depth);
 
-                best_move = Some(mv);
-                min_evaluation = evaluation;
+                evaluation_limits.min = evaluation;
             }
 
             total_nodes += nodes;
         }
 
-        match best_move {
+        match self.principal_variation.table[0][0] {
             Some(mv) => {
                 println!(
-                    "info score cp {} depth {} nodes {}",
-                    min_evaluation.0, depth, total_nodes
+                    "info score cp {} depth {} nodes {} pv {}",
+                    evaluation_limits.min.0,
+                    depth,
+                    total_nodes,
+                    self.principal_variation.as_string()
                 );
 
-                Ok(mv.clone())
+                Ok(mv)
             }
             None => Err(InputError::InvalidPosition),
         }
@@ -146,14 +147,15 @@ impl Engine {
     fn negamax_best_move_search(
         &mut self,
         game: &Game,
-        mut min_evaluation: Evaluation, // alpha
-        max_evaluation: Evaluation,     // beta
+        mut evaluation_limits: EvaluationLimits,
         nodes: &mut u64,
         ply: Value,
         mut depth: u8,
     ) -> Evaluation {
+        self.principal_variation.length[ply as usize] = ply;
+
         if depth == 0 {
-            return self.quiescence_search(game, min_evaluation, max_evaluation, nodes);
+            return self.quiescence_search(game, evaluation_limits, nodes);
         }
 
         *nodes += 1;
@@ -179,7 +181,7 @@ impl Engine {
 
         for mv in move_list.vec() {
             let mut game_clone = game.clone();
-            let move_result = game_clone.make_move(mv, &self.attack_tables);
+            let move_result = game_clone.make_move(*mv, &self.attack_tables);
 
             if move_result.is_err() {
                 continue;
@@ -189,28 +191,25 @@ impl Engine {
 
             let evaluation = -self.negamax_best_move_search(
                 &game_clone,
-                -max_evaluation,
-                -min_evaluation,
+                -evaluation_limits,
                 nodes,
                 ply + 1,
                 depth - 1,
             );
 
-            if evaluation >= max_evaluation {
-                if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {
-                    self.killer_moves.push(mv, ply);
-                }
+            if evaluation >= evaluation_limits.max {
+                self.killer_moves.push(*mv, ply);
 
-                return max_evaluation;
+                return evaluation_limits.max;
             }
 
-            if evaluation > min_evaluation {
-                if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {
-                    self.historic_move_score
-                        .push(mv, game.side_to_move(), depth);
-                }
+            if evaluation > evaluation_limits.min {
+                self.principal_variation.write_move(*mv, ply);
 
-                min_evaluation = evaluation;
+                self.historic_move_score
+                    .push(*mv, game.side_to_move(), depth);
+
+                evaluation_limits.min = evaluation;
             }
         }
 
@@ -219,27 +218,26 @@ impl Engine {
         } else if no_legal_moves {
             Evaluation(STALEMATE_VALUE)
         } else {
-            min_evaluation
+            evaluation_limits.min
         }
     }
 
     fn quiescence_search(
         &self,
         game: &Game,
-        mut min_evaluation: Evaluation,
-        max_evaluation: Evaluation,
+        mut evaluation_limits: EvaluationLimits,
         nodes: &mut u64,
     ) -> Evaluation {
         *nodes += 1;
 
         let evaluation = Self::evaluate(game).sided_value(game.side_to_move());
 
-        if evaluation >= max_evaluation {
-            return max_evaluation;
+        if evaluation >= evaluation_limits.max {
+            return evaluation_limits.max;
         }
 
-        if evaluation > min_evaluation {
-            min_evaluation = evaluation;
+        if evaluation > evaluation_limits.min {
+            evaluation_limits.min = evaluation;
         }
 
         let move_list = MoveList::generate_sorted_moves(game, self, 0);
@@ -250,25 +248,24 @@ impl Engine {
             }
 
             let mut game_clone = game.clone();
-            let move_result = game_clone.make_move(mv, &self.attack_tables);
+            let move_result = game_clone.make_move(*mv, &self.attack_tables);
 
             if move_result.is_err() {
                 continue;
             }
 
-            let evaluation =
-                -self.quiescence_search(&game_clone, -max_evaluation, -min_evaluation, nodes);
+            let evaluation = -self.quiescence_search(&game_clone, -evaluation_limits, nodes);
 
-            if evaluation >= max_evaluation {
-                return max_evaluation;
+            if evaluation >= evaluation_limits.max {
+                return evaluation_limits.max;
             }
 
-            if evaluation > min_evaluation {
-                min_evaluation = evaluation;
+            if evaluation > evaluation_limits.min {
+                evaluation_limits.min = evaluation;
             }
         }
 
-        min_evaluation
+        evaluation_limits.min
     }
 
     fn evaluate(game: &Game) -> Evaluation {
@@ -296,6 +293,77 @@ impl Engine {
     }
 }
 
+pub struct PrincipalVariation {
+    table: [[Option<Move>; engine::MAX_PLY]; engine::MAX_PLY],
+    length: [Value; engine::MAX_PLY],
+}
+
+impl PrincipalVariation {
+    pub fn initialise() -> Self {
+        Self {
+            table: [[None; engine::MAX_PLY]; engine::MAX_PLY],
+            length: [0; engine::MAX_PLY],
+        }
+    }
+
+    pub fn clear(&mut self) {
+        *self = PrincipalVariation::initialise()
+    }
+
+    fn write_move(&mut self, mv: Move, ply: Value) {
+        let ply = ply as usize;
+
+        self.table[ply][ply] = Some(mv);
+
+        for next_ply in (ply + 1)..self.length[ply + 1] as usize {
+            self.table[ply][next_ply] = self.table[ply + 1][next_ply];
+        }
+
+        self.length[ply] = self.length[ply + 1];
+    }
+
+    fn as_string(&self) -> String {
+        let mut move_list_string = String::new();
+
+        for mv in self.table[0].iter().flatten() {
+            let move_string = mv.as_string() + " ";
+
+            move_list_string += &move_string;
+        }
+
+        move_list_string
+    }
+}
+
+#[derive(Clone, Copy)]
+struct EvaluationLimits {
+    min: Evaluation, // alpha
+    max: Evaluation, // beta
+}
+
+impl EvaluationLimits {
+    fn initialise() -> Self {
+        Self {
+            min: -Evaluation(MAX_EVALUATION_VALUE),
+            max: Evaluation(MAX_EVALUATION_VALUE),
+        }
+    }
+}
+
+impl Neg for EvaluationLimits {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        let new_min = -self.max;
+        let new_max = -self.min;
+
+        Self {
+            min: new_min,
+            max: new_max,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 struct Evaluation(Value);
 
@@ -304,7 +372,7 @@ impl Evaluation {
         self.0 += value * side.to_value()
     }
 
-    fn sided_value(&self, side: Side) -> Evaluation {
+    fn sided_value(self, side: Side) -> Evaluation {
         Self(self.0 * side.to_value())
     }
 }

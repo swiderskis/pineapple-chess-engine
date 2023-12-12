@@ -4,6 +4,7 @@ use super::{
     moves::{Move, MoveList, MoveType},
     Engine,
 };
+use crate::engine;
 use std::cmp::Reverse;
 
 type Score = u16;
@@ -12,7 +13,6 @@ const PIECE_TYPES: usize = 6;
 const SIDE_COUNT: usize = 2;
 
 const KILLER_MOVE_ARRAY_SIZE: usize = 2;
-const MAX_PLY: usize = 64;
 
 // MVV = most valuable victim
 // LVA = least valuable attacker
@@ -27,23 +27,29 @@ const MVV_LVA_SCORE: [[Score; PIECE_TYPES]; PIECE_TYPES] = [
 ];
 const KILLER_MOVE_SCORE: [Score; KILLER_MOVE_ARRAY_SIZE] = [9000, 8000];
 
-pub struct KillerMoves([[Option<Move>; KILLER_MOVE_ARRAY_SIZE]; MAX_PLY]);
+pub struct KillerMoves([[Option<Move>; KILLER_MOVE_ARRAY_SIZE]; engine::MAX_PLY]);
 
 impl KillerMoves {
     pub fn initialise() -> Self {
-        let empty_killer_moves_array = [(); KILLER_MOVE_ARRAY_SIZE].map(|_| None);
-
-        Self([(); MAX_PLY].map(|_| empty_killer_moves_array.clone()))
+        Self([[None; KILLER_MOVE_ARRAY_SIZE]; engine::MAX_PLY])
     }
 
-    pub fn push(&mut self, mv: &Move, ply: Value) {
-        self.0[ply as usize][1] = self.0[ply as usize][0].clone();
-        self.0[ply as usize][0] = Some(mv.clone());
+    pub fn push(&mut self, mv: Move, ply: Value) {
+        if mv.move_type() == MoveType::Capture || mv.move_type() == MoveType::EnPassant {
+            return;
+        }
+
+        self.0[ply as usize][1] = self.0[ply as usize][0];
+        self.0[ply as usize][0] = Some(mv);
     }
 
-    fn score_move(&self, mv: &Move, ply: Value) -> Option<Score> {
+    pub fn clear(&mut self) {
+        *self = KillerMoves::initialise()
+    }
+
+    fn score_move(&self, mv: Move, ply: Value) -> Option<Score> {
         for (index, killer_move) in self.0[ply as usize].iter().flatten().enumerate() {
-            if killer_move == mv {
+            if *killer_move == mv {
                 return Some(KILLER_MOVE_SCORE[index]);
             }
         }
@@ -59,14 +65,22 @@ impl HistoricMoveScore {
         Self([[[0; 64]; PIECE_TYPES]; SIDE_COUNT])
     }
 
-    pub fn push(&mut self, mv: &Move, side: Side, depth: u8) {
+    pub fn push(&mut self, mv: Move, side: Side, depth: u8) {
+        if mv.move_type() == MoveType::Capture || mv.move_type() == MoveType::EnPassant {
+            return;
+        }
+
         let piece = mv.piece();
         let target_square = mv.target_square();
 
         self.0[side as usize][piece as usize][target_square as usize] += depth as Score;
     }
 
-    fn score_move(&self, mv: &Move, side: Side) -> Score {
+    pub fn clear(&mut self) {
+        *self = HistoricMoveScore::initialise()
+    }
+
+    fn score_move(&self, mv: Move, side: Side) -> Score {
         let piece = mv.piece();
         let target_square = mv.target_square();
 
@@ -87,7 +101,7 @@ impl MoveList {
 }
 
 impl Move {
-    fn score(&self, game: &Game, engine: &Engine, ply: Value) -> Score {
+    fn score(self, game: &Game, engine: &Engine, ply: Value) -> Score {
         match self.move_type() {
             MoveType::Capture => match game.piece_at_square(self.target_square()) {
                 Some((victim, _)) => {

@@ -6,17 +6,21 @@ mod moves;
 
 use self::{
     attack_tables::AttackTables,
+    evaluation::PrincipalVariation,
     game::Game,
     move_scoring::{HistoricMoveScore, KillerMoves},
     moves::MoveList,
 };
 use crate::uci::InputError;
 
+pub const MAX_PLY: usize = 64;
+
 pub struct Engine {
     game: Game,
     attack_tables: AttackTables,
     killer_moves: KillerMoves,
     historic_move_score: HistoricMoveScore,
+    principal_variation: PrincipalVariation,
 }
 
 impl Engine {
@@ -26,25 +30,30 @@ impl Engine {
             attack_tables: AttackTables::initialise(),
             killer_moves: KillerMoves::initialise(),
             historic_move_score: HistoricMoveScore::initialise(),
+            principal_variation: PrincipalVariation::initialise(),
         }
     }
 
     pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
         self.game.load_fen(fen)?;
-        self.killer_moves = KillerMoves::initialise();
-        self.historic_move_score = HistoricMoveScore::initialise();
+        self.clear_parameters();
 
         Ok(())
     }
 
     pub fn make_move(&mut self, move_string: &str) -> Result<(), InputError> {
         let move_list = MoveList::generate_moves(&self.game, &self.attack_tables);
-
         let mv = move_list.find_move_from_string(move_string)?;
 
-        self.game.make_move(&mv, &self.attack_tables)?;
+        self.game.make_move(mv, &self.attack_tables)?;
 
         Ok(())
+    }
+
+    fn clear_parameters(&mut self) {
+        self.killer_moves.clear();
+        self.historic_move_score.clear();
+        self.principal_variation.clear();
     }
 }
 

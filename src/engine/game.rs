@@ -179,7 +179,7 @@ impl Game {
         Ok(())
     }
 
-    pub fn make_move(&mut self, mv: &Move, attack_tables: &AttackTables) -> Result<(), InputError> {
+    pub fn make_move(&mut self, mv: Move, attack_tables: &AttackTables) -> Result<(), InputError> {
         let mut game_clone = self.clone();
 
         let side = game_clone.side_to_move;
@@ -430,7 +430,7 @@ impl Game {
         }
     }
 
-    fn update_castling_rights(game: &mut Game, mv: &Move) {
+    fn update_castling_rights(game: &mut Game, mv: Move) {
         let side = game.side_to_move;
 
         match side {
@@ -556,7 +556,7 @@ impl Bitboard {
         bitboard
     }
 
-    pub fn bit_occupied(&self, square: Square) -> bool {
+    pub fn bit_occupied(self, square: Square) -> bool {
         self.0 & (1 << square as usize) != 0
     }
 
@@ -878,7 +878,7 @@ fn _perft_test(game: &mut Game, attack_tables: &AttackTables, depth: u8) {
 
     for mv in move_list.vec() {
         let mut game_clone = game.clone();
-        let move_result = game_clone.make_move(mv, attack_tables);
+        let move_result = game_clone.make_move(*mv, attack_tables);
 
         if move_result.is_err() {
             continue;
@@ -912,7 +912,7 @@ fn _perft(game: &mut Game, attack_tables: &AttackTables, nodes: &mut u64, depth:
 
     for mv in move_list.vec() {
         let mut game_clone = game.clone();
-        let move_result = game_clone.make_move(mv, attack_tables);
+        let move_result = game_clone.make_move(*mv, attack_tables);
 
         if move_result.is_err() {
             continue;
@@ -1457,7 +1457,7 @@ mod tests {
         let move_search = MoveSearch::new(Square::E2, Square::E4, None);
         let mv = move_list.find_move(move_search).unwrap();
 
-        game.make_move(&mv, &attack_tables).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
 
         desired_white_pawns_bitboard.pop_bit(Square::E2);
         desired_white_pawns_bitboard.set_bit(Square::E4);
@@ -1490,7 +1490,7 @@ mod tests {
         let move_search = MoveSearch::new(Square::E7, Square::E5, None);
         let mv = move_list.find_move(move_search).unwrap();
 
-        game.make_move(&mv, &attack_tables).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
 
         desired_black_pawns_bitboard.pop_bit(Square::E7);
         desired_black_pawns_bitboard.set_bit(Square::E5);
@@ -1523,7 +1523,7 @@ mod tests {
         let move_search = MoveSearch::new(Square::G1, Square::F3, None);
         let mv = move_list.find_move(move_search).unwrap();
 
-        game.make_move(&mv, &attack_tables).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
 
         desired_white_knights_bitboard.pop_bit(Square::G1);
         desired_white_knights_bitboard.set_bit(Square::F3);
@@ -1657,7 +1657,7 @@ mod tests {
         let move_search = MoveSearch::new(Square::D5, Square::E6, None);
         let mv = move_list.find_move(move_search).unwrap();
 
-        game.make_move(&mv, &attack_tables).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
 
         desired_white_pawns_bitboard.pop_bit(Square::D5);
         desired_white_pawns_bitboard.set_bit(Square::E6);
@@ -1691,7 +1691,7 @@ mod tests {
         let move_search = MoveSearch::new(Square::A6, Square::E2, None);
         let mv = move_list.find_move(move_search).unwrap();
 
-        game.make_move(&mv, &attack_tables).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
 
         desired_black_bishops_bitboard.pop_bit(Square::A6);
         desired_black_bishops_bitboard.set_bit(Square::E2);
@@ -1725,7 +1725,7 @@ mod tests {
         let move_search = MoveSearch::new(Square::C3, Square::E2, None);
         let mv = move_list.find_move(move_search).unwrap();
 
-        game.make_move(&mv, &attack_tables).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
 
         desired_white_knights_bitboard.pop_bit(Square::C3);
         desired_white_knights_bitboard.set_bit(Square::E2);
