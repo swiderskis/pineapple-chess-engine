@@ -79,18 +79,21 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
 
     let moves_starting_index = match arguments[0] {
         "fen" => {
+            if arguments.get(FEN_MOVES_STARTING_INDEX - 1).is_none() {
+                return Err(InputError::InvalidPositionArguments);
+            }
+
             let fen: Vec<&str> = arguments
                 .clone()
                 .drain(1..FEN_MOVES_STARTING_INDEX)
                 .collect();
-            let fen = fen.join(" ");
 
-            engine.load_fen(fen.as_str())?;
+            engine.load_fen(&fen)?;
 
             FEN_MOVES_STARTING_INDEX
         }
         "startpos" => {
-            engine.load_fen(arguments[0])?;
+            engine.load_fen(&arguments)?;
 
             STARTPOS_MOVES_STARTING_INDEX
         }

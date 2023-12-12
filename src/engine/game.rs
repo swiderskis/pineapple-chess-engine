@@ -58,7 +58,30 @@ impl Game {
         }
     }
 
-    pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
+    pub fn load_fen(&mut self, fen: &[&str]) -> Result<(), InputError> {
+        if fen[0] == "startpos" {
+            self.white_pawns = Bitboard(0xFF_0000_0000_0000);
+            self.white_knights = Bitboard(0x4200_0000_0000_0000);
+            self.white_bishops = Bitboard(0x2400_0000_0000_0000);
+            self.white_rooks = Bitboard(0x8100_0000_0000_0000);
+            self.white_queens = Bitboard(0x800_0000_0000_0000);
+            self.white_king = Bitboard(0x1000_0000_0000_0000);
+
+            self.black_pawns = Bitboard(0xFF00);
+            self.black_knights = Bitboard(0x42);
+            self.black_bishops = Bitboard(0x24);
+            self.black_rooks = Bitboard(0x81);
+            self.black_queens = Bitboard(0x8);
+            self.black_king = Bitboard(0x10);
+
+            self.side_to_move = Side::White;
+            self.castling_rights = CastlingRights::initialise("KQkq")?;
+            self.en_passant_square = None;
+            self.halfmove_clock = 0;
+
+            return Ok(());
+        }
+
         let mut white_pawns = Bitboard(0);
         let mut white_knights = Bitboard(0);
         let mut white_bishops = Bitboard(0);
@@ -72,14 +95,6 @@ impl Game {
         let mut black_rooks = Bitboard(0);
         let mut black_queens = Bitboard(0);
         let mut black_king = Bitboard(0);
-
-        let fen = if fen == "startpos" {
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-        } else {
-            fen
-        };
-
-        let fen: Vec<&str> = fen.split_whitespace().collect();
 
         let mut square_index = 0;
 
@@ -931,7 +946,9 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("startpos").unwrap();
+        let fen = vec!["startpos"];
+
+        game.load_fen(&fen).unwrap();
 
         let mut nodes = 0;
 
@@ -945,8 +962,16 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-            .unwrap();
+        let fen = vec![
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        ];
+
+        game.load_fen(&fen).unwrap();
 
         let mut nodes = 0;
 
@@ -959,7 +984,9 @@ mod tests {
     fn load_start_position() {
         let mut game = Game::initialise();
 
-        game.load_fen("startpos").unwrap();
+        let fen = vec!["startpos"];
+
+        game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
 
@@ -1058,8 +1085,16 @@ mod tests {
     fn load_tricky_position() {
         let mut game = Game::initialise();
 
-        game.load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-            .unwrap();
+        let fen = vec![
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        ];
+
+        game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
 
@@ -1158,8 +1193,16 @@ mod tests {
     fn load_killer_position() {
         let mut game = Game::initialise();
 
-        game.load_fen("rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1")
-            .unwrap();
+        let fen = vec![
+            "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR",
+            "w",
+            "KQkq",
+            "e6",
+            "0",
+            "1",
+        ];
+
+        game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
 
@@ -1258,8 +1301,16 @@ mod tests {
     fn load_cmk_position() {
         let mut game = Game::initialise();
 
-        game.load_fen("r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9")
-            .unwrap();
+        let fen = vec![
+            "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1",
+            "b",
+            "-",
+            "-",
+            "0",
+            "9",
+        ];
+
+        game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
 
@@ -1359,7 +1410,9 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("startpos").unwrap();
+        let fen = vec!["startpos"];
+
+        game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
 
@@ -1558,8 +1611,16 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-            .unwrap();
+        let fen = vec![
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        ];
+
+        game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
 

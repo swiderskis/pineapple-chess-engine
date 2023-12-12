@@ -446,8 +446,11 @@ mod tests {
 
         let attack_tables = AttackTables::initialise();
 
-        white_game.load_fen("8/8/8/8/8/3P4/8/8 w - - 0 1").unwrap();
-        black_game.load_fen("8/8/3p4/8/8/8/8/8 b - - 0 1").unwrap();
+        let white_fen = vec!["8/8/8/8/8/3P4/8/8", "w", "-", "-", "0", "1"];
+        let black_fen = vec!["8/8/3p4/8/8/8/8/8", "b", "-", "-", "0", "1"];
+
+        white_game.load_fen(&white_fen).unwrap();
+        black_game.load_fen(&black_fen).unwrap();
 
         let white_square = Square::D3;
         let black_square = Square::D6;
@@ -470,12 +473,11 @@ mod tests {
         assert!(black_moves_correct);
 
         // blocked from pushing
-        white_game
-            .load_fen("8/8/8/8/3p4/3P4/8/8 w - - 0 1")
-            .unwrap();
-        black_game
-            .load_fen("8/8/3p4/3P4/8/8/8/8 b - - 0 1")
-            .unwrap();
+        let white_fen = vec!["8/8/8/8/3p4/3P4/8/8", "w", "-", "-", "0", "1"];
+        let black_fen = vec!["8/8/3p4/3P4/8/8/8/8", "b", "-", "-", "0", "1"];
+
+        white_game.load_fen(&white_fen).unwrap();
+        black_game.load_fen(&black_fen).unwrap();
 
         let white_square = Square::D3;
         let black_square = Square::D6;
@@ -500,8 +502,11 @@ mod tests {
 
         let attack_tables = AttackTables::initialise();
 
-        white_game.load_fen("8/8/8/8/8/8/3P4/8 w - - 0 1").unwrap();
-        black_game.load_fen("8/3p4/8/8/8/8/8/8 b - - 0 1").unwrap();
+        let white_fen = vec!["8/8/8/8/8/8/3P4/8", "w", "-", "-", "0", "1"];
+        let black_fen = vec!["8/3p4/8/8/8/8/8/8", "b", "-", "-", "0", "1"];
+
+        white_game.load_fen(&white_fen).unwrap();
+        black_game.load_fen(&black_fen).unwrap();
 
         let white_square = Square::D2;
         let black_square = Square::D7;
@@ -543,12 +548,11 @@ mod tests {
         assert!(black_moves_correct);
 
         // blocked from double push
-        white_game
-            .load_fen("8/8/8/8/3p4/8/3P4/8 w - - 0 1")
-            .unwrap();
-        black_game
-            .load_fen("8/3p4/8/3P4/8/8/8/8 b - - 0 1")
-            .unwrap();
+        let white_fen = vec!["8/8/8/8/3p4/8/3P4/8", "w", "-", "-", "0", "1"];
+        let black_fen = vec!["8/3p4/8/3P4/8/8/8/8", "b", "-", "-", "0", "1"];
+
+        white_game.load_fen(&white_fen).unwrap();
+        black_game.load_fen(&black_fen).unwrap();
 
         let mut white_move_list = MoveList::new();
         let mut black_move_list = MoveList::new();
@@ -570,12 +574,11 @@ mod tests {
         assert!(black_moves_correct);
 
         // blocked from single push
-        white_game
-            .load_fen("8/8/8/8/8/3p4/3P4/8 w - - 0 1")
-            .unwrap();
-        black_game
-            .load_fen("8/3p4/3P4/8/8/8/8/8 b - - 0 1")
-            .unwrap();
+        let white_fen = vec!["8/8/8/8/8/3p4/3P4/8", "w", "-", "-", "0", "1"];
+        let black_fen = vec!["8/3p4/3P4/8/8/8/8/8", "b", "-", "-", "0", "1"];
+
+        white_game.load_fen(&white_fen).unwrap();
+        black_game.load_fen(&black_fen).unwrap();
 
         let mut white_move_list = MoveList::new();
         let mut black_move_list = MoveList::new();
@@ -597,12 +600,11 @@ mod tests {
 
         let attack_tables = AttackTables::initialise();
 
-        white_game
-            .load_fen("8/8/8/2P1p3/3P4/8/8/8 w - - 0 1")
-            .unwrap();
-        black_game
-            .load_fen("8/8/8/3p4/2p1P3/8/8/8 b - - 0 1")
-            .unwrap();
+        let white_fen = vec!["8/8/8/2P1p3/3P4/8/8/8", "w", "-", "-", "0", "1"];
+        let black_fen = vec!["8/8/8/3p4/2p1P3/8/8/8", "b", "-", "-", "0", "1"];
+
+        white_game.load_fen(&white_fen).unwrap();
+        black_game.load_fen(&black_fen).unwrap();
 
         let white_square = Square::D4;
         let black_square = Square::D5;
@@ -627,8 +629,11 @@ mod tests {
 
         let attack_tables = AttackTables::initialise();
 
-        white_game.load_fen("8/3P4/8/8/8/8/8/8 w - - 0 1").unwrap();
-        black_game.load_fen("8/8/8/8/8/8/3p4/8 b - - 0 1").unwrap();
+        let white_fen = vec!["8/3P4/8/8/8/8/8/8", "w", "-", "-", "0", "1"];
+        let black_fen = vec!["8/8/8/8/8/8/3p4/8", "b", "-", "-", "0", "1"];
+
+        white_game.load_fen(&white_fen).unwrap();
+        black_game.load_fen(&black_fen).unwrap();
 
         let white_square = Square::D7;
         let black_square = Square::D2;
@@ -719,12 +724,11 @@ mod tests {
 
         let attack_tables = AttackTables::initialise();
 
-        white_game
-            .load_fen("8/8/8/3Pp3/8/8/8/8 w - e6 0 1")
-            .unwrap();
-        black_game
-            .load_fen("8/8/8/8/3pP3/8/8/8 b - e3 0 1")
-            .unwrap();
+        let white_fen = vec!["8/8/8/3Pp3/8/8/8/8", "w", "-", "e6", "0", "1"];
+        let black_fen = vec!["8/8/8/8/3pP3/8/8/8", "b", "-", "e3", "0", "1"];
+
+        white_game.load_fen(&white_fen).unwrap();
+        black_game.load_fen(&black_fen).unwrap();
 
         let white_square = Square::D5;
         let black_square = Square::D4;
@@ -762,8 +766,9 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("8/8/2p5/5P2/3N4/1p6/2p1P3/8 w - - 0 1")
-            .unwrap();
+        let fen = vec!["8/8/2p5/5P2/3N4/1p6/2p1P3/8", "w", "-", "-", "0", "1"];
+
+        game.load_fen(&fen).unwrap();
 
         let mut move_list = MoveList::new();
 
@@ -813,7 +818,9 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("8/6p1/8/8/3B4/8/5P2/8 w - - 0 1").unwrap();
+        let fen = vec!["8/6p1/8/8/3B4/8/5P2/8", "w", "-", "-", "0", "1"];
+
+        game.load_fen(&fen).unwrap();
 
         let source_square = Square::D4;
 
@@ -870,7 +877,9 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("3p4/8/8/8/3R1P2/8/8/8 w - - 0 1").unwrap();
+        let fen = vec!["3p4/8/8/8/3R1P2/8/8/8", "w", "-", "-", "0", "1"];
+
+        game.load_fen(&fen).unwrap();
 
         let source_square = Square::D4;
 
@@ -915,8 +924,9 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("3p4/6p1/8/8/3Q1P2/8/5P2/8 w - - 0 1")
-            .unwrap();
+        let fen = vec!["3p4/6p1/8/8/3Q1P2/8/5P2/8", "w", "-", "-", "0", "1"];
+
+        game.load_fen(&fen).unwrap();
 
         let source_square = Square::D4;
 
@@ -1015,7 +1025,9 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("8/8/8/2pP4/2PK4/2p5/8/8 w - - 0 1").unwrap();
+        let fen = vec!["8/8/8/2pP4/2PK4/2p5/8/8", "w", "-", "-", "0", "1"];
+
+        game.load_fen(&fen).unwrap();
 
         let source_square = Square::D4;
 
@@ -1048,7 +1060,9 @@ mod tests {
         let mut game = Game::initialise();
         let attack_tables = AttackTables::initialise();
 
-        game.load_fen("8/8/8/8/8/8/8/R3K2R w KQ - 0 1").unwrap();
+        let fen = vec!["8/8/8/8/8/8/8/R3K2R", "w", "KQ", "-", "0", "1"];
+
+        game.load_fen(&fen).unwrap();
 
         let mut move_list = MoveList::new();
 
@@ -1075,7 +1089,9 @@ mod tests {
 
         assert!(castling_moves_correct);
 
-        game.load_fen("8/8/8/8/8/5r2/8/R3K2R w KQ - 0 1").unwrap();
+        let fen = vec!["8/8/8/8/8/5r2/8/R3K2R", "w", "KQ", "-", "0", "1"];
+
+        game.load_fen(&fen).unwrap();
 
         let mut move_list = MoveList::new();
 
@@ -1094,7 +1110,9 @@ mod tests {
 
         assert!(castling_moves_correct);
 
-        game.load_fen("8/8/8/8/8/5q2/8/R3K2R w KQ - 0 1").unwrap();
+        let fen = vec!["8/8/8/8/8/5q2/8/R3K2R", "w", "KQ", "-", "0", "1"];
+
+        game.load_fen(&fen).unwrap();
 
         let mut move_list = MoveList::new();
 
@@ -1102,7 +1120,9 @@ mod tests {
 
         assert!(move_list.0.is_empty());
 
-        game.load_fen("8/8/8/8/8/8/8/R3K2R w - - 0 1").unwrap();
+        let fen = vec!["8/8/8/8/8/8/8/R3K2R", "w", "-", "-", "0", "1"];
+
+        game.load_fen(&fen).unwrap();
 
         let mut move_list = MoveList::new();
 

@@ -34,7 +34,7 @@ impl Engine {
         }
     }
 
-    pub fn load_fen(&mut self, fen: &str) -> Result<(), InputError> {
+    pub fn load_fen(&mut self, fen: &[&str]) -> Result<(), InputError> {
         self.game.load_fen(fen)?;
 
         Ok(())
@@ -58,7 +58,9 @@ mod tests {
     fn load_start_position() {
         let mut engine = Engine::initialise();
 
-        engine.load_fen("startpos").unwrap();
+        let fen = vec!["startpos"];
+
+        engine.load_fen(&fen).unwrap();
 
         let move_list = MoveList::generate_moves(&engine.game, &engine.attack_tables);
 
@@ -69,9 +71,16 @@ mod tests {
     fn load_tricky_position() {
         let mut engine = Engine::initialise();
 
-        engine
-            .load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-            .unwrap();
+        let fen = vec![
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        ];
+
+        engine.load_fen(&fen).unwrap();
 
         let move_list = MoveList::generate_moves(&engine.game, &engine.attack_tables);
 
@@ -82,7 +91,9 @@ mod tests {
     fn start_position_moves() {
         let mut engine = Engine::initialise();
 
-        engine.load_fen("startpos").unwrap();
+        let fen = vec!["startpos"];
+
+        engine.load_fen(&fen).unwrap();
 
         engine.make_move("e2e4").unwrap();
 
@@ -95,9 +106,16 @@ mod tests {
     fn killer_position_moves() {
         let mut engine = Engine::initialise();
 
-        engine
-            .load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-            .unwrap();
+        let fen = vec![
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        ];
+
+        engine.load_fen(&fen).unwrap();
 
         engine.make_move("d5e6").unwrap();
 

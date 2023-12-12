@@ -402,7 +402,9 @@ mod tests {
     fn one_move_checkmate_white() {
         let mut engine = Engine::initialise();
 
-        engine.load_fen("4k3/8/5K2/8/1Q6/8/8/8 w - - 2 1").unwrap();
+        let fen = vec!["4k3/8/5K2/8/1Q6/8/8/8", "w", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(5).unwrap();
 
@@ -410,7 +412,9 @@ mod tests {
 
         let mut engine = Engine::initialise();
 
-        engine.load_fen("4k3/8/5K2/8/1Q6/8/8/8 w - - 2 1").unwrap();
+        let fen = vec!["4k3/8/5K2/8/1Q6/8/8/8", "w", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(6).unwrap();
 
@@ -421,7 +425,9 @@ mod tests {
     fn one_move_checkmate_black() {
         let mut engine = Engine::initialise();
 
-        engine.load_fen("8/8/8/6Q1/8/2K5/8/3k4 w - - 2 1").unwrap();
+        let fen = vec!["8/8/8/6Q1/8/2K5/8/3k4", "w", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(5).unwrap();
 
@@ -429,7 +435,9 @@ mod tests {
 
         let mut engine = Engine::initialise();
 
-        engine.load_fen("8/8/8/6Q1/8/2K5/8/3k4 w - - 2 1").unwrap();
+        let fen = vec!["8/8/8/6Q1/8/2K5/8/3k4", "w", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(6).unwrap();
 
@@ -440,9 +448,9 @@ mod tests {
     fn stalemate_white() {
         let mut engine = Engine::initialise();
 
-        engine
-            .load_fen("Q6K/4b3/6q1/8/8/6pp/6pk/8 w - - 0 1")
-            .unwrap();
+        let fen = vec!["Q6K/4b3/6q1/8/8/6pp/6pk/8", "w", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(5).unwrap();
 
@@ -450,9 +458,9 @@ mod tests {
 
         let mut engine = Engine::initialise();
 
-        engine
-            .load_fen("Q6K/4b3/6q1/8/8/6pp/6pk/8 w - - 0 1")
-            .unwrap();
+        let fen = vec!["Q6K/4b3/6q1/8/8/6pp/6pk/8", "w", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(6).unwrap();
 
@@ -463,9 +471,9 @@ mod tests {
     fn stalemate_black() {
         let mut engine = Engine::initialise();
 
-        engine
-            .load_fen("8/KP6/PP6/8/8/1Q6/3B4/k6q b - - 0 1")
-            .unwrap();
+        let fen = vec!["8/KP6/PP6/8/8/1Q6/3B4/k6q", "b", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(5).unwrap();
 
@@ -473,9 +481,9 @@ mod tests {
 
         let mut engine = Engine::initialise();
 
-        engine
-            .load_fen("8/KP6/PP6/8/8/1Q6/3B4/k6q b - - 0 1")
-            .unwrap();
+        let fen = vec!["8/KP6/PP6/8/8/1Q6/3B4/k6q", "b", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(6).unwrap();
 
@@ -486,7 +494,9 @@ mod tests {
     fn zugzwang_white() {
         let mut engine = Engine::initialise();
 
-        engine.load_fen("6k1/5R2/6K1/8/8/8/8/8 w - - 0 1").unwrap();
+        let fen = vec!["6k1/5R2/6K1/8/8/8/8/8", "w", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(5).unwrap();
         let possible_best_moves = ["f7f6", "f7f5", "f7f4,", "f7f3,", "f7f2", "f7f1"];
@@ -495,7 +505,9 @@ mod tests {
 
         let mut engine = Engine::initialise();
 
-        engine.load_fen("6k1/5R2/6K1/8/8/8/8/8 w - - 0 1").unwrap();
+        let fen = vec!["6k1/5R2/6K1/8/8/8/8/8", "w", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(6).unwrap();
         let possible_best_moves = ["f7f6", "f7f5", "f7f4,", "f7f3,", "f7f2", "f7f1"];
@@ -507,7 +519,9 @@ mod tests {
     fn zugzwang_black() {
         let mut engine = Engine::initialise();
 
-        engine.load_fen("8/8/8/8/8/1k6/2r5/1K6 b - - 0 1").unwrap();
+        let fen = vec!["8/8/8/8/8/1k6/2r5/1K6", "b", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(5).unwrap();
         let possible_best_moves = ["c2c3", "c2c4", "c2c5", "c2c6", "c2c7", "c2c8"];
@@ -516,7 +530,9 @@ mod tests {
 
         let mut engine = Engine::initialise();
 
-        engine.load_fen("8/8/8/8/8/1k6/2r5/1K6 b - - 0 1").unwrap();
+        let fen = vec!["8/8/8/8/8/1k6/2r5/1K6", "b", "-", "-", "0", "1"];
+
+        engine.load_fen(&fen).unwrap();
 
         let best_move = engine.find_best_move(6).unwrap();
         let possible_best_moves = ["c2c3", "c2c4", "c2c5", "c2c6", "c2c7", "c2c8"];
