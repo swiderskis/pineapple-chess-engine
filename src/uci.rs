@@ -62,9 +62,6 @@ fn uci() {
 fn ucinewgame(engine: &mut Engine, _arguments: Vec<&str>) -> Result<(), InputError> {
     engine.reset();
 
-    let fen = vec!["startpos"];
-    engine.load_fen(&fen)?;
-
     Ok(())
 }
 

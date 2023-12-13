@@ -50,6 +50,7 @@ impl Engine {
     }
 
     pub fn reset(&mut self) {
+        self.game = Game::initialise();
         self.killer_moves = KillerMoves::initialise();
         self.historic_move_score = HistoricMoveScore::initialise();
         self.principal_variation = PrincipalVariation::initialise();
