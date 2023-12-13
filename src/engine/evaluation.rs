@@ -74,10 +74,10 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
 
 impl Engine {
     pub fn find_best_move(&mut self, mut depth: u8) -> Result<Move, InputError> {
+        self.clear_parameters();
+
         let mut evaluation_limits = EvaluationLimits::initialise();
         let ply = 0;
-
-        let mut total_nodes = 0;
 
         let king_square = self
             .game
@@ -107,15 +107,8 @@ impl Engine {
                 continue;
             }
 
-            let mut nodes = 0;
-
-            let evaluation = -self.negamax_best_move_search(
-                &game_clone,
-                -evaluation_limits,
-                &mut nodes,
-                ply + 1,
-                depth - 1,
-            );
+            let evaluation =
+                -self.negamax_best_move_search(&game_clone, -evaluation_limits, ply + 1, depth - 1);
 
             if evaluation > evaluation_limits.min {
                 self.principal_variation.write_move(*mv, ply);
@@ -124,8 +117,6 @@ impl Engine {
 
                 evaluation_limits.min = evaluation;
             }
-
-            total_nodes += nodes;
         }
 
         match self.principal_variation.table[0][0] {
@@ -134,7 +125,7 @@ impl Engine {
                     "info score cp {} depth {} nodes {} pv {}",
                     evaluation_limits.min.0,
                     depth,
-                    total_nodes,
+                    self.nodes,
                     self.principal_variation.as_string()
                 );
 
@@ -148,17 +139,20 @@ impl Engine {
         &mut self,
         game: &Game,
         mut evaluation_limits: EvaluationLimits,
-        nodes: &mut u64,
         ply: Value,
         mut depth: u8,
     ) -> Evaluation {
         self.principal_variation.length[ply as usize] = ply;
 
         if depth == 0 {
-            return self.quiescence_search(game, evaluation_limits, nodes);
+            return self.quiescence_search(game, evaluation_limits);
         }
 
-        *nodes += 1;
+        if ply as usize >= engine::MAX_PLY {
+            return Self::evaluate(game).sided_value(game.side_to_move());
+        }
+
+        self.nodes += 1;
 
         let king_square = game
             .piece_bitboard(Piece::King, game.side_to_move())
@@ -189,13 +183,8 @@ impl Engine {
 
             no_legal_moves = false;
 
-            let evaluation = -self.negamax_best_move_search(
-                &game_clone,
-                -evaluation_limits,
-                nodes,
-                ply + 1,
-                depth - 1,
-            );
+            let evaluation =
+                -self.negamax_best_move_search(&game_clone, -evaluation_limits, ply + 1, depth - 1);
 
             if evaluation >= evaluation_limits.max {
                 self.killer_moves.push(*mv, ply);
@@ -205,7 +194,6 @@ impl Engine {
 
             if evaluation > evaluation_limits.min {
                 self.principal_variation.write_move(*mv, ply);
-
                 self.historic_move_score
                     .push(*mv, game.side_to_move(), depth);
 
@@ -223,12 +211,11 @@ impl Engine {
     }
 
     fn quiescence_search(
-        &self,
+        &mut self,
         game: &Game,
         mut evaluation_limits: EvaluationLimits,
-        nodes: &mut u64,
     ) -> Evaluation {
-        *nodes += 1;
+        self.nodes += 1;
 
         let evaluation = Self::evaluate(game).sided_value(game.side_to_move());
 
@@ -254,7 +241,7 @@ impl Engine {
                 continue;
             }
 
-            let evaluation = -self.quiescence_search(&game_clone, -evaluation_limits, nodes);
+            let evaluation = -self.quiescence_search(&game_clone, -evaluation_limits);
 
             if evaluation >= evaluation_limits.max {
                 return evaluation_limits.max;

@@ -18,9 +18,10 @@ pub const MAX_PLY: usize = 64;
 pub struct Engine {
     game: Game,
     attack_tables: AttackTables,
+    principal_variation: PrincipalVariation,
     killer_moves: KillerMoves,
     historic_move_score: HistoricMoveScore,
-    principal_variation: PrincipalVariation,
+    nodes: u64,
 }
 
 impl Engine {
@@ -28,9 +29,10 @@ impl Engine {
         Self {
             game: Game::initialise(),
             attack_tables: AttackTables::initialise(),
+            principal_variation: PrincipalVariation::initialise(),
             killer_moves: KillerMoves::initialise(),
             historic_move_score: HistoricMoveScore::initialise(),
-            principal_variation: PrincipalVariation::initialise(),
+            nodes: 0,
         }
     }
 
@@ -51,9 +53,14 @@ impl Engine {
 
     pub fn reset(&mut self) {
         self.game = Game::initialise();
+        self.clear_parameters();
+    }
+
+    pub fn clear_parameters(&mut self) {
+        self.principal_variation = PrincipalVariation::initialise();
         self.killer_moves = KillerMoves::initialise();
         self.historic_move_score = HistoricMoveScore::initialise();
-        self.principal_variation = PrincipalVariation::initialise();
+        self.nodes = 0;
     }
 }
 
