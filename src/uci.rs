@@ -17,7 +17,6 @@ impl<'a> Input<'a> {
             Some(command) => command,
             None => "",
         };
-
         let arguments = match input.get(1) {
             Some(_) => input[1..].to_vec(),
             None => Vec::new(),
@@ -44,21 +43,9 @@ pub fn engine() {
         match input.command {
             "uci" => uci(),
             "isready" => println!("readyok"),
-            "ucinewgame" => {
-                if let Err(error) = position(&mut engine, vec!["startpos"]) {
-                    println!("{}", error);
-                }
-            }
-            "position" => {
-                if let Err(error) = position(&mut engine, input.arguments) {
-                    println!("{}", error);
-                }
-            }
-            "go" => {
-                if let Err(error) = go(&mut engine, input.arguments) {
-                    println!("{}", error);
-                }
-            }
+            "ucinewgame" => handle_command(ucinewgame, &mut engine, input.arguments),
+            "position" => handle_command(position, &mut engine, input.arguments),
+            "go" => handle_command(go, &mut engine, input.arguments),
             "quit" => break,
             "" => {}
             _ => println!("Unknown command"),
@@ -70,6 +57,15 @@ fn uci() {
     println!("id name Pineapple");
     println!("id author Sebastian S.");
     println!("uciok");
+}
+
+fn ucinewgame(engine: &mut Engine, _arguments: Vec<&str>) -> Result<(), InputError> {
+    engine.reset();
+
+    let fen = vec!["startpos"];
+    engine.load_fen(&fen)?;
+
+    Ok(())
 }
 
 fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
@@ -87,7 +83,6 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
                 .clone()
                 .drain(1..FEN_MOVES_STARTING_INDEX)
                 .collect();
-
             engine.load_fen(&fen)?;
 
             FEN_MOVES_STARTING_INDEX
@@ -143,6 +138,17 @@ fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), I
     engine.make_move(move_string)?;
 
     Ok(())
+}
+
+fn handle_command<F>(command_fn: F, engine: &mut Engine, arguments: Vec<&str>)
+where
+    F: Fn(&mut Engine, Vec<&str>) -> Result<(), InputError>,
+{
+    let result = command_fn(engine, arguments);
+
+    if let Err(error) = result {
+        println!("{}", error);
+    }
 }
 
 fn get_argument_value<T: FromStr>(

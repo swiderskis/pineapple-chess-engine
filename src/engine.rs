@@ -48,6 +48,12 @@ impl Engine {
 
         Ok(())
     }
+
+    pub fn reset(&mut self) {
+        self.killer_moves = KillerMoves::initialise();
+        self.historic_move_score = HistoricMoveScore::initialise();
+        self.principal_variation = PrincipalVariation::initialise();
+    }
 }
 
 #[cfg(test)]
