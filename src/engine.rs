@@ -51,9 +51,8 @@ impl Engine {
         Ok(())
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset_game(&mut self) {
         self.game = Game::initialise();
-        self.clear_parameters();
     }
 
     pub fn clear_parameters(&mut self) {

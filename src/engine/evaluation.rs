@@ -74,8 +74,6 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
 
 impl Engine {
     pub fn find_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
-        self.clear_parameters();
-
         let evaluation_limits = EvaluationLimits::initialise();
         let ply = 0;
 
@@ -94,10 +92,14 @@ impl Engine {
             );
         }
 
-        match self.principal_variation.table[0][0] {
+        let best_move_result = match self.principal_variation.table[0][0] {
             Some(mv) => Ok(mv),
             None => Err(InputError::InvalidPosition),
-        }
+        };
+
+        self.clear_parameters();
+
+        best_move_result
     }
 
     fn negamax_best_move_search(

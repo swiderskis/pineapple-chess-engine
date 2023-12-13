@@ -43,7 +43,7 @@ pub fn engine() {
         match input.command {
             "uci" => uci(),
             "isready" => println!("readyok"),
-            "ucinewgame" => engine.reset(),
+            "ucinewgame" => engine.reset_game(),
             "position" => handle_command(position, &mut engine, input.arguments),
             "go" => handle_command(go, &mut engine, input.arguments),
             "quit" => break,
