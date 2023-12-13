@@ -43,7 +43,7 @@ pub fn engine() {
         match input.command {
             "uci" => uci(),
             "isready" => println!("readyok"),
-            "ucinewgame" => handle_command(ucinewgame, &mut engine, input.arguments),
+            "ucinewgame" => engine.reset(),
             "position" => handle_command(position, &mut engine, input.arguments),
             "go" => handle_command(go, &mut engine, input.arguments),
             "quit" => break,
@@ -57,12 +57,6 @@ fn uci() {
     println!("id name Pineapple");
     println!("id author Sebastian S.");
     println!("uciok");
-}
-
-fn ucinewgame(engine: &mut Engine, _arguments: Vec<&str>) -> Result<(), InputError> {
-    engine.reset();
-
-    Ok(())
 }
 
 fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
