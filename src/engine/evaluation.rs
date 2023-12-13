@@ -73,64 +73,29 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
 ]);
 
 impl Engine {
-    pub fn find_best_move(&mut self, mut depth: u8) -> Result<Move, InputError> {
+    pub fn find_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
         self.clear_parameters();
 
-        let mut evaluation_limits = EvaluationLimits::initialise();
+        let evaluation_limits = EvaluationLimits::initialise();
         let ply = 0;
 
-        let king_square = self
-            .game
-            .piece_bitboard(Piece::King, self.game.side_to_move())
-            .get_lsb_square();
-        let king_in_check = match king_square {
-            Some(king_square) => {
-                let attacking_side = self.game.side_to_move().opponent_side();
+        let game_clone = self.game.clone();
 
-                self.game
-                    .is_square_attacked(&self.attack_tables, attacking_side, king_square)
-            }
-            None => false,
-        };
-
-        if king_in_check {
-            depth += 1;
-        }
-
-        let move_list = MoveList::generate_sorted_moves(&self.game, self, 0);
-
-        for mv in move_list.vec() {
-            let mut game_clone = self.game.clone();
-            let move_result = game_clone.make_move(*mv, &self.attack_tables);
-
-            if move_result.is_err() {
-                continue;
-            }
-
+        for depth in 1..=depth {
             let evaluation =
-                -self.negamax_best_move_search(&game_clone, -evaluation_limits, ply + 1, depth - 1);
+                self.negamax_best_move_search(&game_clone, evaluation_limits, ply, depth);
 
-            if evaluation > evaluation_limits.min {
-                self.principal_variation.write_move(*mv, ply);
-                self.historic_move_score
-                    .push(*mv, self.game.side_to_move(), depth);
-
-                evaluation_limits.min = evaluation;
-            }
+            println!(
+                "info score cp {} depth {} nodes {} pv {}",
+                evaluation.0,
+                depth,
+                self.nodes,
+                self.principal_variation.as_string()
+            );
         }
 
         match self.principal_variation.table[0][0] {
-            Some(mv) => {
-                println!(
-                    "info score cp {} depth {} nodes {} pv {}",
-                    evaluation_limits.min.0,
-                    depth,
-                    self.nodes,
-                    self.principal_variation.as_string()
-                );
-
-                Ok(mv)
-            }
+            Some(mv) => Ok(mv),
             None => Err(InputError::InvalidPosition),
         }
     }
