@@ -14,16 +14,17 @@ const SIDE_COUNT: usize = 2;
 
 const KILLER_MOVE_ARRAY_SIZE: usize = 2;
 
+const PRINCIPAL_MOVE_SCORE: Score = 20000;
 // MVV = most valuable victim
 // LVA = least valuable attacker
 // Score obtained by indexing to array as such: [attacker][victim]
 const MVV_LVA_SCORE: [[Score; PIECE_TYPES]; PIECE_TYPES] = [
-    [10500, 20500, 30500, 40500, 50500, 0],
-    [10400, 20400, 30400, 40400, 50400, 0],
-    [10300, 20300, 30300, 40300, 50300, 0],
-    [10200, 20200, 30200, 40200, 50200, 0],
-    [10100, 20100, 30100, 40100, 50100, 0],
-    [10000, 20000, 30000, 40000, 50000, 0],
+    [10105, 10205, 10305, 10405, 10505, 0],
+    [10104, 10204, 10304, 10404, 10504, 0],
+    [10103, 10203, 10303, 10403, 10503, 0],
+    [10102, 10202, 10302, 10402, 10502, 0],
+    [10101, 10201, 10301, 10401, 10501, 0],
+    [10100, 10200, 10300, 10400, 10500, 0],
 ];
 const KILLER_MOVE_SCORE: [Score; KILLER_MOVE_ARRAY_SIZE] = [9000, 8000];
 
@@ -81,19 +82,35 @@ impl HistoricMoveScore {
 }
 
 impl MoveList {
-    pub fn generate_sorted_moves(game: &Game, engine: &Engine, ply: Value) -> Self {
+    pub fn generate_sorted_moves(
+        game: &Game,
+        engine: &Engine,
+        ply: Value,
+        principal_line: bool,
+    ) -> Self {
         let mut move_list = Self::generate_moves(game, &engine.attack_tables);
 
         move_list
             .mut_vec()
-            .sort_by_key(|mv| Reverse(mv.score(game, engine, ply)));
+            .sort_by_key(|mv| Reverse(mv.score(game, engine, ply, principal_line)));
 
         move_list
     }
 }
 
 impl Move {
-    fn score(self, game: &Game, engine: &Engine, ply: Value) -> Score {
+    fn score(self, game: &Game, engine: &Engine, ply: Value, principal_line: bool) -> Score {
+        if let Some(principal_move) = engine.principal_variation.principal_move_at_ply(ply) {
+            if principal_line && principal_move == self {
+                // println!("Principal move: {}", principal_move.as_string());
+                // println!("Self move: {}", self.as_string());
+                // println!("Ply: {}", ply);
+                // println!();
+
+                return PRINCIPAL_MOVE_SCORE;
+            }
+        }
+
         match self.move_type() {
             MoveType::Capture => match game.piece_at_square(self.target_square()) {
                 Some((victim, _)) => {

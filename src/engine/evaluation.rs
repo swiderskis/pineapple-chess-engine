@@ -81,7 +81,7 @@ impl Engine {
 
         for depth in 1..=depth {
             let evaluation =
-                self.negamax_best_move_search(&game_clone, evaluation_limits, ply, depth);
+                self.negamax_best_move_search(&game_clone, evaluation_limits, true, ply, depth);
 
             println!(
                 "info score cp {} depth {} nodes {} pv {}",
@@ -106,17 +106,18 @@ impl Engine {
         &mut self,
         game: &Game,
         mut evaluation_limits: EvaluationLimits,
+        is_principal_line: bool,
         ply: Value,
         mut depth: u8,
     ) -> Evaluation {
         self.principal_variation.length[ply as usize] = ply;
 
-        if depth == 0 {
-            return self.quiescence_search(game, evaluation_limits);
-        }
-
         if ply as usize >= engine::MAX_PLY {
             return Self::evaluate(game).sided_value(game.side_to_move());
+        }
+
+        if depth == 0 {
+            return self.quiescence_search(game, evaluation_limits, ply + 1);
         }
 
         self.nodes += 1;
@@ -137,7 +138,7 @@ impl Engine {
             depth += 1;
         }
 
-        let move_list = MoveList::generate_sorted_moves(game, self, ply);
+        let move_list = MoveList::generate_sorted_moves(game, self, ply, is_principal_line);
         let mut no_legal_moves = true;
 
         for mv in move_list.vec() {
@@ -150,8 +151,18 @@ impl Engine {
 
             no_legal_moves = false;
 
-            let evaluation =
-                -self.negamax_best_move_search(&game_clone, -evaluation_limits, ply + 1, depth - 1);
+            let is_principal_line = match self.principal_variation.principal_move_at_ply(ply) {
+                Some(principal_move) => is_principal_line && principal_move == *mv,
+                None => false,
+            };
+
+            let evaluation = -self.negamax_best_move_search(
+                &game_clone,
+                -evaluation_limits,
+                is_principal_line,
+                ply + 1,
+                depth - 1,
+            );
 
             if evaluation >= evaluation_limits.max {
                 self.killer_moves.push(*mv, ply);
@@ -181,6 +192,7 @@ impl Engine {
         &mut self,
         game: &Game,
         mut evaluation_limits: EvaluationLimits,
+        ply: Value,
     ) -> Evaluation {
         self.nodes += 1;
 
@@ -194,7 +206,7 @@ impl Engine {
             evaluation_limits.min = evaluation;
         }
 
-        let move_list = MoveList::generate_sorted_moves(game, self, 0);
+        let move_list = MoveList::generate_sorted_moves(game, self, ply, false);
 
         for mv in move_list.vec() {
             if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {
@@ -208,7 +220,7 @@ impl Engine {
                 continue;
             }
 
-            let evaluation = -self.quiescence_search(&game_clone, -evaluation_limits);
+            let evaluation = -self.quiescence_search(&game_clone, -evaluation_limits, ply + 1);
 
             if evaluation >= evaluation_limits.max {
                 return evaluation_limits.max;
@@ -258,6 +270,10 @@ impl PrincipalVariation {
             table: [[None; engine::MAX_PLY]; engine::MAX_PLY],
             length: [0; engine::MAX_PLY],
         }
+    }
+
+    pub fn principal_move_at_ply(&self, ply: Value) -> Option<Move> {
+        self.table[0][ply as usize]
     }
 
     fn write_move(&mut self, mv: Move, ply: Value) {
