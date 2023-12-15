@@ -102,11 +102,6 @@ impl Move {
     fn score(self, game: &Game, engine: &Engine, ply: Value, principal_line: bool) -> Score {
         if let Some(principal_move) = engine.principal_variation.principal_move_at_ply(ply) {
             if principal_line && principal_move == self {
-                // println!("Principal move: {}", principal_move.as_string());
-                // println!("Self move: {}", self.as_string());
-                // println!("Ply: {}", ply);
-                // println!();
-
                 return PRINCIPAL_MOVE_SCORE;
             }
         }
