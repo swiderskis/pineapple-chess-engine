@@ -171,10 +171,9 @@ impl Engine {
             if evaluation > evaluation_limits.min {
                 self.principal_variation.write_move(*mv, ply);
                 self.historic_move_score
-                    .push(*mv, game.side_to_move(), depth);
+                    .push(*mv, game_clone.side_to_move(), depth);
 
                 found_principal_variation = true;
-
                 evaluation_limits.min = evaluation;
             }
         }
