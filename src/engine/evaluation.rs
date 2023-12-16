@@ -80,14 +80,16 @@ impl Engine {
         let game_clone = self.game.clone();
 
         for depth in 1..=depth {
+            self.is_principal_line = true;
+
             let evaluation =
-                self.negamax_best_move_search(&game_clone, evaluation_limits, true, ply, depth);
+                self.negamax_best_move_search(&game_clone, evaluation_limits, ply, depth);
 
             println!(
                 "info score cp {} depth {} nodes {} pv {}",
                 evaluation.0,
                 depth,
-                self.nodes,
+                self.nodes_searched,
                 self.principal_variation.as_string()
             );
         }
@@ -106,7 +108,6 @@ impl Engine {
         &mut self,
         game: &Game,
         mut evaluation_limits: EvaluationLimits,
-        is_principal_line: bool,
         ply: Value,
         mut depth: u8,
     ) -> Evaluation {
@@ -120,7 +121,7 @@ impl Engine {
             return self.quiescence_search(game, evaluation_limits, ply + 1);
         }
 
-        self.nodes += 1;
+        self.nodes_searched += 1;
 
         let king_square = game
             .piece_bitboard(Piece::King, game.side_to_move())
@@ -138,7 +139,7 @@ impl Engine {
             depth += 1;
         }
 
-        let move_list = MoveList::generate_sorted_moves(game, self, ply, is_principal_line);
+        let move_list = MoveList::generate_sorted_moves(game, self, ply, self.is_principal_line);
         let mut no_legal_moves = true;
 
         for mv in move_list.vec() {
@@ -151,18 +152,13 @@ impl Engine {
 
             no_legal_moves = false;
 
-            let is_principal_line = match self.principal_variation.principal_move_at_ply(ply) {
-                Some(principal_move) => is_principal_line && principal_move == *mv,
+            self.is_principal_line = match self.principal_variation.principal_move_at_ply(ply) {
+                Some(principal_move) => self.is_principal_line && principal_move == *mv,
                 None => false,
             };
 
-            let evaluation = -self.negamax_best_move_search(
-                &game_clone,
-                -evaluation_limits,
-                is_principal_line,
-                ply + 1,
-                depth - 1,
-            );
+            let evaluation =
+                -self.negamax_best_move_search(&game_clone, -evaluation_limits, ply + 1, depth - 1);
 
             if evaluation >= evaluation_limits.max {
                 self.killer_moves.push(*mv, ply);
@@ -194,7 +190,7 @@ impl Engine {
         mut evaluation_limits: EvaluationLimits,
         ply: Value,
     ) -> Evaluation {
-        self.nodes += 1;
+        self.nodes_searched += 1;
 
         let evaluation = Self::evaluate(game).sided_value(game.side_to_move());
 

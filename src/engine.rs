@@ -21,7 +21,8 @@ pub struct Engine {
     principal_variation: PrincipalVariation,
     killer_moves: KillerMoves,
     historic_move_score: HistoricMoveScore,
-    nodes: u64,
+    is_principal_line: bool,
+    nodes_searched: u64,
 }
 
 impl Engine {
@@ -32,7 +33,8 @@ impl Engine {
             principal_variation: PrincipalVariation::initialise(),
             killer_moves: KillerMoves::initialise(),
             historic_move_score: HistoricMoveScore::initialise(),
-            nodes: 0,
+            is_principal_line: true,
+            nodes_searched: 0,
         }
     }
 
@@ -59,7 +61,8 @@ impl Engine {
         self.principal_variation = PrincipalVariation::initialise();
         self.killer_moves = KillerMoves::initialise();
         self.historic_move_score = HistoricMoveScore::initialise();
-        self.nodes = 0;
+        self.is_principal_line = true;
+        self.nodes_searched = 0;
     }
 }
 
