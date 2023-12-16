@@ -118,6 +118,8 @@ impl Engine {
         }
 
         if depth == 0 {
+            self.is_principal_line = false;
+
             return self.quiescence_search(game, evaluation_limits, ply + 1);
         }
 
@@ -139,8 +141,10 @@ impl Engine {
             depth += 1;
         }
 
-        let move_list = MoveList::generate_sorted_moves(game, self, ply, self.is_principal_line);
+        let move_list = MoveList::generate_sorted_moves(game, self, ply);
         let mut no_legal_moves = true;
+
+        self.set_is_principal_line(&move_list, ply);
 
         for mv in move_list.vec() {
             let mut game_clone = game.clone();
@@ -151,11 +155,6 @@ impl Engine {
             }
 
             no_legal_moves = false;
-
-            self.is_principal_line = match self.principal_variation.principal_move_at_ply(ply) {
-                Some(principal_move) => self.is_principal_line && principal_move == *mv,
-                None => false,
-            };
 
             let evaluation =
                 -self.negamax_best_move_search(&game_clone, -evaluation_limits, ply + 1, depth - 1);
@@ -202,7 +201,7 @@ impl Engine {
             evaluation_limits.min = evaluation;
         }
 
-        let move_list = MoveList::generate_sorted_moves(game, self, ply, false);
+        let move_list = MoveList::generate_sorted_moves(game, self, ply);
 
         for mv in move_list.vec() {
             if mv.move_type() != MoveType::Capture && mv.move_type() != MoveType::EnPassant {
@@ -252,6 +251,24 @@ impl Engine {
         }
 
         evaluation
+    }
+
+    fn set_is_principal_line(&mut self, move_list: &MoveList, ply: Value) {
+        if !self.is_principal_line {
+            return;
+        }
+
+        if let Some(principal_move) = self.principal_variation.principal_move_at_ply(ply) {
+            for mv in move_list.vec() {
+                if principal_move == *mv {
+                    self.is_principal_line = true;
+
+                    return;
+                }
+            }
+
+            self.is_principal_line = false;
+        }
     }
 }
 

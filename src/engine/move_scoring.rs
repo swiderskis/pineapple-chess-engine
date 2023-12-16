@@ -82,26 +82,21 @@ impl HistoricMoveScore {
 }
 
 impl MoveList {
-    pub fn generate_sorted_moves(
-        game: &Game,
-        engine: &Engine,
-        ply: Value,
-        principal_line: bool,
-    ) -> Self {
+    pub fn generate_sorted_moves(game: &Game, engine: &Engine, ply: Value) -> Self {
         let mut move_list = Self::generate_moves(game, &engine.attack_tables);
 
         move_list
             .mut_vec()
-            .sort_by_key(|mv| Reverse(mv.score(game, engine, ply, principal_line)));
+            .sort_by_key(|mv| Reverse(mv.score(game, engine, ply)));
 
         move_list
     }
 }
 
 impl Move {
-    fn score(self, game: &Game, engine: &Engine, ply: Value, principal_line: bool) -> Score {
+    fn score(self, game: &Game, engine: &Engine, ply: Value) -> Score {
         if let Some(principal_move) = engine.principal_variation.principal_move_at_ply(ply) {
-            if principal_line && principal_move == self {
+            if engine.is_principal_line && principal_move == self {
                 return PRINCIPAL_MOVE_SCORE;
             }
         }
