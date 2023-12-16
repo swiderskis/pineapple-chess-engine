@@ -684,16 +684,16 @@ impl MagicNumbers {
 
     fn _generate_random_u64_integer(random_state: &mut u32) -> u64 {
         // `& 0xFFFF` operation cuts off first 16 most significant bits from 32 bit integer
-        Self::_mutate_random_state(random_state);
+        Self::_xor_shift_mutation(random_state);
         let random_u64_integer_1 = (*random_state & 0xFFFF) as u64;
 
-        Self::_mutate_random_state(random_state);
+        Self::_xor_shift_mutation(random_state);
         let random_u64_integer_2 = (*random_state & 0xFFFF) as u64;
 
-        Self::_mutate_random_state(random_state);
+        Self::_xor_shift_mutation(random_state);
         let random_u64_integer_3 = (*random_state & 0xFFFF) as u64;
 
-        Self::_mutate_random_state(random_state);
+        Self::_xor_shift_mutation(random_state);
         let random_u64_integer_4 = (*random_state & 0xFFFF) as u64;
 
         random_u64_integer_1
@@ -702,8 +702,7 @@ impl MagicNumbers {
             | (random_u64_integer_4 << 48)
     }
 
-    // XOR shift algorithm
-    fn _mutate_random_state(random_state: &mut u32) {
+    fn _xor_shift_mutation(random_state: &mut u32) {
         *random_state ^= *random_state << 13;
         *random_state ^= *random_state >> 17;
         *random_state ^= *random_state << 5;
