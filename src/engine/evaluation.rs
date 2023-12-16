@@ -82,8 +82,7 @@ impl Engine {
         for depth in 1..=depth {
             self.is_principal_variation = true;
 
-            let evaluation =
-                self.negamax_best_move_search(&game_clone, evaluation_limits, ply, depth);
+            let evaluation = self.negamax_search(&game_clone, evaluation_limits, ply, depth);
 
             println!(
                 "info score cp {} depth {} nodes {} pv {}",
@@ -104,7 +103,7 @@ impl Engine {
         best_move_result
     }
 
-    fn negamax_best_move_search(
+    fn negamax_search(
         &mut self,
         game: &Game,
         mut evaluation_limits: EvaluationLimits,
@@ -158,25 +157,9 @@ impl Engine {
             no_legal_moves = false;
 
             let evaluation = if found_principal_variation {
-                let evaluation = -self.negamax_best_move_search(
-                    &game_clone,
-                    evaluation_limits.principal_variation_bounds(),
-                    ply + 1,
-                    depth - 1,
-                );
-
-                if evaluation > evaluation_limits.min && evaluation < evaluation_limits.max {
-                    -self.negamax_best_move_search(
-                        &game_clone,
-                        -evaluation_limits,
-                        ply + 1,
-                        depth - 1,
-                    )
-                } else {
-                    evaluation
-                }
+                self.principal_variation_search(&game_clone, evaluation_limits, ply, depth)
             } else {
-                -self.negamax_best_move_search(&game_clone, -evaluation_limits, ply + 1, depth - 1)
+                -self.negamax_search(&game_clone, -evaluation_limits, ply + 1, depth - 1)
             };
 
             if evaluation >= evaluation_limits.max {
@@ -251,6 +234,45 @@ impl Engine {
         evaluation_limits.min
     }
 
+    fn principal_variation_search(
+        &mut self,
+        game: &Game,
+        evaluation_limits: EvaluationLimits,
+        ply: Value,
+        depth: u8,
+    ) -> Evaluation {
+        let evaluation = -self.negamax_search(
+            game,
+            evaluation_limits.principal_variation_bounds(),
+            ply + 1,
+            depth - 1,
+        );
+
+        if evaluation > evaluation_limits.min && evaluation < evaluation_limits.max {
+            -self.negamax_search(game, -evaluation_limits, ply + 1, depth - 1)
+        } else {
+            evaluation
+        }
+    }
+
+    fn set_is_principal_variation(&mut self, move_list: &MoveList, ply: Value) {
+        if !self.is_principal_variation {
+            return;
+        }
+
+        if let Some(principal_move) = self.principal_variation.principal_move_at_ply(ply) {
+            for mv in move_list.vec() {
+                if principal_move == *mv {
+                    self.is_principal_variation = true;
+
+                    return;
+                }
+            }
+
+            self.is_principal_variation = false;
+        }
+    }
+
     fn evaluate(game: &Game) -> Evaluation {
         let mut evaluation = Evaluation(0);
 
@@ -273,24 +295,6 @@ impl Engine {
         }
 
         evaluation
-    }
-
-    fn set_is_principal_variation(&mut self, move_list: &MoveList, ply: Value) {
-        if !self.is_principal_variation {
-            return;
-        }
-
-        if let Some(principal_move) = self.principal_variation.principal_move_at_ply(ply) {
-            for mv in move_list.vec() {
-                if principal_move == *mv {
-                    self.is_principal_variation = true;
-
-                    return;
-                }
-            }
-
-            self.is_principal_variation = false;
-        }
     }
 }
 
