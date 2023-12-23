@@ -5,7 +5,7 @@ use super::{
 };
 use crate::engine;
 use crate::uci::InputError;
-use std::ops::{Neg, Sub};
+use std::ops::Neg;
 
 pub type Value = i16;
 
@@ -142,9 +142,14 @@ impl Engine {
 
         let move_list = MoveList::generate_sorted_moves(game, self, ply);
         let mut no_legal_moves = true;
-        let mut found_principal_variation = false;
+        let mut found_candidate_best_move = false;
 
-        self.set_is_principal_variation(&move_list, ply);
+        self.is_principal_variation = match self.principal_variation.principal_move_at_ply(ply) {
+            Some(principal_move) => {
+                self.is_principal_variation && move_list.vec()[0] == principal_move
+            }
+            None => false,
+        };
 
         for mv in move_list.vec() {
             let mut game_clone = game.clone();
@@ -156,8 +161,8 @@ impl Engine {
 
             no_legal_moves = false;
 
-            let evaluation = if found_principal_variation {
-                self.principal_variation_search(&game_clone, evaluation_limits, ply, depth)
+            let evaluation = if found_candidate_best_move {
+                self.candidate_best_move_search(&game_clone, evaluation_limits, ply, depth)
             } else {
                 -self.negamax_search(&game_clone, -evaluation_limits, ply + 1, depth - 1)
             };
@@ -173,7 +178,7 @@ impl Engine {
                 self.historic_move_score
                     .push(*mv, game_clone.side_to_move(), depth);
 
-                found_principal_variation = true;
+                found_candidate_best_move = true;
                 evaluation_limits.min = evaluation;
             }
         }
@@ -233,7 +238,7 @@ impl Engine {
         evaluation_limits.min
     }
 
-    fn principal_variation_search(
+    fn candidate_best_move_search(
         &mut self,
         game: &Game,
         evaluation_limits: EvaluationLimits,
@@ -242,7 +247,7 @@ impl Engine {
     ) -> Evaluation {
         let evaluation = -self.negamax_search(
             game,
-            evaluation_limits.principal_variation_bounds(),
+            evaluation_limits.candidate_best_move_bounds(),
             ply + 1,
             depth - 1,
         );
@@ -251,24 +256,6 @@ impl Engine {
             -self.negamax_search(game, -evaluation_limits, ply + 1, depth - 1)
         } else {
             evaluation
-        }
-    }
-
-    fn set_is_principal_variation(&mut self, move_list: &MoveList, ply: Value) {
-        if !self.is_principal_variation {
-            return;
-        }
-
-        if let Some(principal_move) = self.principal_variation.principal_move_at_ply(ply) {
-            for mv in move_list.vec() {
-                if principal_move == *mv {
-                    self.is_principal_variation = true;
-
-                    return;
-                }
-            }
-
-            self.is_principal_variation = false;
         }
     }
 
@@ -353,9 +340,9 @@ impl EvaluationLimits {
         }
     }
 
-    fn principal_variation_bounds(self) -> Self {
+    fn candidate_best_move_bounds(self) -> Self {
         Self {
-            min: -self.min - Evaluation(1),
+            min: Evaluation(-self.min.0 - 1),
             max: -self.min,
         }
     }
@@ -393,14 +380,6 @@ impl Neg for Evaluation {
 
     fn neg(self) -> Self::Output {
         Self(-self.0)
-    }
-}
-
-impl Sub for Evaluation {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0 - rhs.0)
     }
 }
 
