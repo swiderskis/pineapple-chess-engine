@@ -72,6 +72,9 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
     0, 0,  5,  0, -15,  0, 10, 0,
 ]);
 
+const FULL_DEPTH_MOVES: i32 = 4;
+const REDUCTION_LIMIT: u8 = 3;
+
 impl Engine {
     pub fn find_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
         let evaluation_limits = EvaluationLimits::initialise();
@@ -141,8 +144,7 @@ impl Engine {
         }
 
         let move_list = MoveList::generate_sorted_moves(game, self, ply);
-        let mut no_legal_moves = true;
-        let mut found_candidate_best_move = false;
+        let mut moves_searched = 0;
 
         self.is_principal_variation = match self.principal_variation.principal_move_at_ply(ply) {
             Some(principal_move) => {
@@ -159,13 +161,22 @@ impl Engine {
                 continue;
             }
 
-            no_legal_moves = false;
+            let apply_late_move_reduction = moves_searched >= FULL_DEPTH_MOVES
+                && depth >= REDUCTION_LIMIT
+                && !king_in_check
+                && !(mv.move_type() == MoveType::Capture)
+                && !(mv.move_type() == MoveType::EnPassant)
+                && mv.promoted_piece().is_none();
 
-            let evaluation = if found_candidate_best_move {
-                self.candidate_best_move_search(&game_clone, evaluation_limits, ply, depth)
-            } else {
+            let evaluation = if moves_searched == 0 {
                 -self.negamax_search(&game_clone, -evaluation_limits, ply + 1, depth - 1)
+            } else if apply_late_move_reduction {
+                self.late_move_reduction_search(&game_clone, evaluation_limits, ply, depth)
+            } else {
+                self.candidate_best_move_search(&game_clone, evaluation_limits, ply, depth)
             };
+
+            moves_searched += 1;
 
             if evaluation >= evaluation_limits.max {
                 self.killer_moves.push(*mv, ply);
@@ -178,14 +189,13 @@ impl Engine {
                 self.historic_move_score
                     .push(*mv, game_clone.side_to_move(), depth);
 
-                found_candidate_best_move = true;
                 evaluation_limits.min = evaluation;
             }
         }
 
-        if no_legal_moves && king_in_check {
+        if moves_searched == 0 && king_in_check {
             -Evaluation(CHECKMATE_VALUE - ply)
-        } else if no_legal_moves {
+        } else if moves_searched == 0 {
             Evaluation(STALEMATE_VALUE)
         } else {
             evaluation_limits.min
@@ -238,6 +248,27 @@ impl Engine {
         evaluation_limits.min
     }
 
+    fn late_move_reduction_search(
+        &mut self,
+        game: &Game,
+        evaluation_limits: EvaluationLimits,
+        ply: Value,
+        depth: u8,
+    ) -> Evaluation {
+        let evaluation = -self.negamax_search(
+            game,
+            evaluation_limits.narrowed_bounds(),
+            ply + 1,
+            depth - 2,
+        );
+
+        if evaluation > evaluation_limits.min {
+            self.candidate_best_move_search(game, evaluation_limits, ply, depth)
+        } else {
+            evaluation
+        }
+    }
+
     fn candidate_best_move_search(
         &mut self,
         game: &Game,
@@ -247,7 +278,7 @@ impl Engine {
     ) -> Evaluation {
         let evaluation = -self.negamax_search(
             game,
-            evaluation_limits.candidate_best_move_bounds(),
+            evaluation_limits.narrowed_bounds(),
             ply + 1,
             depth - 1,
         );
@@ -340,7 +371,7 @@ impl EvaluationLimits {
         }
     }
 
-    fn candidate_best_move_bounds(self) -> Self {
+    fn narrowed_bounds(self) -> Self {
         Self {
             min: Evaluation(-self.min.0 - 1),
             max: -self.min,

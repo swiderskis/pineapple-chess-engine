@@ -70,7 +70,7 @@ impl HistoricMoveScore {
         let piece = mv.piece();
         let target_square = mv.target_square();
 
-        self.0[side as usize][piece as usize][target_square as usize] += depth as Score;
+        self.0[side as usize][piece as usize][target_square as usize] += (depth * depth) as Score;
     }
 
     fn score_move(&self, mv: Move, side: Side) -> Score {
