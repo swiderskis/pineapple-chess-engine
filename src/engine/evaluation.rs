@@ -72,8 +72,13 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
     0, 0,  5,  0, -15,  0, 10, 0,
 ]);
 
-const FULL_DEPTH_MOVES: i32 = 4;
-const REDUCTION_LIMIT: u8 = 3;
+const NULL_MOVE_DEPTH_MIN: u8 = 3;
+const NULL_MOVE_DEPTH_REDUCTION: u8 = 3;
+
+// LMR = late move reduction
+const LMR_MOVES_SEARCHED_MIN: i32 = 4;
+const LMR_DEPTH_MIN: u8 = 3;
+const LMR_DEPTH_REDUCTION: u8 = 2;
 
 impl Engine {
     pub fn find_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
@@ -143,10 +148,28 @@ impl Engine {
             depth += 1;
         }
 
+        let apply_null_move_pruning = depth >= NULL_MOVE_DEPTH_MIN && !king_in_check && ply != 0;
+
+        if apply_null_move_pruning {
+            let mut game_clone = game.clone();
+            game_clone.make_null_move();
+
+            let evaluation = -self.negamax_search(
+                &game_clone,
+                evaluation_limits.min_narrowed_bounds(),
+                ply + 1,
+                depth - NULL_MOVE_DEPTH_REDUCTION,
+            );
+
+            if evaluation >= evaluation_limits.max {
+                return evaluation_limits.max;
+            }
+        }
+
         let move_list = MoveList::generate_sorted_moves(game, self, ply);
         let mut moves_searched = 0;
 
-        self.is_principal_variation = match self.principal_variation.principal_move_at_ply(ply) {
+        self.is_principal_variation = match self.principal_variation.principal_move(ply) {
             Some(principal_move) => {
                 self.is_principal_variation && move_list.vec()[0] == principal_move
             }
@@ -161,8 +184,8 @@ impl Engine {
                 continue;
             }
 
-            let apply_late_move_reduction = moves_searched >= FULL_DEPTH_MOVES
-                && depth >= REDUCTION_LIMIT
+            let apply_late_move_reduction = moves_searched >= LMR_MOVES_SEARCHED_MIN
+                && depth >= LMR_DEPTH_MIN
                 && !king_in_check
                 && !(mv.move_type() == MoveType::Capture)
                 && !(mv.move_type() == MoveType::EnPassant)
@@ -257,9 +280,9 @@ impl Engine {
     ) -> Evaluation {
         let evaluation = -self.negamax_search(
             game,
-            evaluation_limits.narrowed_bounds(),
+            evaluation_limits.max_narrowed_bounds(),
             ply + 1,
-            depth - 2,
+            depth - LMR_DEPTH_REDUCTION,
         );
 
         if evaluation > evaluation_limits.min {
@@ -278,7 +301,7 @@ impl Engine {
     ) -> Evaluation {
         let evaluation = -self.negamax_search(
             game,
-            evaluation_limits.narrowed_bounds(),
+            evaluation_limits.max_narrowed_bounds(),
             ply + 1,
             depth - 1,
         );
@@ -328,7 +351,7 @@ impl PrincipalVariation {
         }
     }
 
-    pub fn principal_move_at_ply(&self, ply: Value) -> Option<Move> {
+    pub fn principal_move(&self, ply: Value) -> Option<Move> {
         self.table[0][ply as usize]
     }
 
@@ -371,10 +394,17 @@ impl EvaluationLimits {
         }
     }
 
-    fn narrowed_bounds(self) -> Self {
+    fn max_narrowed_bounds(self) -> Self {
         Self {
             min: Evaluation(-self.min.0 - 1),
             max: -self.min,
+        }
+    }
+
+    fn min_narrowed_bounds(self) -> Self {
+        Self {
+            min: -self.max,
+            max: Evaluation(-self.max.0 + 1),
         }
     }
 }

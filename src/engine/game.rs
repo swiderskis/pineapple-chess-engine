@@ -314,6 +314,11 @@ impl Game {
         Ok(())
     }
 
+    pub fn make_null_move(&mut self) {
+        self.side_to_move = self.side_to_move.opponent_side();
+        self.en_passant_square = None;
+    }
+
     pub fn is_square_attacked(
         &self,
         attack_tables: &AttackTables,
@@ -552,6 +557,7 @@ impl Game {
         println!("Side to move: {:?}", self.side_to_move);
         println!("En passant square: {:?}", self.en_passant_square);
         println!("Castling rights: {}", self.castling_rights._as_string());
+        println!("Board value: 0x{:X}", self.board(None).0);
     }
 }
 

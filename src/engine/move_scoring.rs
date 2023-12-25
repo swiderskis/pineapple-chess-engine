@@ -95,7 +95,7 @@ impl MoveList {
 
 impl Move {
     fn score(self, game: &Game, engine: &Engine, ply: Value) -> Score {
-        if let Some(principal_move) = engine.principal_variation.principal_move_at_ply(ply) {
+        if let Some(principal_move) = engine.principal_variation.principal_move(ply) {
             if engine.is_principal_variation && principal_move == self {
                 return PRINCIPAL_MOVE_SCORE;
             }
