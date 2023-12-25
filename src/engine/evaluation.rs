@@ -5,13 +5,13 @@ use super::{
 };
 use crate::engine;
 use crate::uci::InputError;
-use std::ops::Neg;
+use std::ops::{Add, Neg, Sub};
 
 pub type Value = i16;
 
-const MAX_EVALUATION_VALUE: Value = Value::MAX;
-const CHECKMATE_VALUE: Value = Value::MAX - 1;
-const STALEMATE_VALUE: Value = 0;
+const MAX_EVALUATION: Evaluation = Evaluation(Value::MAX);
+const CHECKMATE_EVALUATION: Evaluation = Evaluation(Value::MAX - 1);
+const STALEMATE_EVALUATION: Evaluation = Evaluation(0);
 
 // Piece value obtained by indexing into array using Piece enum
 const PIECE_VALUE: [Value; 6] = [100, 300, 350, 500, 900, 0];
@@ -72,6 +72,8 @@ const KING_POSITION_VALUE: PositionValue = PositionValue([
     0, 0,  5,  0, -15,  0, 10, 0,
 ]);
 
+const ASPIRATION_WINDOW_ADJUSTMENT: Value = 50;
+
 const NULL_MOVE_DEPTH_MIN: u8 = 3;
 const NULL_MOVE_DEPTH_REDUCTION: u8 = 3;
 
@@ -82,23 +84,43 @@ const LMR_DEPTH_REDUCTION: u8 = 2;
 
 impl Engine {
     pub fn find_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
-        let evaluation_limits = EvaluationLimits::initialise();
+        let mut evaluation_limits = EvaluationLimits::initialise();
+        let mut current_depth = 1;
         let ply = 0;
 
         let game_clone = self.game.clone();
 
-        for depth in 1..=depth {
+        while current_depth <= depth {
             self.is_principal_variation = true;
 
-            let evaluation = self.negamax_search(&game_clone, evaluation_limits, ply, depth);
+            let evaluation =
+                self.negamax_search(&game_clone, evaluation_limits, ply, current_depth);
+
+            let missed_aspiration_window_low = evaluation <= evaluation_limits.min;
+            let missed_aspiration_window_high = evaluation >= evaluation_limits.max;
+
+            if missed_aspiration_window_low {
+                evaluation_limits.min = -MAX_EVALUATION;
+
+                continue;
+            } else if missed_aspiration_window_high {
+                evaluation_limits.max = MAX_EVALUATION;
+
+                continue;
+            }
+
+            evaluation_limits.min = evaluation - ASPIRATION_WINDOW_ADJUSTMENT;
+            evaluation_limits.max = evaluation + ASPIRATION_WINDOW_ADJUSTMENT;
 
             println!(
                 "info score cp {} depth {} nodes {} pv {}",
                 evaluation.0,
-                depth,
+                current_depth,
                 self.nodes_searched,
                 self.principal_variation.as_string()
             );
+
+            current_depth += 1;
         }
 
         let best_move_result = match self.principal_variation.table[0][0] {
@@ -217,9 +239,9 @@ impl Engine {
         }
 
         if moves_searched == 0 && king_in_check {
-            -Evaluation(CHECKMATE_VALUE - ply)
+            -CHECKMATE_EVALUATION + ply
         } else if moves_searched == 0 {
-            Evaluation(STALEMATE_VALUE)
+            STALEMATE_EVALUATION
         } else {
             evaluation_limits.min
         }
@@ -327,8 +349,8 @@ impl Engine {
             };
 
             while let Some(square) = bitboard.get_lsb_square() {
-                evaluation.add(PIECE_VALUE[piece as usize], side);
-                evaluation.add(position_value.value(side, square), side);
+                evaluation.sided_add(PIECE_VALUE[piece as usize], side);
+                evaluation.sided_add(position_value.value(side, square), side);
 
                 bitboard.pop_bit(square);
             }
@@ -389,14 +411,14 @@ struct EvaluationLimits {
 impl EvaluationLimits {
     fn initialise() -> Self {
         Self {
-            min: -Evaluation(MAX_EVALUATION_VALUE),
-            max: Evaluation(MAX_EVALUATION_VALUE),
+            min: -MAX_EVALUATION,
+            max: MAX_EVALUATION,
         }
     }
 
     fn max_narrowed_bounds(self) -> Self {
         Self {
-            min: Evaluation(-self.min.0 - 1),
+            min: -self.min - 1,
             max: -self.min,
         }
     }
@@ -404,7 +426,7 @@ impl EvaluationLimits {
     fn min_narrowed_bounds(self) -> Self {
         Self {
             min: -self.max,
-            max: Evaluation(-self.max.0 + 1),
+            max: -self.max + 1,
         }
     }
 }
@@ -427,7 +449,7 @@ impl Neg for EvaluationLimits {
 struct Evaluation(Value);
 
 impl Evaluation {
-    fn add(&mut self, value: Value, side: Side) {
+    fn sided_add(&mut self, value: Value, side: Side) {
         self.0 += value * side.to_value()
     }
 
@@ -436,11 +458,27 @@ impl Evaluation {
     }
 }
 
+impl Add<Value> for Evaluation {
+    type Output = Self;
+
+    fn add(self, rhs: Value) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
+
 impl Neg for Evaluation {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
         Self(-self.0)
+    }
+}
+
+impl Sub<Value> for Evaluation {
+    type Output = Self;
+
+    fn sub(self, rhs: Value) -> Self::Output {
+        Self(self.0 - rhs)
     }
 }
 
@@ -564,6 +602,7 @@ mod tests {
         let best_move = engine.find_best_move(5).unwrap();
         let possible_best_moves = ["f7f6", "f7f5", "f7f4,", "f7f3,", "f7f2", "f7f1"];
 
+        println!("{}", best_move.as_string());
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
 
         let mut engine = Engine::initialise();
@@ -575,6 +614,7 @@ mod tests {
         let best_move = engine.find_best_move(6).unwrap();
         let possible_best_moves = ["f7f6", "f7f5", "f7f4,", "f7f3,", "f7f2", "f7f1"];
 
+        println!("{}", best_move.as_string());
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
     }
 
@@ -589,6 +629,7 @@ mod tests {
         let best_move = engine.find_best_move(5).unwrap();
         let possible_best_moves = ["c2c3", "c2c4", "c2c5", "c2c6", "c2c7", "c2c8"];
 
+        println!("{}", best_move.as_string());
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
 
         let mut engine = Engine::initialise();
@@ -600,6 +641,7 @@ mod tests {
         let best_move = engine.find_best_move(6).unwrap();
         let possible_best_moves = ["c2c3", "c2c4", "c2c5", "c2c6", "c2c7", "c2c8"];
 
+        println!("{}", best_move.as_string());
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
     }
 }
