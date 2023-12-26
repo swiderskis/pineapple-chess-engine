@@ -1,8 +1,10 @@
 use crate::engine::Engine;
-use std::{fmt::Display, str::FromStr};
+use std::{fmt::Display, io, str::FromStr, sync::mpsc, thread};
 
 const FEN_MOVES_STARTING_INDEX: usize = 7;
 const STARTPOS_MOVES_STARTING_INDEX: usize = 1;
+
+const DEFAULT_DEPTH: u8 = 64;
 
 struct Input<'a> {
     command: &'a str,
@@ -29,15 +31,34 @@ impl<'a> Input<'a> {
 pub fn engine() {
     let mut engine = Engine::initialise();
 
+    let (interrupt_sender, interrupt_receiver) = mpsc::channel();
+    let (input_sender, input_receiver) = mpsc::channel();
+
+    engine.set_interrupt_receiver(interrupt_receiver);
+
     loop {
-        let mut input = String::new();
+        let interrupt_sender_clone = interrupt_sender.clone();
+        let input_sender_clone = input_sender.clone();
 
-        if std::io::stdin().read_line(&mut input).is_err() {
-            println!("Failed to parse input");
+        thread::spawn(move || loop {
+            let mut input = String::new();
 
-            continue;
-        }
+            match io::stdin().read_line(&mut input) {
+                Ok(_) => match input.trim() {
+                    "stop" => interrupt_sender_clone.send(true).unwrap(),
+                    _ => input_sender_clone.send(Some(input)).unwrap(),
+                },
+                Err(_) => input_sender_clone.send(None).unwrap(),
+            }
+        });
 
+        let input = match input_receiver.recv() {
+            Ok(input) => match input {
+                Some(input) => input,
+                None => continue,
+            },
+            Err(_) => continue,
+        };
         let input = Input::new(&input);
 
         match input.command {
@@ -103,7 +124,7 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
 }
 
 fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
-    let mut depth = 1;
+    let mut depth = DEFAULT_DEPTH;
 
     for (index, argument) in arguments.iter().enumerate() {
         match *argument {
@@ -131,10 +152,11 @@ fn make_move_from_string(engine: &mut Engine, move_string: &str) -> Result<(), I
     Ok(())
 }
 
-fn handle_command<F>(command_fn: F, engine: &mut Engine, arguments: Vec<&str>)
-where
-    F: Fn(&mut Engine, Vec<&str>) -> Result<(), InputError>,
-{
+fn handle_command<F: Fn(&mut Engine, Vec<&str>) -> Result<(), InputError>>(
+    command_fn: F,
+    engine: &mut Engine,
+    arguments: Vec<&str>,
+) {
     let result = command_fn(engine, arguments);
 
     if let Err(error) = result {

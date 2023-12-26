@@ -12,17 +12,20 @@ use self::{
     moves::MoveList,
 };
 use crate::uci::InputError;
+use std::sync::mpsc::Receiver;
 
 pub const MAX_PLY: usize = 64;
 
 pub struct Engine {
     game: Game,
     attack_tables: AttackTables,
+    interrupt_receiver: Option<Receiver<bool>>,
     principal_variation: PrincipalVariation,
     killer_moves: KillerMoves,
     historic_move_score: HistoricMoveScore,
     is_principal_variation: bool,
     nodes_searched: u64,
+    interrupt_search: bool,
 }
 
 impl Engine {
@@ -30,11 +33,13 @@ impl Engine {
         Self {
             game: Game::initialise(),
             attack_tables: AttackTables::initialise(),
+            interrupt_receiver: None,
             principal_variation: PrincipalVariation::initialise(),
             killer_moves: KillerMoves::initialise(),
             historic_move_score: HistoricMoveScore::initialise(),
             is_principal_variation: true,
             nodes_searched: 0,
+            interrupt_search: false,
         }
     }
 
@@ -63,6 +68,7 @@ impl Engine {
         self.historic_move_score = HistoricMoveScore::initialise();
         self.is_principal_variation = true;
         self.nodes_searched = 0;
+        self.interrupt_search = false;
     }
 }
 

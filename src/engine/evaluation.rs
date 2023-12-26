@@ -5,7 +5,10 @@ use super::{
 };
 use crate::engine;
 use crate::uci::InputError;
-use std::ops::{Add, Neg, Sub};
+use std::{
+    ops::{Add, Neg, Sub},
+    sync::mpsc::Receiver,
+};
 
 pub type Value = i16;
 
@@ -84,6 +87,8 @@ const LMR_DEPTH_REDUCTION: u8 = 2;
 
 impl Engine {
     pub fn find_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
+        self.clear_parameters();
+
         let mut evaluation_limits = EvaluationLimits::initialise();
         let mut current_depth = 1;
         let ply = 0;
@@ -101,11 +106,9 @@ impl Engine {
 
             if missed_aspiration_window_low {
                 evaluation_limits.min = -MAX_EVALUATION;
-
                 continue;
             } else if missed_aspiration_window_high {
                 evaluation_limits.max = MAX_EVALUATION;
-
                 continue;
             }
 
@@ -120,17 +123,21 @@ impl Engine {
                 self.principal_variation.as_string()
             );
 
+            if self.interrupt_search {
+                break;
+            }
+
             current_depth += 1;
         }
 
-        let best_move_result = match self.principal_variation.table[0][0] {
+        match self.principal_variation.table[0][0] {
             Some(mv) => Ok(mv),
             None => Err(InputError::InvalidPosition),
-        };
+        }
+    }
 
-        self.clear_parameters();
-
-        best_move_result
+    pub fn set_interrupt_receiver(&mut self, rx: Receiver<bool>) {
+        self.interrupt_receiver = Some(rx);
     }
 
     fn negamax_search(
@@ -140,6 +147,8 @@ impl Engine {
         ply: Value,
         mut depth: u8,
     ) -> Evaluation {
+        self.check_for_interrupt();
+
         self.principal_variation.length[ply as usize] = ply;
 
         if ply as usize >= engine::MAX_PLY {
@@ -223,6 +232,10 @@ impl Engine {
 
             moves_searched += 1;
 
+            if self.interrupt_search {
+                return Evaluation(0);
+            }
+
             if evaluation >= evaluation_limits.max {
                 self.killer_moves.push(*mv, ply);
 
@@ -253,6 +266,8 @@ impl Engine {
         mut evaluation_limits: EvaluationLimits,
         ply: Value,
     ) -> Evaluation {
+        self.check_for_interrupt();
+
         self.nodes_searched += 1;
 
         let evaluation = Self::evaluate(game).sided_value(game.side_to_move());
@@ -335,6 +350,17 @@ impl Engine {
         }
     }
 
+    fn check_for_interrupt(&mut self) {
+        if self.nodes_searched & 2047 != 0 {
+            return;
+        }
+
+        self.interrupt_search = match &self.interrupt_receiver {
+            Some(receiver) => receiver.try_recv().unwrap_or(self.interrupt_search),
+            None => false,
+        }
+    }
+
     fn evaluate(game: &Game) -> Evaluation {
         let mut evaluation = Evaluation(0);
 
@@ -390,15 +416,12 @@ impl PrincipalVariation {
     }
 
     fn as_string(&self) -> String {
-        let mut move_list_string = String::new();
-
-        for mv in self.table[0].iter().flatten() {
-            let move_string = mv.as_string() + " ";
-
-            move_list_string += &move_string;
-        }
-
-        move_list_string
+        self.table[0]
+            .iter()
+            .flatten()
+            .map(|mv| mv.as_string())
+            .collect::<Vec<String>>()
+            .join(" ")
     }
 }
 

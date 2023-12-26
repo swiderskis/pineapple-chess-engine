@@ -275,10 +275,8 @@ impl LeaperAttackTables {
         let mut attack_tables = [Bitboard::new(0); 64];
 
         for square in Square::iter() {
-            let mut bitboard = Bitboard::new(0);
+            let bitboard = Bitboard::from_square(square);
             let mut attack_table = Bitboard::new(0);
-
-            bitboard.set_bit(square);
 
             attack_tables[square as usize] = match piece {
                 LeaperPiece::Pawn => {
