@@ -36,22 +36,19 @@ pub fn engine() {
 
     engine.set_interrupt_receiver(interrupt_receiver);
 
+    thread::spawn(move || loop {
+        let mut input = String::new();
+
+        match io::stdin().read_line(&mut input) {
+            Ok(_) => match input.trim() {
+                "stop" => interrupt_sender.send(true).unwrap(),
+                _ => input_sender.send(Some(input)).unwrap(),
+            },
+            Err(_) => input_sender.send(None).unwrap(),
+        }
+    });
+
     loop {
-        let interrupt_sender_clone = interrupt_sender.clone();
-        let input_sender_clone = input_sender.clone();
-
-        thread::spawn(move || loop {
-            let mut input = String::new();
-
-            match io::stdin().read_line(&mut input) {
-                Ok(_) => match input.trim() {
-                    "stop" => interrupt_sender_clone.send(true).unwrap(),
-                    _ => input_sender_clone.send(Some(input)).unwrap(),
-                },
-                Err(_) => input_sender_clone.send(None).unwrap(),
-            }
-        });
-
         let input = match input_receiver.recv() {
             Ok(input) => match input {
                 Some(input) => input,
