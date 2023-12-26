@@ -136,8 +136,8 @@ impl Engine {
         }
     }
 
-    pub fn set_interrupt_receiver(&mut self, rx: Receiver<bool>) {
-        self.interrupt_receiver = Some(rx);
+    pub fn set_stop_search_receiver(&mut self, stop_search_receiver: Receiver<bool>) {
+        self.stop_search_receiver = Some(stop_search_receiver);
     }
 
     fn negamax_search(
@@ -147,7 +147,7 @@ impl Engine {
         ply: Value,
         mut depth: u8,
     ) -> Evaluation {
-        self.check_for_interrupt();
+        self.stop_search_check();
 
         self.principal_variation.length[ply as usize] = ply;
 
@@ -266,7 +266,7 @@ impl Engine {
         mut evaluation_limits: EvaluationLimits,
         ply: Value,
     ) -> Evaluation {
-        self.check_for_interrupt();
+        self.stop_search_check();
 
         self.nodes_searched += 1;
 
@@ -350,12 +350,12 @@ impl Engine {
         }
     }
 
-    fn check_for_interrupt(&mut self) {
+    fn stop_search_check(&mut self) {
         if self.nodes_searched & 2047 != 0 {
             return;
         }
 
-        self.interrupt_search = match &self.interrupt_receiver {
+        self.interrupt_search = match &self.stop_search_receiver {
             Some(receiver) => receiver.try_recv().unwrap_or(self.interrupt_search),
             None => false,
         }

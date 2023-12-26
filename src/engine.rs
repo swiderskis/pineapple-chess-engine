@@ -19,7 +19,7 @@ pub const MAX_PLY: usize = 64;
 pub struct Engine {
     game: Game,
     attack_tables: AttackTables,
-    interrupt_receiver: Option<Receiver<bool>>,
+    stop_search_receiver: Option<Receiver<bool>>,
     principal_variation: PrincipalVariation,
     killer_moves: KillerMoves,
     historic_move_score: HistoricMoveScore,
@@ -33,7 +33,7 @@ impl Engine {
         Self {
             game: Game::initialise(),
             attack_tables: AttackTables::initialise(),
-            interrupt_receiver: None,
+            stop_search_receiver: None,
             principal_variation: PrincipalVariation::initialise(),
             killer_moves: KillerMoves::initialise(),
             historic_move_score: HistoricMoveScore::initialise(),

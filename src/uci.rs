@@ -31,17 +31,17 @@ impl<'a> Input<'a> {
 pub fn engine() {
     let mut engine = Engine::initialise();
 
-    let (interrupt_sender, interrupt_receiver) = mpsc::channel();
+    let (stop_search_sender, stop_search_receiver) = mpsc::channel();
     let (input_sender, input_receiver) = mpsc::channel();
 
-    engine.set_interrupt_receiver(interrupt_receiver);
+    engine.set_stop_search_receiver(stop_search_receiver);
 
     thread::spawn(move || loop {
         let mut input = String::new();
 
         match io::stdin().read_line(&mut input) {
             Ok(_) => match input.trim() {
-                "stop" => interrupt_sender.send(true).unwrap(),
+                "stop" => stop_search_sender.send(true).unwrap(),
                 _ => input_sender.send(Some(input)).unwrap(),
             },
             Err(_) => input_sender.send(None).unwrap(),
