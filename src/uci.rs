@@ -41,10 +41,10 @@ pub fn engine() {
 
         match io::stdin().read_line(&mut input) {
             Ok(_) => match input.trim() {
-                "stop" => stop_search_sender.send(true).unwrap(),
-                _ => input_sender.send(Some(input)).unwrap(),
+                "stop" => _ = stop_search_sender.send(true),
+                _ => _ = input_sender.send(Some(input)),
             },
-            Err(_) => input_sender.send(None).unwrap(),
+            Err(_) => _ = input_sender.send(None),
         }
     });
 
