@@ -1,82 +1,28 @@
+pub mod move_scoring;
+
+mod evaluation;
+
+pub use self::evaluation::Value;
+
+use self::{
+    evaluation::Evaluation,
+    move_scoring::{HistoricMoveScore, KillerMoves},
+};
 use super::{
-    game::{Game, Piece, Side, Square},
+    attack_tables::AttackTables,
+    game::{Game, Piece},
     moves::{Move, MoveList, MoveType},
     Engine,
 };
-use crate::engine;
-use crate::uci::InputError;
+use crate::{
+    engine::{self},
+    uci::InputError,
+};
 use std::{
-    ops::{Add, Neg, Sub},
+    ops::Neg,
     sync::mpsc::Receiver,
     time::{Duration, Instant},
 };
-
-pub type Value = i16;
-
-const SEARCH_TIME_OFFSET_MS: u64 = 50;
-
-const MAX_EVALUATION: Evaluation = Evaluation(Value::MAX);
-const CHECKMATE_EVALUATION: Evaluation = Evaluation(Value::MAX - 1);
-const STALEMATE_EVALUATION: Evaluation = Evaluation(0);
-
-// Piece value obtained by indexing into array using Piece enum
-const PIECE_VALUE: [Value; 6] = [100, 300, 350, 500, 900, 0];
-
-#[rustfmt::skip]
-const PAWN_POSITION_VALUE: PositionValue = PositionValue([
-     0,  0,  0,   0,   0,  0,  0,  0,
-    30, 30, 30,  40,  40, 30, 30, 30,
-    20, 20, 20,  30,  30, 30, 20, 20,
-    10, 10, 10,  20,  20, 10, 10, 10,
-     5,  5, 10,  20,  20,  5,  5,  5,
-     0,  0,  0,   5,   5,  0,  0,  0,
-     0,  0,  0, -10, -10,  0,  0,  0,
-     0,  0,  0,   0,   0,  0,  0,  0,
-]);
-#[rustfmt::skip]
-const KNIGHT_POSITION_VALUE: PositionValue = PositionValue([
-    -5,   0,  0,  0,  0,  0,   0, -5,
-    -5,   0,  0, 10, 10,  0,   0, -5,
-    -5,   5, 20, 20, 20, 20,   5, -5,
-    -5,  10, 20, 30, 30, 20,  10, -5,
-    -5,  10, 20, 30, 30, 20,  10, -5,
-    -5,   5, 20, 10, 10, 20,   5, -5,
-    -5,   0,  0,  0,  0,  0,   0, -5,
-    -5, -10,  0,  0,  0,  0, -10, -5,
-]);
-#[rustfmt::skip]
-const BISHOP_POSITION_VALUE: PositionValue = PositionValue([
-    0,  0,   0,  0,  0,   0,  0, 0,
-    0,  0,   0,  0,  0,   0,  0, 0,
-    0,  0,   0, 10, 10,   0,  0, 0,
-    0,  0,  10, 20, 20,  10,  0, 0,
-    0,  0,  10, 20, 20,  10,  0, 0,
-    0, 10,   0,  0,  0,   0, 10, 0,
-    0, 30,   0,  0,  0,   0, 30, 0,
-    0,  0, -10,  0,  0, -10,  0, 0,
-]);
-#[rustfmt::skip]
-const ROOK_POSITION_VALUE: PositionValue = PositionValue([
-    50, 50, 50, 50, 50, 50, 50, 50,
-    50, 50, 50, 50, 50, 50, 50, 50,
-     0,  0, 10, 20, 20, 10,  0,  0,
-     0,  0, 10, 20, 20, 10,  0,  0,
-     0,  0, 10, 20, 20, 10,  0,  0,
-     0,  0, 10, 20, 20, 10,  0,  0,
-     0,  0, 10, 20, 20, 10,  0,  0,
-     0,  0,  0, 20, 20,  0,  0,  0,
-]);
-#[rustfmt::skip]
-const KING_POSITION_VALUE: PositionValue = PositionValue([
-    0, 0,  0,  0,   0,  0,  0, 0,
-    0, 0,  5,  5,   5,  5,  0, 0,
-    0, 5,  5, 10,  10,  5,  5, 0,
-    0, 5, 10, 20,  20, 10,  5, 0,
-    0, 5, 10, 20,  20, 10,  5, 0,
-    0, 0,  5, 10,  10,  5,  0, 0,
-    0, 5,  5, -5,  -5,  0,  5, 0,
-    0, 0,  5,  0, -15,  0, 10, 0,
-]);
 
 const ASPIRATION_WINDOW_ADJUSTMENT: Value = 50;
 
@@ -88,10 +34,7 @@ const LMR_MOVES_SEARCHED_MIN: i32 = 4;
 const LMR_DEPTH_MIN: u8 = 3;
 const LMR_DEPTH_REDUCTION: u8 = 2;
 
-pub struct SearchTiming {
-    start_time: Instant,
-    max_search_time: Duration,
-}
+const SEARCH_TIME_OFFSET_MS: u64 = 50;
 
 impl Engine {
     pub fn search_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
@@ -111,10 +54,10 @@ impl Engine {
             let missed_aspiration_window_high = evaluation >= evaluation_limits.max;
 
             if missed_aspiration_window_low {
-                evaluation_limits.min = -MAX_EVALUATION;
+                evaluation_limits.min = -evaluation::MAX_EVALUATION;
                 continue;
             } else if missed_aspiration_window_high {
-                evaluation_limits.max = MAX_EVALUATION;
+                evaluation_limits.max = evaluation::MAX_EVALUATION;
                 continue;
             }
 
@@ -123,7 +66,7 @@ impl Engine {
 
             println!(
                 "info score cp {} depth {} nodes {} pv {}",
-                evaluation.0,
+                evaluation.value(),
                 current_depth,
                 self.nodes_searched,
                 self.principal_variation.as_string()
@@ -141,12 +84,12 @@ impl Engine {
             None => Err(InputError::InvalidPosition),
         };
 
-        self.clear_parameters();
+        self.clear_search_parameters();
 
         best_move
     }
 
-    pub fn set_search_time(
+    pub fn set_search_timing(
         &mut self,
         increment: Option<Duration>,
         move_time: Option<Duration>,
@@ -174,11 +117,11 @@ impl Engine {
             },
         };
 
-        let search_time = SearchTiming {
+        let search_timing = SearchTiming {
             start_time: Instant::now(),
             max_search_time,
         };
-        self.search_timing = Some(search_time);
+        self.search_timing = Some(search_timing);
     }
 
     pub fn set_stop_search_receiver(&mut self, stop_search_receiver: Receiver<bool>) {
@@ -278,7 +221,7 @@ impl Engine {
             moves_searched += 1;
 
             if self.interrupt_search {
-                return Evaluation(0);
+                return evaluation::STALEMATE_EVALUATION;
             }
 
             if evaluation >= evaluation_limits.max {
@@ -297,9 +240,9 @@ impl Engine {
         }
 
         if moves_searched == 0 && king_in_check {
-            -CHECKMATE_EVALUATION + ply
+            -evaluation::CHECKMATE_EVALUATION + ply
         } else if moves_searched == 0 {
-            STALEMATE_EVALUATION
+            evaluation::STALEMATE_EVALUATION
         } else {
             evaluation_limits.min
         }
@@ -415,31 +358,64 @@ impl Engine {
         self.interrupt_search = stop_search_received || max_evaluation_time_exceeded
     }
 
-    fn evaluate(game: &Game) -> Evaluation {
-        let mut evaluation = Evaluation(0);
-
-        for (mut bitboard, piece, side) in game.piece_bitboards() {
-            let position_value = match piece {
-                Piece::Pawn => PAWN_POSITION_VALUE,
-                Piece::Knight => KNIGHT_POSITION_VALUE,
-                Piece::Bishop => BISHOP_POSITION_VALUE,
-                Piece::Rook => ROOK_POSITION_VALUE,
-                Piece::Queen => PositionValue([0; 64]),
-                Piece::King => KING_POSITION_VALUE,
-            };
-
-            while let Some(square) = bitboard.get_lsb_square() {
-                evaluation.sided_add(PIECE_VALUE[piece as usize], side);
-                evaluation.sided_add(position_value.value(side, square), side);
-
-                bitboard.pop_bit(square);
-            }
-        }
-
-        evaluation
+    fn clear_search_parameters(&mut self) {
+        self.principal_variation = PrincipalVariation::initialise();
+        self.killer_moves = KillerMoves::initialise();
+        self.historic_move_score = HistoricMoveScore::initialise();
+        self.is_principal_variation = true;
+        self.search_timing = None;
+        self.interrupt_search = false;
+        self.nodes_searched = 0;
     }
 }
 
+pub struct SearchTiming {
+    start_time: Instant,
+    max_search_time: Duration,
+}
+
+#[derive(Clone, Copy)]
+pub struct EvaluationLimits {
+    min: Evaluation, // alpha
+    max: Evaluation, // beta
+}
+
+impl EvaluationLimits {
+    pub fn initialise() -> Self {
+        Self {
+            min: -evaluation::MAX_EVALUATION,
+            max: evaluation::MAX_EVALUATION,
+        }
+    }
+
+    pub fn max_narrowed_bounds(self) -> Self {
+        Self {
+            min: -self.min - 1,
+            max: -self.min,
+        }
+    }
+
+    pub fn min_narrowed_bounds(self) -> Self {
+        Self {
+            min: -self.max,
+            max: -self.max + 1,
+        }
+    }
+}
+
+impl Neg for EvaluationLimits {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        let new_min = -self.max;
+        let new_max = -self.min;
+
+        Self {
+            min: new_min,
+            max: new_max,
+        }
+    }
+}
 pub struct PrincipalVariation {
     table: [[Option<Move>; engine::MAX_PLY]; engine::MAX_PLY],
     length: [Value; engine::MAX_PLY],
@@ -479,102 +455,102 @@ impl PrincipalVariation {
     }
 }
 
-#[derive(Clone, Copy)]
-struct EvaluationLimits {
-    min: Evaluation, // alpha
-    max: Evaluation, // beta
-}
+fn _perft_test(game: &mut Game, attack_tables: &AttackTables, depth: u8) {
+    let mut total_nodes = 0;
+    let now = Instant::now();
 
-impl EvaluationLimits {
-    fn initialise() -> Self {
-        Self {
-            min: -MAX_EVALUATION,
-            max: MAX_EVALUATION,
+    let move_list = MoveList::generate_moves(game, attack_tables);
+
+    println!("Move   Nodes   ");
+
+    for mv in move_list.vec() {
+        let mut game_clone = game.clone();
+        let move_result = game_clone.make_move(*mv, attack_tables);
+
+        if move_result.is_err() {
+            continue;
         }
+
+        let mut nodes = 0;
+
+        _perft(&mut game_clone, attack_tables, &mut nodes, depth - 1);
+
+        print!("{:<6}", mv.as_string());
+        print!("{:^7}", nodes);
+        println!();
+
+        total_nodes += nodes;
     }
 
-    fn max_narrowed_bounds(self) -> Self {
-        Self {
-            min: -self.min - 1,
-            max: -self.min,
+    println!();
+    println!("Depth: {}", depth);
+    println!("Nodes: {}", total_nodes);
+    println!("Time taken: {:?}", now.elapsed());
+}
+
+fn _perft(game: &mut Game, attack_tables: &AttackTables, nodes: &mut u64, depth: u8) {
+    if depth == 0 {
+        *nodes += 1;
+
+        return;
+    }
+
+    let move_list = MoveList::generate_moves(game, attack_tables);
+
+    for mv in move_list.vec() {
+        let mut game_clone = game.clone();
+        let move_result = game_clone.make_move(*mv, attack_tables);
+
+        if move_result.is_err() {
+            continue;
         }
-    }
 
-    fn min_narrowed_bounds(self) -> Self {
-        Self {
-            min: -self.max,
-            max: -self.max + 1,
-        }
-    }
-}
-
-impl Neg for EvaluationLimits {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        let new_min = -self.max;
-        let new_max = -self.min;
-
-        Self {
-            min: new_min,
-            max: new_max,
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
-struct Evaluation(Value);
-
-impl Evaluation {
-    fn sided_add(&mut self, value: Value, side: Side) {
-        self.0 += value * side.to_value()
-    }
-
-    fn sided_value(self, side: Side) -> Evaluation {
-        Self(self.0 * side.to_value())
-    }
-}
-
-impl Add<Value> for Evaluation {
-    type Output = Self;
-
-    fn add(self, rhs: Value) -> Self::Output {
-        Self(self.0 + rhs)
-    }
-}
-
-impl Neg for Evaluation {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Self(-self.0)
-    }
-}
-
-impl Sub<Value> for Evaluation {
-    type Output = Self;
-
-    fn sub(self, rhs: Value) -> Self::Output {
-        Self(self.0 - rhs)
-    }
-}
-
-struct PositionValue([Value; 64]);
-
-impl PositionValue {
-    fn value(&self, side: Side, square: Square) -> Value {
-        let sided_square_index = match side {
-            Side::White => square as usize,
-            Side::Black => square.horizontal_mirror() as usize,
-        };
-
-        self.0[sided_square_index]
+        _perft(&mut game_clone, attack_tables, nodes, depth - 1);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn perft_start_position() {
+        let mut game = Game::initialise();
+        let attack_tables = AttackTables::initialise();
+
+        let fen = vec!["startpos"];
+
+        game.load_fen(&fen).unwrap();
+
+        let mut nodes = 0;
+
+        _perft(&mut game, &attack_tables, &mut nodes, 6);
+
+        assert_eq!(nodes, 119_060_324);
+    }
+
+    #[test]
+    fn perft_tricky_position() {
+        let mut game = Game::initialise();
+        let attack_tables = AttackTables::initialise();
+
+        let fen = vec![
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        ];
+
+        game.load_fen(&fen).unwrap();
+
+        let mut nodes = 0;
+
+        _perft(&mut game, &attack_tables, &mut nodes, 5);
+
+        assert_eq!(nodes, 193_690_690);
+    }
 
     #[test]
     fn one_move_checkmate_white() {

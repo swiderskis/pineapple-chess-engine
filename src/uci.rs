@@ -204,7 +204,7 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
         }
     }
 
-    engine.set_search_time(increment, move_time, time_left, moves_to_go);
+    engine.set_search_timing(increment, move_time, time_left, moves_to_go);
 
     let best_move = engine.search_best_move(depth)?.as_string();
 

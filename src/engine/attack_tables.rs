@@ -160,19 +160,6 @@ const ROOK_ATTACK_MASK_BIT_COUNT: [u8; 64] = [
     12, 11, 11, 11, 11, 11, 11, 12,
 ];
 
-#[derive(Clone, Copy)]
-enum LeaperPiece {
-    Pawn = 0,
-    Knight = 1,
-    King = 5,
-}
-
-#[derive(Clone, Copy)]
-enum SliderPiece {
-    Bishop = 2,
-    Rook = 3,
-}
-
 #[derive(Clone)]
 pub struct AttackTables {
     leaper_attack_tables: LeaperAttackTables,
@@ -322,6 +309,13 @@ impl LeaperAttackTables {
 
         attack_tables
     }
+}
+
+#[derive(Clone, Copy)]
+enum LeaperPiece {
+    Pawn = 0,
+    Knight = 1,
+    King = 5,
 }
 
 #[derive(Clone)]
@@ -552,6 +546,12 @@ impl SliderAttackTables {
             SliderPiece::Rook => self.rook_attack_masks[square as usize],
         }
     }
+}
+
+#[derive(Clone, Copy)]
+enum SliderPiece {
+    Bishop = 2,
+    Rook = 3,
 }
 
 #[derive(Debug, PartialEq)]

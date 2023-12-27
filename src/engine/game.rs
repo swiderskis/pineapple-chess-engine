@@ -1,7 +1,7 @@
 use super::{
     attack_tables::AttackTables,
-    evaluation::Value,
-    moves::{Move, MoveList, MoveType},
+    moves::{Move, MoveType},
+    search::Value,
 };
 use crate::uci::{FenError, InputError};
 use num_derive::FromPrimitive;
@@ -9,7 +9,6 @@ use num_traits::{AsPrimitive, FromPrimitive, Unsigned};
 use std::{
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not, Shl, Shr, ShrAssign},
     str::FromStr,
-    time::Instant,
 };
 use strum::{IntoEnumIterator, ParseError};
 use strum_macros::{Display, EnumIter, EnumString};
@@ -889,102 +888,12 @@ impl CastlingType {
     }
 }
 
-fn _perft_test(game: &mut Game, attack_tables: &AttackTables, depth: u8) {
-    let mut total_nodes = 0;
-    let now = Instant::now();
-
-    let move_list = MoveList::generate_moves(game, attack_tables);
-
-    println!("Move   Nodes   ");
-
-    for mv in move_list.vec() {
-        let mut game_clone = game.clone();
-        let move_result = game_clone.make_move(*mv, attack_tables);
-
-        if move_result.is_err() {
-            continue;
-        }
-
-        let mut nodes = 0;
-
-        _perft(&mut game_clone, attack_tables, &mut nodes, depth - 1);
-
-        print!("{:<6}", mv.as_string());
-        print!("{:^7}", nodes);
-        println!();
-
-        total_nodes += nodes;
-    }
-
-    println!();
-    println!("Depth: {}", depth);
-    println!("Nodes: {}", total_nodes);
-    println!("Time taken: {:?}", now.elapsed());
-}
-
-fn _perft(game: &mut Game, attack_tables: &AttackTables, nodes: &mut u64, depth: u8) {
-    if depth == 0 {
-        *nodes += 1;
-
-        return;
-    }
-
-    let move_list = MoveList::generate_moves(game, attack_tables);
-
-    for mv in move_list.vec() {
-        let mut game_clone = game.clone();
-        let move_result = game_clone.make_move(*mv, attack_tables);
-
-        if move_result.is_err() {
-            continue;
-        }
-
-        _perft(&mut game_clone, attack_tables, nodes, depth - 1);
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{super::moves::MoveSearch, *};
-
-    #[test]
-    fn perft_start_position() {
-        let mut game = Game::initialise();
-        let attack_tables = AttackTables::initialise();
-
-        let fen = vec!["startpos"];
-
-        game.load_fen(&fen).unwrap();
-
-        let mut nodes = 0;
-
-        _perft(&mut game, &attack_tables, &mut nodes, 6);
-
-        assert_eq!(nodes, 119_060_324);
-    }
-
-    #[test]
-    fn perft_tricky_position() {
-        let mut game = Game::initialise();
-        let attack_tables = AttackTables::initialise();
-
-        let fen = vec![
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
-            "w",
-            "KQkq",
-            "-",
-            "0",
-            "1",
-        ];
-
-        game.load_fen(&fen).unwrap();
-
-        let mut nodes = 0;
-
-        _perft(&mut game, &attack_tables, &mut nodes, 5);
-
-        assert_eq!(nodes, 193_690_690);
-    }
+    use super::{
+        super::moves::{MoveList, MoveSearch},
+        *,
+    };
 
     #[test]
     fn load_start_position() {

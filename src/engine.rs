@@ -1,15 +1,16 @@
 mod attack_tables;
-mod evaluation;
 mod game;
-mod move_scoring;
 mod moves;
+mod search;
 
 use self::{
     attack_tables::AttackTables,
-    evaluation::{PrincipalVariation, SearchTiming},
     game::Game,
-    move_scoring::{HistoricMoveScore, KillerMoves},
     moves::MoveList,
+    search::{
+        move_scoring::{HistoricMoveScore, KillerMoves},
+        PrincipalVariation, SearchTiming,
+    },
 };
 use crate::uci::InputError;
 use std::sync::mpsc::Receiver;
@@ -62,16 +63,6 @@ impl Engine {
 
     pub fn reset_game(&mut self) {
         self.game = Game::initialise();
-    }
-
-    pub fn clear_parameters(&mut self) {
-        self.principal_variation = PrincipalVariation::initialise();
-        self.killer_moves = KillerMoves::initialise();
-        self.historic_move_score = HistoricMoveScore::initialise();
-        self.is_principal_variation = true;
-        self.search_timing = None;
-        self.interrupt_search = false;
-        self.nodes_searched = 0;
     }
 }
 

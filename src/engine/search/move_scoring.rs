@@ -1,10 +1,9 @@
-use super::{
-    evaluation::Value,
+use super::{Engine, Value};
+use crate::engine::{
+    self,
     game::{Game, Piece, Side},
     moves::{Move, MoveList, MoveType},
-    Engine,
 };
-use crate::engine;
 use std::cmp::Reverse;
 
 type Score = u16;
@@ -27,6 +26,45 @@ const MVV_LVA_SCORE: [[Score; PIECE_TYPES]; PIECE_TYPES] = [
     [10100, 10200, 10300, 10400, 10500, 0],
 ];
 const KILLER_MOVE_SCORE: [Score; KILLER_MOVE_ARRAY_SIZE] = [9000, 8000];
+
+impl MoveList {
+    pub fn generate_sorted_moves(game: &Game, engine: &Engine, ply: Value) -> Self {
+        let mut move_list = Self::generate_moves(game, &engine.attack_tables);
+
+        move_list
+            .mut_vec()
+            .sort_by_key(|mv| Reverse(mv.score(game, engine, ply)));
+
+        move_list
+    }
+}
+
+impl Move {
+    fn score(self, game: &Game, engine: &Engine, ply: Value) -> Score {
+        if let Some(principal_move) = engine.principal_variation.principal_move(ply) {
+            if engine.is_principal_variation && principal_move == self {
+                return PRINCIPAL_MOVE_SCORE;
+            }
+        }
+
+        match self.move_type() {
+            MoveType::Capture => match game.piece_at_square(self.target_square()) {
+                Some((victim, _)) => {
+                    let attacker = self.piece();
+
+                    MVV_LVA_SCORE[attacker as usize][victim as usize]
+                }
+                None => 0,
+            },
+            MoveType::EnPassant => MVV_LVA_SCORE[Piece::Pawn as usize][Piece::Pawn as usize],
+            _ => engine.killer_moves.score_move(self, ply).unwrap_or(
+                engine
+                    .historic_move_score
+                    .score_move(self, game.side_to_move()),
+            ),
+        }
+    }
+}
 
 pub struct KillerMoves([[Option<Move>; KILLER_MOVE_ARRAY_SIZE]; engine::MAX_PLY]);
 
@@ -78,44 +116,5 @@ impl HistoricMoveScore {
         let target_square = mv.target_square();
 
         self.0[side as usize][piece as usize][target_square as usize]
-    }
-}
-
-impl MoveList {
-    pub fn generate_sorted_moves(game: &Game, engine: &Engine, ply: Value) -> Self {
-        let mut move_list = Self::generate_moves(game, &engine.attack_tables);
-
-        move_list
-            .mut_vec()
-            .sort_by_key(|mv| Reverse(mv.score(game, engine, ply)));
-
-        move_list
-    }
-}
-
-impl Move {
-    fn score(self, game: &Game, engine: &Engine, ply: Value) -> Score {
-        if let Some(principal_move) = engine.principal_variation.principal_move(ply) {
-            if engine.is_principal_variation && principal_move == self {
-                return PRINCIPAL_MOVE_SCORE;
-            }
-        }
-
-        match self.move_type() {
-            MoveType::Capture => match game.piece_at_square(self.target_square()) {
-                Some((victim, _)) => {
-                    let attacker = self.piece();
-
-                    MVV_LVA_SCORE[attacker as usize][victim as usize]
-                }
-                None => 0,
-            },
-            MoveType::EnPassant => MVV_LVA_SCORE[Piece::Pawn as usize][Piece::Pawn as usize],
-            _ => engine.killer_moves.score_move(self, ply).unwrap_or(
-                engine
-                    .historic_move_score
-                    .score_move(self, game.side_to_move()),
-            ),
-        }
     }
 }
