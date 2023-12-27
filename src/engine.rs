@@ -6,7 +6,7 @@ mod moves;
 
 use self::{
     attack_tables::AttackTables,
-    evaluation::PrincipalVariation,
+    evaluation::{PrincipalVariation, SearchTiming},
     game::Game,
     move_scoring::{HistoricMoveScore, KillerMoves},
     moves::MoveList,
@@ -24,8 +24,9 @@ pub struct Engine {
     killer_moves: KillerMoves,
     historic_move_score: HistoricMoveScore,
     is_principal_variation: bool,
-    nodes_searched: u64,
+    search_timing: Option<SearchTiming>,
     interrupt_search: bool,
+    nodes_searched: u64,
 }
 
 impl Engine {
@@ -38,8 +39,9 @@ impl Engine {
             killer_moves: KillerMoves::initialise(),
             historic_move_score: HistoricMoveScore::initialise(),
             is_principal_variation: true,
-            nodes_searched: 0,
+            search_timing: None,
             interrupt_search: false,
+            nodes_searched: 0,
         }
     }
 
@@ -67,8 +69,9 @@ impl Engine {
         self.killer_moves = KillerMoves::initialise();
         self.historic_move_score = HistoricMoveScore::initialise();
         self.is_principal_variation = true;
-        self.nodes_searched = 0;
+        self.search_timing = None;
         self.interrupt_search = false;
+        self.nodes_searched = 0;
     }
 }
 

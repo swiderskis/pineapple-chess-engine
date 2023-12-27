@@ -8,9 +8,12 @@ use crate::uci::InputError;
 use std::{
     ops::{Add, Neg, Sub},
     sync::mpsc::Receiver,
+    time::{Duration, Instant},
 };
 
 pub type Value = i16;
+
+const SEARCH_TIME_OFFSET_MS: u64 = 50;
 
 const MAX_EVALUATION: Evaluation = Evaluation(Value::MAX);
 const CHECKMATE_EVALUATION: Evaluation = Evaluation(Value::MAX - 1);
@@ -85,10 +88,13 @@ const LMR_MOVES_SEARCHED_MIN: i32 = 4;
 const LMR_DEPTH_MIN: u8 = 3;
 const LMR_DEPTH_REDUCTION: u8 = 2;
 
-impl Engine {
-    pub fn find_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
-        self.clear_parameters();
+pub struct SearchTiming {
+    start_time: Instant,
+    max_search_time: Duration,
+}
 
+impl Engine {
+    pub fn search_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
         let mut evaluation_limits = EvaluationLimits::initialise();
         let mut current_depth = 1;
         let ply = 0;
@@ -130,10 +136,49 @@ impl Engine {
             current_depth += 1;
         }
 
-        match self.principal_variation.table[0][0] {
+        let best_move = match self.principal_variation.table[0][0] {
             Some(mv) => Ok(mv),
             None => Err(InputError::InvalidPosition),
-        }
+        };
+
+        self.clear_parameters();
+
+        best_move
+    }
+
+    pub fn set_search_time(
+        &mut self,
+        increment: Option<Duration>,
+        move_time: Option<Duration>,
+        time_left: Option<Duration>,
+        moves_to_go: u64,
+    ) {
+        let increment = match increment {
+            Some(increment) => increment,
+            None => Duration::from_millis(0),
+        };
+
+        let max_search_time = match move_time {
+            Some(move_time) => move_time,
+            None => match time_left {
+                Some(time_left) => {
+                    let mut max_search_time = time_left;
+
+                    max_search_time /= moves_to_go as u32;
+                    max_search_time += increment;
+                    max_search_time -= Duration::from_millis(SEARCH_TIME_OFFSET_MS);
+
+                    max_search_time
+                }
+                None => return,
+            },
+        };
+
+        let search_time = SearchTiming {
+            start_time: Instant::now(),
+            max_search_time,
+        };
+        self.search_timing = Some(search_time);
     }
 
     pub fn set_stop_search_receiver(&mut self, stop_search_receiver: Receiver<bool>) {
@@ -351,14 +396,23 @@ impl Engine {
     }
 
     fn stop_search_check(&mut self) {
-        if self.nodes_searched & 2047 != 0 {
+        if self.nodes_searched & 2047 != 0 || self.interrupt_search {
             return;
         }
 
-        self.interrupt_search = match &self.stop_search_receiver {
+        let stop_search_received = match &self.stop_search_receiver {
             Some(receiver) => receiver.try_recv().unwrap_or(self.interrupt_search),
             None => false,
-        }
+        };
+
+        let max_evaluation_time_exceeded = match &self.search_timing {
+            Some(evaluation_time) => {
+                evaluation_time.start_time.elapsed() > evaluation_time.max_search_time
+            }
+            None => false,
+        };
+
+        self.interrupt_search = stop_search_received || max_evaluation_time_exceeded
     }
 
     fn evaluate(game: &Game) -> Evaluation {
@@ -530,7 +584,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(5).unwrap();
+        let best_move = engine.search_best_move(5).unwrap();
 
         assert_eq!(best_move.as_string(), "b4e7");
 
@@ -540,7 +594,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(6).unwrap();
+        let best_move = engine.search_best_move(6).unwrap();
 
         assert_eq!(best_move.as_string(), "b4e7");
     }
@@ -553,7 +607,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(5).unwrap();
+        let best_move = engine.search_best_move(5).unwrap();
 
         assert_eq!(best_move.as_string(), "g5d2");
 
@@ -563,7 +617,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(6).unwrap();
+        let best_move = engine.search_best_move(6).unwrap();
 
         assert_eq!(best_move.as_string(), "g5d2");
     }
@@ -576,7 +630,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(5).unwrap();
+        let best_move = engine.search_best_move(5).unwrap();
 
         assert_eq!(best_move.as_string(), "a8g2");
 
@@ -586,7 +640,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(6).unwrap();
+        let best_move = engine.search_best_move(6).unwrap();
 
         assert_eq!(best_move.as_string(), "a8g2");
     }
@@ -599,7 +653,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(5).unwrap();
+        let best_move = engine.search_best_move(5).unwrap();
 
         assert_eq!(best_move.as_string(), "h1b7");
 
@@ -609,7 +663,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(6).unwrap();
+        let best_move = engine.search_best_move(6).unwrap();
 
         assert_eq!(best_move.as_string(), "h1b7");
     }
@@ -622,7 +676,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(5).unwrap();
+        let best_move = engine.search_best_move(5).unwrap();
         let possible_best_moves = ["f7f6", "f7f5", "f7f4,", "f7f3,", "f7f2", "f7f1"];
 
         println!("{}", best_move.as_string());
@@ -634,7 +688,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(6).unwrap();
+        let best_move = engine.search_best_move(6).unwrap();
         let possible_best_moves = ["f7f6", "f7f5", "f7f4,", "f7f3,", "f7f2", "f7f1"];
 
         println!("{}", best_move.as_string());
@@ -649,7 +703,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(5).unwrap();
+        let best_move = engine.search_best_move(5).unwrap();
         let possible_best_moves = ["c2c3", "c2c4", "c2c5", "c2c6", "c2c7", "c2c8"];
 
         println!("{}", best_move.as_string());
@@ -661,7 +715,7 @@ mod tests {
 
         engine.load_fen(&fen).unwrap();
 
-        let best_move = engine.find_best_move(6).unwrap();
+        let best_move = engine.search_best_move(6).unwrap();
         let possible_best_moves = ["c2c3", "c2c4", "c2c5", "c2c6", "c2c7", "c2c8"];
 
         println!("{}", best_move.as_string());
