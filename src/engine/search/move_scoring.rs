@@ -1,4 +1,4 @@
-use super::{Engine, Value};
+use super::{Engine, SearchParameters, Value};
 use crate::engine::{
     self,
     game::{Game, Piece, Side},
@@ -33,16 +33,16 @@ impl MoveList {
 
         move_list
             .mut_vec()
-            .sort_by_key(|mv| Reverse(mv.score(game, engine, ply)));
+            .sort_by_key(|mv| Reverse(mv.score(game, &engine.search_parameters, ply)));
 
         move_list
     }
 }
 
 impl Move {
-    fn score(self, game: &Game, engine: &Engine, ply: Value) -> Score {
-        if let Some(principal_move) = engine.principal_variation.principal_move(ply) {
-            if engine.is_principal_variation && principal_move == self {
+    fn score(self, game: &Game, search_parameters: &SearchParameters, ply: Value) -> Score {
+        if let Some(principal_move) = search_parameters.principal_variation.principal_move(ply) {
+            if search_parameters.is_principal_variation && principal_move == self {
                 return PRINCIPAL_MOVE_SCORE;
             }
         }
@@ -57,11 +57,12 @@ impl Move {
                 None => 0,
             },
             MoveType::EnPassant => MVV_LVA_SCORE[Piece::Pawn as usize][Piece::Pawn as usize],
-            _ => engine.killer_moves.score_move(self, ply).unwrap_or(
-                engine
+            _ => match search_parameters.killer_moves.score_move(self, ply) {
+                Some(score) => score,
+                None => search_parameters
                     .historic_move_score
                     .score_move(self, game.side_to_move()),
-            ),
+            },
         }
     }
 }

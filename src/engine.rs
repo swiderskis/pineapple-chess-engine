@@ -3,31 +3,15 @@ mod game;
 mod moves;
 mod search;
 
-use self::{
-    attack_tables::AttackTables,
-    game::Game,
-    moves::MoveList,
-    search::{
-        move_scoring::{HistoricMoveScore, KillerMoves},
-        PrincipalVariation, SearchTiming,
-    },
-};
+use self::{attack_tables::AttackTables, game::Game, moves::MoveList, search::SearchParameters};
 use crate::uci::InputError;
-use std::sync::mpsc::Receiver;
 
 pub const MAX_PLY: usize = 64;
 
 pub struct Engine {
     game: Game,
     attack_tables: AttackTables,
-    stop_search_receiver: Option<Receiver<bool>>,
-    principal_variation: PrincipalVariation,
-    killer_moves: KillerMoves,
-    historic_move_score: HistoricMoveScore,
-    is_principal_variation: bool,
-    search_timing: Option<SearchTiming>,
-    interrupt_search: bool,
-    nodes_searched: u64,
+    search_parameters: SearchParameters,
 }
 
 impl Engine {
@@ -35,14 +19,7 @@ impl Engine {
         Self {
             game: Game::initialise(),
             attack_tables: AttackTables::initialise(),
-            stop_search_receiver: None,
-            principal_variation: PrincipalVariation::initialise(),
-            killer_moves: KillerMoves::initialise(),
-            historic_move_score: HistoricMoveScore::initialise(),
-            is_principal_variation: true,
-            search_timing: None,
-            interrupt_search: false,
-            nodes_searched: 0,
+            search_parameters: SearchParameters::initialise(),
         }
     }
 

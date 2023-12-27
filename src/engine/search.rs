@@ -1,6 +1,5 @@
-pub mod move_scoring;
-
 mod evaluation;
+mod move_scoring;
 
 pub use self::evaluation::Value;
 
@@ -45,7 +44,7 @@ impl Engine {
         let game_clone = self.game.clone();
 
         while current_depth <= depth {
-            self.is_principal_variation = true;
+            self.search_parameters.is_principal_variation = true;
 
             let evaluation =
                 self.negamax_search(&game_clone, evaluation_limits, ply, current_depth);
@@ -68,23 +67,23 @@ impl Engine {
                 "info score cp {} depth {} nodes {} pv {}",
                 evaluation.value(),
                 current_depth,
-                self.nodes_searched,
-                self.principal_variation.as_string()
+                self.search_parameters.nodes_searched,
+                self.search_parameters.principal_variation.as_string()
             );
 
-            if self.interrupt_search {
+            if self.search_parameters.interrupt_search {
                 break;
             }
 
             current_depth += 1;
         }
 
-        let best_move = match self.principal_variation.table[0][0] {
+        let best_move = match self.search_parameters.principal_variation.table[0][0] {
             Some(mv) => Ok(mv),
             None => Err(InputError::InvalidPosition),
         };
 
-        self.clear_search_parameters();
+        self.search_parameters.clear();
 
         best_move
     }
@@ -121,11 +120,11 @@ impl Engine {
             start_time: Instant::now(),
             max_search_time,
         };
-        self.search_timing = Some(search_timing);
+        self.search_parameters.search_timing = Some(search_timing);
     }
 
     pub fn set_stop_search_receiver(&mut self, stop_search_receiver: Receiver<bool>) {
-        self.stop_search_receiver = Some(stop_search_receiver);
+        self.search_parameters.stop_search_receiver = Some(stop_search_receiver);
     }
 
     fn negamax_search(
@@ -135,21 +134,20 @@ impl Engine {
         ply: Value,
         mut depth: u8,
     ) -> Evaluation {
-        self.stop_search_check();
-
-        self.principal_variation.length[ply as usize] = ply;
+        self.search_parameters.stop_search_check();
+        self.search_parameters.principal_variation.length[ply as usize] = ply;
 
         if ply as usize >= engine::MAX_PLY {
             return Self::evaluate(game).sided_value(game.side_to_move());
         }
 
         if depth == 0 {
-            self.is_principal_variation = false;
+            self.search_parameters.is_principal_variation = false;
 
             return self.quiescence_search(game, evaluation_limits, ply + 1);
         }
 
-        self.nodes_searched += 1;
+        self.search_parameters.nodes_searched += 1;
 
         let king_square = game
             .piece_bitboard(Piece::King, game.side_to_move())
@@ -188,9 +186,15 @@ impl Engine {
         let move_list = MoveList::generate_sorted_moves(game, self, ply);
         let mut moves_searched = 0;
 
-        self.is_principal_variation = match self.principal_variation.principal_move(ply) {
+        let principal_move_option = self
+            .search_parameters
+            .principal_variation
+            .principal_move(ply);
+
+        self.search_parameters.is_principal_variation = match principal_move_option {
             Some(principal_move) => {
-                self.is_principal_variation && move_list.vec()[0] == principal_move
+                self.search_parameters.is_principal_variation
+                    && move_list.vec()[0] == principal_move
             }
             None => false,
         };
@@ -220,20 +224,25 @@ impl Engine {
 
             moves_searched += 1;
 
-            if self.interrupt_search {
+            if self.search_parameters.interrupt_search {
                 return evaluation::STALEMATE_EVALUATION;
             }
 
             if evaluation >= evaluation_limits.max {
-                self.killer_moves.push(*mv, ply);
+                self.search_parameters.killer_moves.push(*mv, ply);
 
                 return evaluation_limits.max;
             }
 
             if evaluation > evaluation_limits.min {
-                self.principal_variation.write_move(*mv, ply);
-                self.historic_move_score
-                    .push(*mv, game_clone.side_to_move(), depth);
+                self.search_parameters
+                    .principal_variation
+                    .write_move(*mv, ply);
+                self.search_parameters.historic_move_score.push(
+                    *mv,
+                    game_clone.side_to_move(),
+                    depth,
+                );
 
                 evaluation_limits.min = evaluation;
             }
@@ -254,9 +263,8 @@ impl Engine {
         mut evaluation_limits: EvaluationLimits,
         ply: Value,
     ) -> Evaluation {
-        self.stop_search_check();
-
-        self.nodes_searched += 1;
+        self.search_parameters.stop_search_check();
+        self.search_parameters.nodes_searched += 1;
 
         let evaluation = Self::evaluate(game).sided_value(game.side_to_move());
 
@@ -337,6 +345,32 @@ impl Engine {
             evaluation
         }
     }
+}
+
+pub struct SearchParameters {
+    principal_variation: PrincipalVariation,
+    killer_moves: KillerMoves,
+    historic_move_score: HistoricMoveScore,
+    is_principal_variation: bool,
+    stop_search_receiver: Option<Receiver<bool>>,
+    search_timing: Option<SearchTiming>,
+    interrupt_search: bool,
+    nodes_searched: u64,
+}
+
+impl SearchParameters {
+    pub fn initialise() -> Self {
+        Self {
+            stop_search_receiver: None,
+            principal_variation: PrincipalVariation::initialise(),
+            killer_moves: KillerMoves::initialise(),
+            historic_move_score: HistoricMoveScore::initialise(),
+            is_principal_variation: true,
+            search_timing: None,
+            interrupt_search: false,
+            nodes_searched: 0,
+        }
+    }
 
     fn stop_search_check(&mut self) {
         if self.nodes_searched & 2047 != 0 || self.interrupt_search {
@@ -358,7 +392,7 @@ impl Engine {
         self.interrupt_search = stop_search_received || max_evaluation_time_exceeded
     }
 
-    fn clear_search_parameters(&mut self) {
+    fn clear(&mut self) {
         self.principal_variation = PrincipalVariation::initialise();
         self.killer_moves = KillerMoves::initialise();
         self.historic_move_score = HistoricMoveScore::initialise();
@@ -369,33 +403,33 @@ impl Engine {
     }
 }
 
-pub struct SearchTiming {
+struct SearchTiming {
     start_time: Instant,
     max_search_time: Duration,
 }
 
 #[derive(Clone, Copy)]
-pub struct EvaluationLimits {
+struct EvaluationLimits {
     min: Evaluation, // alpha
     max: Evaluation, // beta
 }
 
 impl EvaluationLimits {
-    pub fn initialise() -> Self {
+    fn initialise() -> Self {
         Self {
             min: -evaluation::MAX_EVALUATION,
             max: evaluation::MAX_EVALUATION,
         }
     }
 
-    pub fn max_narrowed_bounds(self) -> Self {
+    fn max_narrowed_bounds(self) -> Self {
         Self {
             min: -self.min - 1,
             max: -self.min,
         }
     }
 
-    pub fn min_narrowed_bounds(self) -> Self {
+    fn min_narrowed_bounds(self) -> Self {
         Self {
             min: -self.max,
             max: -self.max + 1,
@@ -416,20 +450,20 @@ impl Neg for EvaluationLimits {
         }
     }
 }
-pub struct PrincipalVariation {
+struct PrincipalVariation {
     table: [[Option<Move>; engine::MAX_PLY]; engine::MAX_PLY],
     length: [Value; engine::MAX_PLY],
 }
 
 impl PrincipalVariation {
-    pub fn initialise() -> Self {
+    fn initialise() -> Self {
         Self {
             table: [[None; engine::MAX_PLY]; engine::MAX_PLY],
             length: [0; engine::MAX_PLY],
         }
     }
 
-    pub fn principal_move(&self, ply: Value) -> Option<Move> {
+    fn principal_move(&self, ply: Value) -> Option<Move> {
         self.table[0][ply as usize]
     }
 
