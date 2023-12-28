@@ -34,6 +34,7 @@ const LMR_DEPTH_MIN: u8 = 3;
 const LMR_DEPTH_REDUCTION: u8 = 2;
 
 const SEARCH_TIME_OFFSET_MS: u64 = 50;
+const SEARCH_STOP_CHECK_NODES: u64 = 2047;
 
 impl Engine {
     pub fn search_best_move(&mut self, depth: u8) -> Result<Move, InputError> {
@@ -71,7 +72,7 @@ impl Engine {
                 self.search_parameters.principal_variation.as_string()
             );
 
-            if self.search_parameters.interrupt_search {
+            if self.search_parameters.stop_search {
                 break;
             }
 
@@ -224,7 +225,7 @@ impl Engine {
 
             moves_searched += 1;
 
-            if self.search_parameters.interrupt_search {
+            if self.search_parameters.stop_search {
                 return evaluation::STALEMATE_EVALUATION;
             }
 
@@ -354,31 +355,33 @@ pub struct SearchParameters {
     is_principal_variation: bool,
     stop_search_receiver: Option<Receiver<bool>>,
     search_timing: Option<SearchTiming>,
-    interrupt_search: bool,
+    stop_search: bool,
     nodes_searched: u64,
 }
 
 impl SearchParameters {
     pub fn initialise() -> Self {
         Self {
-            stop_search_receiver: None,
             principal_variation: PrincipalVariation::initialise(),
             killer_moves: KillerMoves::initialise(),
             historic_move_score: HistoricMoveScore::initialise(),
             is_principal_variation: true,
+            stop_search_receiver: None,
             search_timing: None,
-            interrupt_search: false,
+            stop_search: false,
             nodes_searched: 0,
         }
     }
 
     fn stop_search_check(&mut self) {
-        if self.nodes_searched & 2047 != 0 || self.interrupt_search {
+        if self.nodes_searched & SEARCH_STOP_CHECK_NODES != 0 || self.stop_search {
             return;
         }
 
         let stop_search_received = match &self.stop_search_receiver {
-            Some(receiver) => receiver.try_recv().unwrap_or(self.interrupt_search),
+            Some(stop_search_receiver) => {
+                stop_search_receiver.try_recv().unwrap_or(self.stop_search)
+            }
             None => false,
         };
 
@@ -389,7 +392,7 @@ impl SearchParameters {
             None => false,
         };
 
-        self.interrupt_search = stop_search_received || max_evaluation_time_exceeded
+        self.stop_search = stop_search_received || max_evaluation_time_exceeded
     }
 
     fn clear(&mut self) {
@@ -398,7 +401,7 @@ impl SearchParameters {
         self.historic_move_score = HistoricMoveScore::initialise();
         self.is_principal_variation = true;
         self.search_timing = None;
-        self.interrupt_search = false;
+        self.stop_search = false;
         self.nodes_searched = 0;
     }
 }
