@@ -5,6 +5,7 @@ use strum::IntoEnumIterator;
 pub type ZobristHash = u64;
 pub type ZobristKey = u64;
 
+// Zobrist hashes generated with random_state = 1_804_289_383
 pub const ZOBRIST_HASHES: ZobristHashes = ZobristHashes {
     piece_square_hashes: [
         [
@@ -901,16 +902,14 @@ pub struct ZobristHashes {
 }
 
 impl ZobristHashes {
-    pub fn _initialise() -> Self {
-        let mut random_state = 1_804_289_383;
-
+    fn _initialise(random_state: &mut u32) -> Self {
         let mut piece_square_hashes = [[[0; 64]; 6]; 2];
 
         for side in Side::iter() {
             for piece in Piece::iter() {
                 for square in Square::iter() {
                     piece_square_hashes[side as usize][piece as usize][square as usize] =
-                        random::_generate_random_u64(&mut random_state);
+                        random::_generate_random_u64(random_state);
                 }
             }
         }
@@ -918,17 +917,16 @@ impl ZobristHashes {
         let mut en_passant_square_hashes = [0; 64];
 
         for square in Square::iter() {
-            en_passant_square_hashes[square as usize] =
-                random::_generate_random_u64(&mut random_state);
+            en_passant_square_hashes[square as usize] = random::_generate_random_u64(random_state);
         }
 
         let mut castling_hashes = [0; CASTLING_RIGHTS_PERMUTATIONS];
 
         for castling_key in &mut castling_hashes {
-            *castling_key = random::_generate_random_u64(&mut random_state);
+            *castling_key = random::_generate_random_u64(random_state);
         }
 
-        let side_hash = random::_generate_random_u64(&mut random_state);
+        let side_hash = random::_generate_random_u64(random_state);
 
         Self {
             piece_square_hashes,
