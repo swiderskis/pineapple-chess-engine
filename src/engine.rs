@@ -33,7 +33,7 @@ impl Engine {
     pub fn make_move(&mut self, move_string: &str) -> Result<(), InputError> {
         let move_list = MoveList::generate_moves(&self.game, &self.attack_tables);
         let mv = move_list.find_move_from_string(move_string)?;
-        self.game.make_move(mv, &self.attack_tables)?;
+        self.game.make_move(&mv, &self.attack_tables)?;
 
         Ok(())
     }

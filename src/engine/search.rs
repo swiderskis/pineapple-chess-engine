@@ -74,8 +74,8 @@ impl Engine {
             current_depth += 1;
         }
 
-        let best_move = match self.search_parameters.principal_variation.table[0][0] {
-            Some(mv) => Ok(mv),
+        let best_move = match &self.search_parameters.principal_variation.table[0][0] {
+            Some(mv) => Ok(mv.clone()),
             None => Err(InputError::InvalidPosition),
         };
 
@@ -185,7 +185,7 @@ impl Engine {
         self.search_parameters.is_principal_variation = match principal_move_option {
             Some(principal_move) => {
                 self.search_parameters.is_principal_variation
-                    && move_list.vec()[0] == principal_move
+                    && move_list.vec()[0] == *principal_move
             }
             None => false,
         };
@@ -194,7 +194,7 @@ impl Engine {
 
         for mv in move_list.vec() {
             let mut game_clone = game.clone();
-            let move_result = game_clone.make_move(*mv, &self.attack_tables);
+            let move_result = game_clone.make_move(mv, &self.attack_tables);
 
             if move_result.is_err() {
                 continue;
@@ -221,7 +221,7 @@ impl Engine {
             }
 
             if evaluation >= evaluation_limits.max {
-                self.search_parameters.killer_moves.push(*mv, ply);
+                self.search_parameters.killer_moves.push(mv, ply);
 
                 return evaluation_limits.max;
             }
@@ -229,9 +229,9 @@ impl Engine {
             if evaluation > evaluation_limits.min {
                 self.search_parameters
                     .principal_variation
-                    .write_move(*mv, ply);
+                    .write_move(mv, ply);
                 self.search_parameters.historic_move_score.push(
-                    *mv,
+                    mv,
                     game_clone.side_to_move(),
                     depth,
                 );
@@ -275,7 +275,7 @@ impl Engine {
             }
 
             let mut game_clone = game.clone();
-            let move_result = game_clone.make_move(*mv, &self.attack_tables);
+            let move_result = game_clone.make_move(mv, &self.attack_tables);
 
             if move_result.is_err() {
                 continue;
@@ -448,22 +448,25 @@ struct PrincipalVariation {
 
 impl PrincipalVariation {
     fn initialise() -> Self {
+        let table_element = [(); engine::MAX_PLY].map(|_| None);
+        let table = [(); engine::MAX_PLY].map(|_| table_element.clone());
+
         Self {
-            table: [[None; engine::MAX_PLY]; engine::MAX_PLY],
+            table,
             length: [0; engine::MAX_PLY],
         }
     }
 
-    fn principal_move(&self, ply: Value) -> Option<Move> {
-        self.table[0][ply as usize]
+    fn principal_move(&self, ply: Value) -> Option<&Move> {
+        self.table[0][ply as usize].as_ref()
     }
 
-    fn write_move(&mut self, mv: Move, ply: Value) {
+    fn write_move(&mut self, mv: &Move, ply: Value) {
         let ply = ply as usize;
-        self.table[ply][ply] = Some(mv);
+        self.table[ply][ply] = Some(mv.clone());
 
         for next_ply in (ply + 1)..self.length[ply + 1] as usize {
-            self.table[ply][next_ply] = self.table[ply + 1][next_ply];
+            self.table[ply][next_ply] = self.table[ply + 1][next_ply].clone();
         }
 
         self.length[ply] = self.length[ply + 1];
@@ -488,7 +491,7 @@ fn _perft_test(game: &Game, attack_tables: &AttackTables, depth: u8) {
 
     for mv in move_list.vec() {
         let mut game_clone = game.clone();
-        let move_result = game_clone.make_move(*mv, attack_tables);
+        let move_result = game_clone.make_move(mv, attack_tables);
 
         if move_result.is_err() {
             continue;
@@ -521,7 +524,7 @@ fn _perft(game: &Game, attack_tables: &AttackTables, nodes: &mut u64, depth: u8)
 
     for mv in move_list.vec() {
         let mut game_clone = game.clone();
-        let move_result = game_clone.make_move(*mv, attack_tables);
+        let move_result = game_clone.make_move(mv, attack_tables);
 
         if move_result.is_err() {
             continue;
@@ -655,7 +658,6 @@ mod tests {
         let best_move = engine.search_best_move(5).unwrap();
         let possible_best_moves = ["f7f6", "f7f5", "f7f4,", "f7f3,", "f7f2", "f7f1"];
 
-        println!("{}", best_move.as_string());
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
 
         let mut engine = Engine::initialise();
@@ -665,7 +667,6 @@ mod tests {
         let best_move = engine.search_best_move(6).unwrap();
         let possible_best_moves = ["f7f6", "f7f5", "f7f4,", "f7f3,", "f7f2", "f7f1"];
 
-        println!("{}", best_move.as_string());
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
     }
 
@@ -678,7 +679,6 @@ mod tests {
         let best_move = engine.search_best_move(5).unwrap();
         let possible_best_moves = ["c2c3", "c2c4", "c2c5", "c2c6", "c2c7", "c2c8"];
 
-        println!("{}", best_move.as_string());
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
 
         let mut engine = Engine::initialise();
@@ -688,7 +688,6 @@ mod tests {
         let best_move = engine.search_best_move(6).unwrap();
         let possible_best_moves = ["c2c3", "c2c4", "c2c5", "c2c6", "c2c7", "c2c8"];
 
-        println!("{}", best_move.as_string());
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
     }
 }

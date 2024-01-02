@@ -36,7 +36,7 @@ impl MoveList {
 }
 
 impl Move {
-    fn score(self, game: &Game, search_parameters: &SearchParameters, ply: Value) -> Score {
+    fn score(&self, game: &Game, search_parameters: &SearchParameters, ply: Value) -> Score {
         if let Some(principal_move) = search_parameters.principal_variation.principal_move(ply) {
             if search_parameters.is_principal_variation && principal_move == self {
                 return PRINCIPAL_MOVE_SCORE;
@@ -67,21 +67,24 @@ pub struct KillerMoves([[Option<Move>; KILLER_MOVE_ARRAY_SIZE]; engine::MAX_PLY]
 
 impl KillerMoves {
     pub fn initialise() -> Self {
-        Self([[None; KILLER_MOVE_ARRAY_SIZE]; engine::MAX_PLY])
+        let array_element = [(); KILLER_MOVE_ARRAY_SIZE].map(|_| None);
+        let array = [(); engine::MAX_PLY].map(|_| array_element.clone());
+
+        Self(array)
     }
 
-    pub fn push(&mut self, mv: Move, ply: Value) {
+    pub fn push(&mut self, mv: &Move, ply: Value) {
         if mv.move_type() == MoveType::Capture || mv.move_type() == MoveType::EnPassant {
             return;
         }
 
-        self.0[ply as usize][1] = self.0[ply as usize][0];
-        self.0[ply as usize][0] = Some(mv);
+        self.0[ply as usize][1] = self.0[ply as usize][0].clone();
+        self.0[ply as usize][0] = Some(mv.clone());
     }
 
-    fn score_move(&self, mv: Move, ply: Value) -> Option<Score> {
+    fn score_move(&self, mv: &Move, ply: Value) -> Option<Score> {
         for (index, killer_move) in self.0[ply as usize].iter().flatten().enumerate() {
-            if *killer_move == mv {
+            if killer_move == mv {
                 return Some(KILLER_MOVE_SCORE[index]);
             }
         }
@@ -97,7 +100,7 @@ impl HistoricMoveScore {
         Self([[[0; 64]; 6]; 2])
     }
 
-    pub fn push(&mut self, mv: Move, side: Side, depth: u8) {
+    pub fn push(&mut self, mv: &Move, side: Side, depth: u8) {
         if mv.move_type() == MoveType::Capture || mv.move_type() == MoveType::EnPassant {
             return;
         }
@@ -107,7 +110,7 @@ impl HistoricMoveScore {
         self.0[side as usize][piece as usize][target_square as usize] += (depth * depth) as Score;
     }
 
-    fn score_move(&self, mv: Move, side: Side) -> Score {
+    fn score_move(&self, mv: &Move, side: Side) -> Score {
         let piece = mv.piece();
         let target_square = mv.target_square();
 

@@ -200,7 +200,7 @@ impl Game {
         Ok(())
     }
 
-    pub fn make_move(&mut self, mv: Move, attack_tables: &AttackTables) -> Result<(), InputError> {
+    pub fn make_move(&mut self, mv: &Move, attack_tables: &AttackTables) -> Result<(), InputError> {
         let mut game_clone = self.clone();
         let side = game_clone.side_to_move;
         let opponent_side = side.opponent_side();
@@ -508,7 +508,7 @@ impl Game {
         }
     }
 
-    fn update_castling_rights(&mut self, mv: Move) {
+    fn update_castling_rights(&mut self, mv: &Move) {
         if self.castling_rights == 0u8 {
             return;
         }
@@ -1464,7 +1464,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E2, Square::E4, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         desired_white_pawns_bitboard.pop_bit(Square::E2);
         desired_white_pawns_bitboard.set_bit(Square::E4);
@@ -1496,7 +1496,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E7, Square::E5, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         desired_black_pawns_bitboard.pop_bit(Square::E7);
         desired_black_pawns_bitboard.set_bit(Square::E5);
@@ -1528,7 +1528,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::G1, Square::F3, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         desired_white_knights_bitboard.pop_bit(Square::G1);
         desired_white_knights_bitboard.set_bit(Square::F3);
@@ -1655,7 +1655,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::D5, Square::E6, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         desired_white_pawns_bitboard.pop_bit(Square::D5);
         desired_white_pawns_bitboard.set_bit(Square::E6);
@@ -1688,7 +1688,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::A6, Square::E2, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         desired_black_bishops_bitboard.pop_bit(Square::A6);
         desired_black_bishops_bitboard.set_bit(Square::E2);
@@ -1721,7 +1721,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::C3, Square::E2, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         desired_white_knights_bitboard.pop_bit(Square::C3);
         desired_white_knights_bitboard.set_bit(Square::E2);
@@ -1826,7 +1826,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::F8, Square::E8, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1850,7 +1850,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E2, Square::A6, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1867,7 +1867,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E2, Square::E4, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1876,7 +1876,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E7, Square::E5, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1900,7 +1900,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::F5, Square::E6, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1925,7 +1925,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E1, Square::G1, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1936,7 +1936,7 @@ mod tests {
 
         let move_search = MoveSearch::new(Square::E1, Square::C1, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1947,7 +1947,7 @@ mod tests {
 
         let move_search = MoveSearch::new(Square::E1, Square::D1, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1958,7 +1958,7 @@ mod tests {
 
         let move_search = MoveSearch::new(Square::A1, Square::B1, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1969,7 +1969,7 @@ mod tests {
 
         let move_search = MoveSearch::new(Square::H1, Square::G1, None);
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -1989,7 +1989,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Queen));
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -2009,7 +2009,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::B7, Square::A8, Some(Piece::Queen));
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -2033,7 +2033,7 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Queen));
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -2043,7 +2043,7 @@ mod tests {
 
         let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Rook));
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -2053,7 +2053,7 @@ mod tests {
 
         let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Bishop));
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 
@@ -2063,7 +2063,7 @@ mod tests {
 
         let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Knight));
         let mv = move_list.find_move(move_search).unwrap();
-        game.make_move(mv, &attack_tables).unwrap();
+        game.make_move(&mv, &attack_tables).unwrap();
 
         let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
 

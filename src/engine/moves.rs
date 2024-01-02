@@ -57,7 +57,7 @@ impl MoveList {
                 && mv.target_square() == move_search.target_square
                 && mv.promoted_piece() == move_search.promoted_piece
             {
-                return Ok(*mv);
+                return Ok(mv.clone());
             }
         }
 
@@ -327,7 +327,7 @@ pub enum MoveType {
     Castling,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Move {
     source_square: Square,
     target_square: Square,
@@ -353,27 +353,27 @@ impl Move {
         }
     }
 
-    pub fn source_square(self) -> Square {
+    pub fn source_square(&self) -> Square {
         self.source_square
     }
 
-    pub fn target_square(self) -> Square {
+    pub fn target_square(&self) -> Square {
         self.target_square
     }
 
-    pub fn piece(self) -> Piece {
+    pub fn piece(&self) -> Piece {
         self.piece
     }
 
-    pub fn promoted_piece(self) -> Option<Piece> {
+    pub fn promoted_piece(&self) -> Option<Piece> {
         self.promoted_piece
     }
 
-    pub fn move_type(self) -> MoveType {
+    pub fn move_type(&self) -> MoveType {
         self.move_type
     }
 
-    pub fn as_string(self) -> String {
+    pub fn as_string(&self) -> String {
         let source_square_string = self.source_square._to_lowercase_string();
         let target_square_string = self.target_square._to_lowercase_string();
 
