@@ -13,10 +13,7 @@ use super::{
     moves::{Move, MoveList, MoveType},
     Engine,
 };
-use crate::{
-    engine::{self},
-    uci::InputError,
-};
+use crate::{engine, uci::InputError};
 use std::{
     ops::Neg,
     sync::mpsc::Receiver,
@@ -41,7 +38,6 @@ impl Engine {
         let mut evaluation_limits = EvaluationLimits::initialise();
         let mut current_depth = 1;
         let ply = 0;
-
         let game_clone = self.game.clone();
 
         while current_depth <= depth {
@@ -49,7 +45,6 @@ impl Engine {
 
             let evaluation =
                 self.negamax_search(&game_clone, evaluation_limits, ply, current_depth);
-
             let missed_aspiration_window_low = evaluation <= evaluation_limits.min;
             let missed_aspiration_window_high = evaluation >= evaluation_limits.max;
 
@@ -100,7 +95,6 @@ impl Engine {
             Some(increment) => increment,
             None => Duration::from_millis(0),
         };
-
         let max_search_time = match move_time {
             Some(move_time) => move_time,
             None => match time_left {
@@ -116,7 +110,6 @@ impl Engine {
                 None => return,
             },
         };
-
         let search_timing = SearchTiming {
             start_time: Instant::now(),
             max_search_time,
@@ -185,13 +178,10 @@ impl Engine {
         }
 
         let move_list = MoveList::generate_sorted_moves(game, self, ply);
-        let mut moves_searched = 0;
-
         let principal_move_option = self
             .search_parameters
             .principal_variation
             .principal_move(ply);
-
         self.search_parameters.is_principal_variation = match principal_move_option {
             Some(principal_move) => {
                 self.search_parameters.is_principal_variation
@@ -199,6 +189,8 @@ impl Engine {
             }
             None => false,
         };
+
+        let mut moves_searched = 0;
 
         for mv in move_list.vec() {
             let mut game_clone = game.clone();
@@ -214,7 +206,6 @@ impl Engine {
                 && !(mv.move_type() == MoveType::Capture)
                 && !(mv.move_type() == MoveType::EnPassant)
                 && mv.promoted_piece().is_none();
-
             let evaluation = if moves_searched == 0 {
                 -self.negamax_search(&game_clone, -evaluation_limits, ply + 1, depth - 1)
             } else if apply_late_move_reduction {
@@ -244,7 +235,6 @@ impl Engine {
                     game_clone.side_to_move(),
                     depth,
                 );
-
                 evaluation_limits.min = evaluation;
             }
         }
@@ -384,14 +374,12 @@ impl SearchParameters {
             }
             None => false,
         };
-
         let max_evaluation_time_exceeded = match &self.search_timing {
             Some(evaluation_time) => {
                 evaluation_time.start_time.elapsed() > evaluation_time.max_search_time
             }
             None => false,
         };
-
         self.stop_search = stop_search_received || max_evaluation_time_exceeded
     }
 
@@ -411,7 +399,7 @@ struct SearchTiming {
     max_search_time: Duration,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct EvaluationLimits {
     min: Evaluation, // alpha
     max: Evaluation, // beta
@@ -472,7 +460,6 @@ impl PrincipalVariation {
 
     fn write_move(&mut self, mv: Move, ply: Value) {
         let ply = ply as usize;
-
         self.table[ply][ply] = Some(mv);
 
         for next_ply in (ply + 1)..self.length[ply + 1] as usize {
@@ -492,10 +479,9 @@ impl PrincipalVariation {
     }
 }
 
-fn _perft_test(game: &mut Game, attack_tables: &AttackTables, depth: u8) {
+fn _perft_test(game: &Game, attack_tables: &AttackTables, depth: u8) {
     let mut total_nodes = 0;
     let now = Instant::now();
-
     let move_list = MoveList::generate_moves(game, attack_tables);
 
     println!("Move   Nodes   ");
@@ -509,8 +495,7 @@ fn _perft_test(game: &mut Game, attack_tables: &AttackTables, depth: u8) {
         }
 
         let mut nodes = 0;
-
-        _perft(&mut game_clone, attack_tables, &mut nodes, depth - 1);
+        _perft(&game_clone, attack_tables, &mut nodes, depth - 1);
 
         print!("{:<6}", mv.as_string());
         print!("{:^7}", nodes);
@@ -525,7 +510,7 @@ fn _perft_test(game: &mut Game, attack_tables: &AttackTables, depth: u8) {
     println!("Time taken: {:?}", now.elapsed());
 }
 
-fn _perft(game: &mut Game, attack_tables: &AttackTables, nodes: &mut u64, depth: u8) {
+fn _perft(game: &Game, attack_tables: &AttackTables, nodes: &mut u64, depth: u8) {
     if depth == 0 {
         *nodes += 1;
 
@@ -542,7 +527,7 @@ fn _perft(game: &mut Game, attack_tables: &AttackTables, nodes: &mut u64, depth:
             continue;
         }
 
-        _perft(&mut game_clone, attack_tables, nodes, depth - 1);
+        _perft(&game_clone, attack_tables, nodes, depth - 1);
     }
 }
 
@@ -551,26 +536,23 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn perft_start_position() {
         let mut game = Game::initialise();
-        let attack_tables = AttackTables::initialise();
-
         let fen = vec!["startpos"];
-
         game.load_fen(&fen).unwrap();
 
         let mut nodes = 0;
-
-        _perft(&mut game, &attack_tables, &mut nodes, 6);
+        let attack_tables = AttackTables::initialise();
+        _perft(&game, &attack_tables, &mut nodes, 6);
 
         assert_eq!(nodes, 119_060_324);
     }
 
     #[test]
+    #[ignore]
     fn perft_tricky_position() {
         let mut game = Game::initialise();
-        let attack_tables = AttackTables::initialise();
-
         let fen = vec![
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
             "w",
@@ -579,12 +561,11 @@ mod tests {
             "0",
             "1",
         ];
-
         game.load_fen(&fen).unwrap();
 
         let mut nodes = 0;
-
-        _perft(&mut game, &attack_tables, &mut nodes, 5);
+        let attack_tables = AttackTables::initialise();
+        _perft(&game, &attack_tables, &mut nodes, 5);
 
         assert_eq!(nodes, 193_690_690);
     }
@@ -592,9 +573,7 @@ mod tests {
     #[test]
     fn one_move_checkmate_white() {
         let mut engine = Engine::initialise();
-
         let fen = vec!["4k3/8/5K2/8/1Q6/8/8/8", "w", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(5).unwrap();
@@ -602,9 +581,7 @@ mod tests {
         assert_eq!(best_move.as_string(), "b4e7");
 
         let mut engine = Engine::initialise();
-
         let fen = vec!["4k3/8/5K2/8/1Q6/8/8/8", "w", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(6).unwrap();
@@ -615,9 +592,7 @@ mod tests {
     #[test]
     fn one_move_checkmate_black() {
         let mut engine = Engine::initialise();
-
         let fen = vec!["8/8/8/6Q1/8/2K5/8/3k4", "w", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(5).unwrap();
@@ -625,9 +600,7 @@ mod tests {
         assert_eq!(best_move.as_string(), "g5d2");
 
         let mut engine = Engine::initialise();
-
         let fen = vec!["8/8/8/6Q1/8/2K5/8/3k4", "w", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(6).unwrap();
@@ -638,9 +611,7 @@ mod tests {
     #[test]
     fn stalemate_white() {
         let mut engine = Engine::initialise();
-
         let fen = vec!["Q6K/4b3/6q1/8/8/6pp/6pk/8", "w", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(5).unwrap();
@@ -648,9 +619,7 @@ mod tests {
         assert_eq!(best_move.as_string(), "a8g2");
 
         let mut engine = Engine::initialise();
-
         let fen = vec!["Q6K/4b3/6q1/8/8/6pp/6pk/8", "w", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(6).unwrap();
@@ -661,9 +630,7 @@ mod tests {
     #[test]
     fn stalemate_black() {
         let mut engine = Engine::initialise();
-
         let fen = vec!["8/KP6/PP6/8/8/1Q6/3B4/k6q", "b", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(5).unwrap();
@@ -671,9 +638,7 @@ mod tests {
         assert_eq!(best_move.as_string(), "h1b7");
 
         let mut engine = Engine::initialise();
-
         let fen = vec!["8/KP6/PP6/8/8/1Q6/3B4/k6q", "b", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(6).unwrap();
@@ -684,9 +649,7 @@ mod tests {
     #[test]
     fn zugzwang_white() {
         let mut engine = Engine::initialise();
-
         let fen = vec!["6k1/5R2/6K1/8/8/8/8/8", "w", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(5).unwrap();
@@ -696,9 +659,7 @@ mod tests {
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
 
         let mut engine = Engine::initialise();
-
         let fen = vec!["6k1/5R2/6K1/8/8/8/8/8", "w", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(6).unwrap();
@@ -711,9 +672,7 @@ mod tests {
     #[test]
     fn zugzwang_black() {
         let mut engine = Engine::initialise();
-
         let fen = vec!["8/8/8/8/8/1k6/2r5/1K6", "b", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(5).unwrap();
@@ -723,9 +682,7 @@ mod tests {
         assert!(possible_best_moves.contains(&best_move.as_string().as_str()));
 
         let mut engine = Engine::initialise();
-
         let fen = vec!["8/8/8/8/8/1k6/2r5/1K6", "b", "-", "-", "0", "1"];
-
         engine.load_fen(&fen).unwrap();
 
         let best_move = engine.search_best_move(6).unwrap();

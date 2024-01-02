@@ -7,30 +7,6 @@ const FEN_MOVES_STARTING_INDEX: usize = 7;
 const DEFAULT_DEPTH: u8 = 64;
 const DEFAULT_MOVES_TO_GO: u64 = 30;
 
-// commands
-const UCI: &str = "uci";
-const ISREADY: &str = "isready";
-const UCINEWGAME: &str = "ucinewgame";
-const POSITION: &str = "position";
-const GO: &str = "go";
-const STOP: &str = "stop";
-const QUIT: &str = "quit";
-
-// "position" command arguments
-const STARTPOS: &str = "startpos";
-const FEN: &str = "fen";
-const MOVES: &str = "moves";
-
-// "go" command arguments
-const DEPTH: &str = "depth";
-const WINC: &str = "winc";
-const BINC: &str = "binc";
-const MOVETIME: &str = "movetime";
-const WTIME: &str = "wtime";
-const BTIME: &str = "btime";
-const MOVESTOGO: &str = "movestogo";
-const INFINITE: &str = "infinite";
-
 struct Input<'a> {
     command: &'a str,
     arguments: Vec<&'a str>,
@@ -39,7 +15,6 @@ struct Input<'a> {
 impl<'a> Input<'a> {
     fn new(input: &'a str) -> Self {
         let input: Vec<&str> = input.split_whitespace().collect();
-
         let command = match input.first() {
             Some(command) => command,
             None => "",
@@ -55,10 +30,8 @@ impl<'a> Input<'a> {
 
 pub fn engine() {
     let mut engine = Engine::initialise();
-
     let (stop_search_sender, stop_search_receiver) = mpsc::channel();
     let (input_sender, input_receiver) = mpsc::channel();
-
     engine.set_stop_search_receiver(stop_search_receiver);
 
     thread::spawn(move || loop {
@@ -66,7 +39,7 @@ pub fn engine() {
 
         match io::stdin().read_line(&mut input) {
             Ok(_) => match input.trim() {
-                STOP => _ = stop_search_sender.send(true),
+                "stop" => _ = stop_search_sender.send(true),
                 _ => _ = input_sender.send(Some(input)),
             },
             Err(_) => _ = input_sender.send(None),
@@ -84,12 +57,12 @@ pub fn engine() {
         let input = Input::new(&input);
 
         match input.command {
-            UCI => uci(),
-            ISREADY => println!("readyok"),
-            UCINEWGAME => engine.reset_game(),
-            POSITION => handle_command(position, &mut engine, input.arguments),
-            GO => handle_command(go, &mut engine, input.arguments),
-            QUIT => break,
+            "uci" => uci(),
+            "isready" => println!("readyok"),
+            "ucinewgame" => engine.reset_game(),
+            "position" => handle_command(position, &mut engine, input.arguments),
+            "go" => handle_command(go, &mut engine, input.arguments),
+            "quit" => break,
             "" => {}
             _ => println!("Unknown command"),
         }
@@ -108,12 +81,12 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
     }
 
     let moves_starting_index = match arguments[0] {
-        STARTPOS => {
+        "startpos" => {
             engine.load_fen(&arguments)?;
 
             STARTPOS_MOVES_STARTING_INDEX
         }
-        FEN => {
+        "fen" => {
             if arguments.get(FEN_MOVES_STARTING_INDEX - 1).is_none() {
                 return Err(InputError::InvalidPositionArguments);
             }
@@ -131,7 +104,7 @@ fn position(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError>
 
     match arguments.get(moves_starting_index) {
         Some(argument) => {
-            if *argument != MOVES {
+            if *argument != "moves" {
                 return Err(InputError::InvalidPositionArguments);
             }
         }
@@ -154,7 +127,7 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
 
     for (index, argument) in arguments.iter().enumerate() {
         match *argument {
-            DEPTH => {
+            "depth" => {
                 depth = get_argument_value(
                     &arguments,
                     index,
@@ -165,7 +138,7 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
                     return Err(InputError::InvalidGoArguments(GoArgumentError::Depth));
                 }
             }
-            WINC | BINC => {
+            "winc" | "binc" => {
                 let increment_ms = get_argument_value(
                     &arguments,
                     index,
@@ -175,7 +148,7 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
                 )?;
                 increment = Some(Duration::from_millis(increment_ms));
             }
-            MOVETIME => {
+            "movetime" => {
                 let move_time_ms = get_argument_value(
                     &arguments,
                     index,
@@ -183,7 +156,7 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
                 )?;
                 move_time = Some(Duration::from_millis(move_time_ms));
             }
-            WTIME | BTIME => {
+            "wtime" | "btime" => {
                 let time_left_ms = get_argument_value(
                     &arguments,
                     index,
@@ -192,14 +165,14 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
                 time_left = Some(Duration::from_millis(time_left_ms));
             }
 
-            MOVESTOGO => {
+            "movestogo" => {
                 moves_to_go = get_argument_value(
                     &arguments,
                     index,
                     InputError::InvalidGoArguments(GoArgumentError::MovesToGo),
                 )?;
             }
-            INFINITE => {}
+            "infinite" => {}
             _ => continue,
         }
     }
@@ -207,7 +180,6 @@ fn go(engine: &mut Engine, arguments: Vec<&str>) -> Result<(), InputError> {
     engine.set_search_timing(increment, move_time, time_left, moves_to_go);
 
     let best_move = engine.search_best_move(depth)?.as_string();
-
     println!("bestmove {}", best_move);
 
     Ok(())
@@ -303,13 +275,13 @@ pub enum GoArgumentError {
 impl Display for GoArgumentError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GoArgumentError::Depth => write!(f, "{}", DEPTH),
+            GoArgumentError::Depth => write!(f, "depth"),
             GoArgumentError::Increment(argument) => write!(f, "{}", argument),
-            GoArgumentError::MoveTime => write!(f, "{}", MOVETIME),
+            GoArgumentError::MoveTime => write!(f, "movetime"),
             GoArgumentError::TimeLeft(argument) => {
                 write!(f, "{}", argument)
             }
-            GoArgumentError::MovesToGo => write!(f, "{}", MOVESTOGO),
+            GoArgumentError::MovesToGo => write!(f, "movestogo"),
         }
     }
 }
@@ -320,22 +292,18 @@ mod tests {
     #[test]
     fn start_position() {
         let mut engine = Engine::initialise();
-
         let input = "position startpos moves e2e4 e7e5 g1f3";
         let input = Input::new(input);
-
         position(&mut engine, input.arguments).unwrap();
     }
 
     #[test]
     fn killer_position() {
         let mut engine = Engine::initialise();
-
         let input =
             "position fen r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 \
             moves d5e6 a6e2 c3e2";
         let input = Input::new(input);
-
         position(&mut engine, input.arguments).unwrap();
     }
 }

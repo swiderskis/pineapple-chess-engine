@@ -8,16 +8,13 @@ use std::cmp::Reverse;
 
 type Score = u16;
 
-const PIECE_TYPES: usize = 6;
-const SIDE_COUNT: usize = 2;
-
 const KILLER_MOVE_ARRAY_SIZE: usize = 2;
 
 const PRINCIPAL_MOVE_SCORE: Score = 20000;
 // MVV = most valuable victim
 // LVA = least valuable attacker
 // Score obtained by indexing to array as such: [attacker][victim]
-const MVV_LVA_SCORE: [[Score; PIECE_TYPES]; PIECE_TYPES] = [
+const MVV_LVA_SCORE: [[Score; 6]; 6] = [
     [10105, 10205, 10305, 10405, 10505, 0],
     [10104, 10204, 10304, 10404, 10504, 0],
     [10103, 10203, 10303, 10403, 10503, 0],
@@ -30,7 +27,6 @@ const KILLER_MOVE_SCORE: [Score; KILLER_MOVE_ARRAY_SIZE] = [9000, 8000];
 impl MoveList {
     pub fn generate_sorted_moves(game: &Game, engine: &Engine, ply: Value) -> Self {
         let mut move_list = Self::generate_moves(game, &engine.attack_tables);
-
         move_list
             .mut_vec()
             .sort_by_key(|mv| Reverse(mv.score(game, &engine.search_parameters, ply)));
@@ -94,11 +90,11 @@ impl KillerMoves {
     }
 }
 
-pub struct HistoricMoveScore([[[Score; 64]; PIECE_TYPES]; SIDE_COUNT]);
+pub struct HistoricMoveScore([[[Score; 64]; 6]; 2]);
 
 impl HistoricMoveScore {
     pub fn initialise() -> Self {
-        Self([[[0; 64]; PIECE_TYPES]; SIDE_COUNT])
+        Self([[[0; 64]; 6]; 2])
     }
 
     pub fn push(&mut self, mv: Move, side: Side, depth: u8) {
@@ -108,7 +104,6 @@ impl HistoricMoveScore {
 
         let piece = mv.piece();
         let target_square = mv.target_square();
-
         self.0[side as usize][piece as usize][target_square as usize] += (depth * depth) as Score;
     }
 

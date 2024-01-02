@@ -56,6 +56,17 @@ const ROOK_POSITION_VALUE: PositionValue = PositionValue([
      0,  0,  0, 20, 20,  0,  0,  0,
 ]);
 #[rustfmt::skip]
+const QUEEN_POSITION_VALUE: PositionValue = PositionValue([
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+]);
+#[rustfmt::skip]
 const KING_POSITION_VALUE: PositionValue = PositionValue([
     0, 0,  0,  0,   0,  0,  0, 0,
     0, 0,  5,  5,   5,  5,  0, 0,
@@ -77,7 +88,7 @@ impl Engine {
                 Piece::Knight => KNIGHT_POSITION_VALUE,
                 Piece::Bishop => BISHOP_POSITION_VALUE,
                 Piece::Rook => ROOK_POSITION_VALUE,
-                Piece::Queen => PositionValue([0; 64]),
+                Piece::Queen => QUEEN_POSITION_VALUE,
                 Piece::King => KING_POSITION_VALUE,
             };
 
@@ -93,7 +104,7 @@ impl Engine {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Evaluation(Value);
 
 impl Evaluation {

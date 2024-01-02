@@ -2,6 +2,7 @@ use super::{
     attack_tables::AttackTables,
     moves::{Move, MoveType},
     search::Value,
+    zobrist_hashes::{self, ZobristKey},
 };
 use crate::uci::{FenError, InputError};
 use num_derive::FromPrimitive;
@@ -13,7 +14,7 @@ use std::{
 use strum::{IntoEnumIterator, ParseError};
 use strum_macros::{Display, EnumIter, EnumString};
 
-const MAX_HALFMOVE_CLOCK: u8 = 99;
+const HALFMOVE_CLOCK_MAX: u8 = 99;
 
 #[derive(Clone)]
 pub struct Game {
@@ -33,6 +34,7 @@ pub struct Game {
     castling_rights: CastlingRights,
     en_passant_square: Option<Square>,
     halfmove_clock: u8,
+    zobrist_key: ZobristKey,
 }
 
 impl Game {
@@ -54,6 +56,7 @@ impl Game {
             castling_rights: CastlingRights(0),
             en_passant_square: None,
             halfmove_clock: 0,
+            zobrist_key: 0,
         }
     }
 
@@ -77,6 +80,8 @@ impl Game {
             self.castling_rights = CastlingRights::initialise("KQkq")?;
             self.en_passant_square = None;
             self.halfmove_clock = 0;
+
+            self.zobrist_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(self);
 
             return Ok(());
         }
@@ -162,7 +167,7 @@ impl Game {
         let en_passant_square = Self::parse_en_passant_square(fen[3])?;
         let halfmove_clock = match fen[4].parse() {
             Ok(halfmove_clock) => {
-                if halfmove_clock > MAX_HALFMOVE_CLOCK {
+                if halfmove_clock > HALFMOVE_CLOCK_MAX {
                     return Err(InputError::InvalidFen(FenError::InvalidHalfmoveClock));
                 }
 
@@ -190,26 +195,25 @@ impl Game {
         self.en_passant_square = en_passant_square;
         self.halfmove_clock = halfmove_clock;
 
+        self.zobrist_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(self);
+
         Ok(())
     }
 
     pub fn make_move(&mut self, mv: Move, attack_tables: &AttackTables) -> Result<(), InputError> {
         let mut game_clone = self.clone();
-
         let side = game_clone.side_to_move;
         let opponent_side = side.opponent_side();
-
         game_clone
             .mut_piece_bitboard(mv.piece(), side)
             .pop_bit(mv.source_square());
+        game_clone.zobrist_key ^=
+            zobrist_hashes::ZOBRIST_HASHES.piece_square_hash(mv.piece(), side, mv.source_square());
 
-        match mv.promoted_piece() {
-            Some(promoted_piece) => game_clone
-                .mut_piece_bitboard(promoted_piece, side)
-                .set_bit(mv.target_square()),
-            None => game_clone
-                .mut_piece_bitboard(mv.piece(), side)
-                .set_bit(mv.target_square()),
+        if let Some(en_passant_square) = game_clone.en_passant_square {
+            game_clone.en_passant_square = None;
+            game_clone.zobrist_key ^=
+                zobrist_hashes::ZOBRIST_HASHES.en_passant_square_hash(en_passant_square);
         }
 
         let target_square_index = mv.target_square() as usize;
@@ -217,10 +221,15 @@ impl Game {
         match mv.move_type() {
             MoveType::Quiet => {}
             MoveType::Capture => {
-                for piece in Piece::iter() {
+                if let Some((piece, side)) = game_clone.piece_at_square(mv.target_square()) {
                     game_clone
-                        .mut_piece_bitboard(piece, opponent_side)
+                        .mut_piece_bitboard(piece, side)
                         .pop_bit(mv.target_square());
+                    game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES.piece_square_hash(
+                        piece,
+                        side,
+                        mv.target_square(),
+                    );
                 }
             }
             MoveType::DoublePawnPush => {
@@ -229,8 +238,9 @@ impl Game {
                     Side::Black => Square::from_usize(target_square_index - 8),
                 }
                 .unwrap();
-
                 game_clone.en_passant_square = Some(en_passant_square);
+                game_clone.zobrist_key ^=
+                    zobrist_hashes::ZOBRIST_HASHES.en_passant_square_hash(en_passant_square);
             }
             MoveType::EnPassant => {
                 let capture_square = match side {
@@ -238,51 +248,98 @@ impl Game {
                     Side::Black => Square::from_usize(target_square_index - 8),
                 }
                 .unwrap();
-
                 game_clone
                     .mut_piece_bitboard(Piece::Pawn, opponent_side)
                     .pop_bit(capture_square);
+                game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES.piece_square_hash(
+                    Piece::Pawn,
+                    opponent_side,
+                    capture_square,
+                );
             }
             MoveType::Castling => match side {
-                Side::White => match mv.target_square() {
-                    Square::C1 => {
-                        game_clone
-                            .mut_piece_bitboard(Piece::Rook, side)
-                            .pop_bit(Square::A1);
-                        game_clone
-                            .mut_piece_bitboard(Piece::Rook, side)
-                            .set_bit(Square::D1);
-                    }
-                    Square::G1 => {
-                        game_clone
-                            .mut_piece_bitboard(Piece::Rook, side)
-                            .pop_bit(Square::H1);
-                        game_clone
-                            .mut_piece_bitboard(Piece::Rook, side)
-                            .set_bit(Square::F1);
-                    }
-                    _ => {}
-                },
-                Side::Black => match mv.target_square() {
-                    Square::C8 => {
-                        game_clone
-                            .mut_piece_bitboard(Piece::Rook, side)
-                            .pop_bit(Square::A8);
-                        game_clone
-                            .mut_piece_bitboard(Piece::Rook, side)
-                            .set_bit(Square::D8);
-                    }
-                    Square::G8 => {
-                        game_clone
-                            .mut_piece_bitboard(Piece::Rook, side)
-                            .pop_bit(Square::H8);
-                        game_clone
-                            .mut_piece_bitboard(Piece::Rook, side)
-                            .set_bit(Square::F8);
-                    }
-                    _ => {}
-                },
+                Side::White => {
+                    match mv.target_square() {
+                        Square::C1 => {
+                            game_clone
+                                .mut_piece_bitboard(Piece::Rook, side)
+                                .pop_bit(Square::A1);
+                            game_clone
+                                .mut_piece_bitboard(Piece::Rook, side)
+                                .set_bit(Square::D1);
+                            game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES
+                                .piece_square_hash(Piece::Rook, side, Square::A1);
+                            game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES
+                                .piece_square_hash(Piece::Rook, side, Square::D1);
+                        }
+                        Square::G1 => {
+                            game_clone
+                                .mut_piece_bitboard(Piece::Rook, side)
+                                .pop_bit(Square::H1);
+                            game_clone
+                                .mut_piece_bitboard(Piece::Rook, side)
+                                .set_bit(Square::F1);
+                            game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES
+                                .piece_square_hash(Piece::Rook, side, Square::H1);
+                            game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES
+                                .piece_square_hash(Piece::Rook, side, Square::F1);
+                        }
+                        _ => {}
+                    };
+                }
+                Side::Black => {
+                    match mv.target_square() {
+                        Square::C8 => {
+                            game_clone
+                                .mut_piece_bitboard(Piece::Rook, side)
+                                .pop_bit(Square::A8);
+                            game_clone
+                                .mut_piece_bitboard(Piece::Rook, side)
+                                .set_bit(Square::D8);
+                            game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES
+                                .piece_square_hash(Piece::Rook, side, Square::A8);
+                            game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES
+                                .piece_square_hash(Piece::Rook, side, Square::D8);
+                        }
+                        Square::G8 => {
+                            game_clone
+                                .mut_piece_bitboard(Piece::Rook, side)
+                                .pop_bit(Square::H8);
+                            game_clone
+                                .mut_piece_bitboard(Piece::Rook, side)
+                                .set_bit(Square::F8);
+                            game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES
+                                .piece_square_hash(Piece::Rook, side, Square::H8);
+                            game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES
+                                .piece_square_hash(Piece::Rook, side, Square::F8);
+                        }
+                        _ => {}
+                    };
+                }
             },
+        }
+
+        match mv.promoted_piece() {
+            Some(promoted_piece) => {
+                game_clone
+                    .mut_piece_bitboard(promoted_piece, side)
+                    .set_bit(mv.target_square());
+                game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES.piece_square_hash(
+                    promoted_piece,
+                    side,
+                    mv.target_square(),
+                );
+            }
+            None => {
+                game_clone
+                    .mut_piece_bitboard(mv.piece(), side)
+                    .set_bit(mv.target_square());
+                game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES.piece_square_hash(
+                    mv.piece(),
+                    side,
+                    mv.target_square(),
+                );
+            }
         }
 
         let king_square = game_clone
@@ -298,22 +355,20 @@ impl Game {
             }
         }
 
-        if game_clone.castling_rights.0 != 0 {
-            Self::update_castling_rights(&mut game_clone, mv);
-        }
-
-        if mv.move_type() != MoveType::DoublePawnPush {
-            game_clone.en_passant_square = None;
-        }
-
+        game_clone.update_castling_rights(mv);
+        game_clone.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES.side_hash();
         game_clone.side_to_move = opponent_side;
-
         *self = game_clone;
 
         Ok(())
     }
 
     pub fn make_null_move(&mut self) {
+        if let Some(square) = self.en_passant_square {
+            self.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES.en_passant_square_hash(square);
+        }
+
+        self.zobrist_key ^= zobrist_hashes::ZOBRIST_HASHES.side_hash();
         self.side_to_move = self.side_to_move.opponent_side();
         self.en_passant_square = None;
     }
@@ -390,6 +445,10 @@ impl Game {
         self.en_passant_square
     }
 
+    pub fn castling_rights_value(&self) -> u8 {
+        self.castling_rights.0
+    }
+
     pub fn castling_type_allowed(&self, castling_type: CastlingType) -> bool {
         self.castling_rights.0 & castling_type as u8 != 0
     }
@@ -449,61 +508,107 @@ impl Game {
         }
     }
 
-    fn update_castling_rights(game: &mut Game, mv: Move) {
-        let side = game.side_to_move;
-
-        match side {
-            Side::White => match mv.source_square() {
-                Square::A1 => game
-                    .castling_rights
-                    .remove_castling_type(CastlingType::WhiteLong),
-                Square::E1 => {
-                    game.castling_rights
-                        .remove_castling_type(CastlingType::WhiteShort);
-                    game.castling_rights
-                        .remove_castling_type(CastlingType::WhiteLong);
-                }
-                Square::H1 => game
-                    .castling_rights
-                    .remove_castling_type(CastlingType::WhiteShort),
-                _ => {}
-            },
-            Side::Black => match mv.source_square() {
-                Square::A8 => game
-                    .castling_rights
-                    .remove_castling_type(CastlingType::BlackLong),
-                Square::E8 => {
-                    game.castling_rights
-                        .remove_castling_type(CastlingType::BlackShort);
-                    game.castling_rights
-                        .remove_castling_type(CastlingType::BlackLong);
-                }
-                Square::H8 => game
-                    .castling_rights
-                    .remove_castling_type(CastlingType::BlackShort),
-                _ => {}
-            },
+    fn update_castling_rights(&mut self, mv: Move) {
+        if self.castling_rights == 0u8 {
+            return;
         }
 
-        match side {
-            Side::White => match mv.target_square() {
-                Square::A8 => game
-                    .castling_rights
-                    .remove_castling_type(CastlingType::BlackLong),
-                Square::H8 => game
-                    .castling_rights
-                    .remove_castling_type(CastlingType::BlackShort),
-                _ => {}
-            },
-            Side::Black => match mv.target_square() {
-                Square::A1 => game
-                    .castling_rights
-                    .remove_castling_type(CastlingType::WhiteLong),
-                Square::H1 => game
-                    .castling_rights
-                    .remove_castling_type(CastlingType::WhiteShort),
-                _ => {}
-            },
+        match self.side_to_move {
+            Side::White => {
+                if (mv.source_square() == Square::A1 || mv.source_square() == Square::E1)
+                    && self.castling_type_allowed(CastlingType::WhiteLong)
+                {
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::WhiteLong);
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                }
+
+                if (mv.source_square() == Square::E1 || mv.source_square() == Square::H1)
+                    && self.castling_type_allowed(CastlingType::WhiteShort)
+                {
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::WhiteShort);
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                }
+            }
+            Side::Black => {
+                if (mv.source_square() == Square::A8 || mv.source_square() == Square::E8)
+                    && self.castling_type_allowed(CastlingType::BlackLong)
+                {
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::BlackLong);
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                }
+
+                if (mv.source_square() == Square::E8 || mv.source_square() == Square::H8)
+                    && self.castling_type_allowed(CastlingType::BlackShort)
+                {
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::BlackShort);
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                }
+            }
+        }
+
+        match self.side_to_move {
+            Side::White => {
+                if mv.target_square() == Square::A8
+                    && self.castling_type_allowed(CastlingType::BlackLong)
+                {
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::BlackLong);
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                }
+
+                if mv.target_square() == Square::H8
+                    && self.castling_type_allowed(CastlingType::BlackShort)
+                {
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::BlackShort);
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                }
+            }
+            Side::Black => {
+                if mv.target_square() == Square::A1
+                    && self.castling_type_allowed(CastlingType::WhiteLong)
+                {
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::WhiteLong);
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                }
+
+                if mv.target_square() == Square::H1
+                    && self.castling_type_allowed(CastlingType::WhiteShort)
+                {
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                    self.castling_rights
+                        .remove_castling_type(CastlingType::WhiteShort);
+                    self.zobrist_key ^=
+                        zobrist_hashes::ZOBRIST_HASHES.castling_hash(self.castling_rights.0);
+                }
+            }
         }
     }
 
@@ -557,6 +662,7 @@ impl Game {
         println!("En passant square: {:?}", self.en_passant_square);
         println!("Castling rights: {}", self.castling_rights._as_string());
         println!("Board value: 0x{:X}", self.board(None).0);
+        println!("Zobrist key: 0x{:X}", self.zobrist_key);
     }
 }
 
@@ -570,7 +676,6 @@ impl Bitboard {
 
     pub fn from_square(square: Square) -> Self {
         let mut bitboard = Self(0);
-
         bitboard.set_bit(square);
 
         bitboard
@@ -758,7 +863,7 @@ impl Piece {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, EnumIter, PartialEq)]
 pub enum Side {
     White,
     Black,
@@ -818,6 +923,25 @@ impl Square {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum CastlingType {
+    WhiteShort = 0b0001,
+    WhiteLong = 0b0010,
+    BlackShort = 0b0100,
+    BlackLong = 0b1000,
+}
+
+impl CastlingType {
+    pub fn _move_string(&self) -> &str {
+        match self {
+            Self::WhiteShort => "e1g1",
+            Self::WhiteLong => "e1c1",
+            Self::BlackShort => "e8g8",
+            Self::BlackLong => "e8c8",
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 struct CastlingRights(u8);
 
@@ -869,22 +993,9 @@ impl CastlingRights {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum CastlingType {
-    WhiteShort = 0b1000,
-    WhiteLong = 0b0100,
-    BlackShort = 0b0010,
-    BlackLong = 0b0001,
-}
-
-impl CastlingType {
-    pub fn _move_string(&self) -> &str {
-        match self {
-            Self::WhiteShort => "e1g1",
-            Self::WhiteLong => "e1c1",
-            Self::BlackShort => "e8g8",
-            Self::BlackLong => "e8c8",
-        }
+impl<T: Unsigned + AsPrimitive<u8>> PartialEq<T> for CastlingRights {
+    fn eq(&self, other: &T) -> bool {
+        self.0 == other.as_()
     }
 }
 
@@ -898,13 +1009,10 @@ mod tests {
     #[test]
     fn load_start_position() {
         let mut game = Game::initialise();
-
         let fen = vec!["startpos"];
-
         game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
-
         desired_white_pawns_bitboard.set_bit(Square::A2);
         desired_white_pawns_bitboard.set_bit(Square::B2);
         desired_white_pawns_bitboard.set_bit(Square::C2);
@@ -915,30 +1023,24 @@ mod tests {
         desired_white_pawns_bitboard.set_bit(Square::H2);
 
         let mut desired_white_knights_bitboard = Bitboard(0);
-
         desired_white_knights_bitboard.set_bit(Square::B1);
         desired_white_knights_bitboard.set_bit(Square::G1);
 
         let mut desired_white_bishops_bitboard = Bitboard(0);
-
         desired_white_bishops_bitboard.set_bit(Square::C1);
         desired_white_bishops_bitboard.set_bit(Square::F1);
 
         let mut desired_white_rooks_bitboard = Bitboard(0);
-
         desired_white_rooks_bitboard.set_bit(Square::A1);
         desired_white_rooks_bitboard.set_bit(Square::H1);
 
         let mut desired_white_queens_bitboard = Bitboard(0);
-
         desired_white_queens_bitboard.set_bit(Square::D1);
 
         let mut desired_white_king_bitboard = Bitboard(0);
-
         desired_white_king_bitboard.set_bit(Square::E1);
 
         let mut desired_black_pawns_bitboard = Bitboard(0);
-
         desired_black_pawns_bitboard.set_bit(Square::A7);
         desired_black_pawns_bitboard.set_bit(Square::B7);
         desired_black_pawns_bitboard.set_bit(Square::C7);
@@ -949,26 +1051,21 @@ mod tests {
         desired_black_pawns_bitboard.set_bit(Square::H7);
 
         let mut desired_black_knights_bitboard = Bitboard(0);
-
         desired_black_knights_bitboard.set_bit(Square::B8);
         desired_black_knights_bitboard.set_bit(Square::G8);
 
         let mut desired_black_bishops_bitboard = Bitboard(0);
-
         desired_black_bishops_bitboard.set_bit(Square::C8);
         desired_black_bishops_bitboard.set_bit(Square::F8);
 
         let mut desired_black_rooks_bitboard = Bitboard(0);
-
         desired_black_rooks_bitboard.set_bit(Square::A8);
         desired_black_rooks_bitboard.set_bit(Square::H8);
 
         let mut desired_black_queens_bitboard = Bitboard(0);
-
         desired_black_queens_bitboard.set_bit(Square::D8);
 
         let mut desired_black_king_bitboard = Bitboard(0);
-
         desired_black_king_bitboard.set_bit(Square::E8);
 
         let desired_side_to_move = Side::White;
@@ -999,7 +1096,6 @@ mod tests {
     #[test]
     fn load_tricky_position() {
         let mut game = Game::initialise();
-
         let fen = vec![
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
             "w",
@@ -1008,11 +1104,9 @@ mod tests {
             "0",
             "1",
         ];
-
         game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
-
         desired_white_pawns_bitboard.set_bit(Square::A2);
         desired_white_pawns_bitboard.set_bit(Square::B2);
         desired_white_pawns_bitboard.set_bit(Square::C2);
@@ -1023,30 +1117,24 @@ mod tests {
         desired_white_pawns_bitboard.set_bit(Square::H2);
 
         let mut desired_white_knights_bitboard = Bitboard(0);
-
         desired_white_knights_bitboard.set_bit(Square::C3);
         desired_white_knights_bitboard.set_bit(Square::E5);
 
         let mut desired_white_bishops_bitboard = Bitboard(0);
-
         desired_white_bishops_bitboard.set_bit(Square::D2);
         desired_white_bishops_bitboard.set_bit(Square::E2);
 
         let mut desired_white_rooks_bitboard = Bitboard(0);
-
         desired_white_rooks_bitboard.set_bit(Square::A1);
         desired_white_rooks_bitboard.set_bit(Square::H1);
 
         let mut desired_white_queens_bitboard = Bitboard(0);
-
         desired_white_queens_bitboard.set_bit(Square::F3);
 
         let mut desired_white_king_bitboard = Bitboard(0);
-
         desired_white_king_bitboard.set_bit(Square::E1);
 
         let mut desired_black_pawns_bitboard = Bitboard(0);
-
         desired_black_pawns_bitboard.set_bit(Square::A7);
         desired_black_pawns_bitboard.set_bit(Square::B4);
         desired_black_pawns_bitboard.set_bit(Square::C7);
@@ -1057,26 +1145,21 @@ mod tests {
         desired_black_pawns_bitboard.set_bit(Square::H3);
 
         let mut desired_black_knights_bitboard = Bitboard(0);
-
         desired_black_knights_bitboard.set_bit(Square::B6);
         desired_black_knights_bitboard.set_bit(Square::F6);
 
         let mut desired_black_bishops_bitboard = Bitboard(0);
-
         desired_black_bishops_bitboard.set_bit(Square::A6);
         desired_black_bishops_bitboard.set_bit(Square::G7);
 
         let mut desired_black_rooks_bitboard = Bitboard(0);
-
         desired_black_rooks_bitboard.set_bit(Square::A8);
         desired_black_rooks_bitboard.set_bit(Square::H8);
 
         let mut desired_black_queens_bitboard = Bitboard(0);
-
         desired_black_queens_bitboard.set_bit(Square::E7);
 
         let mut desired_black_king_bitboard = Bitboard(0);
-
         desired_black_king_bitboard.set_bit(Square::E8);
 
         let desired_side_to_move = Side::White;
@@ -1107,7 +1190,6 @@ mod tests {
     #[test]
     fn load_killer_position() {
         let mut game = Game::initialise();
-
         let fen = vec![
             "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR",
             "w",
@@ -1116,11 +1198,9 @@ mod tests {
             "0",
             "1",
         ];
-
         game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
-
         desired_white_pawns_bitboard.set_bit(Square::A2);
         desired_white_pawns_bitboard.set_bit(Square::B4);
         desired_white_pawns_bitboard.set_bit(Square::C2);
@@ -1129,34 +1209,27 @@ mod tests {
         desired_white_pawns_bitboard.set_bit(Square::E2);
         desired_white_pawns_bitboard.set_bit(Square::F5);
         desired_white_pawns_bitboard.set_bit(Square::G7);
-
         desired_white_pawns_bitboard.set_bit(Square::H3);
 
         let mut desired_white_knights_bitboard = Bitboard(0);
-
         desired_white_knights_bitboard.set_bit(Square::B1);
         desired_white_knights_bitboard.set_bit(Square::G1);
 
         let mut desired_white_bishops_bitboard = Bitboard(0);
-
         desired_white_bishops_bitboard.set_bit(Square::C1);
         desired_white_bishops_bitboard.set_bit(Square::F1);
 
         let mut desired_white_rooks_bitboard = Bitboard(0);
-
         desired_white_rooks_bitboard.set_bit(Square::A1);
         desired_white_rooks_bitboard.set_bit(Square::H1);
 
         let mut desired_white_queens_bitboard = Bitboard(0);
-
         desired_white_queens_bitboard.set_bit(Square::D1);
 
         let mut desired_white_king_bitboard = Bitboard(0);
-
         desired_white_king_bitboard.set_bit(Square::E1);
 
         let mut desired_black_pawns_bitboard = Bitboard(0);
-
         desired_black_pawns_bitboard.set_bit(Square::A7);
         desired_black_pawns_bitboard.set_bit(Square::B7);
         desired_black_pawns_bitboard.set_bit(Square::C5);
@@ -1166,25 +1239,20 @@ mod tests {
         desired_black_pawns_bitboard.set_bit(Square::H7);
 
         let mut desired_black_knights_bitboard = Bitboard(0);
-
         desired_black_knights_bitboard.set_bit(Square::B8);
 
         let mut desired_black_bishops_bitboard = Bitboard(0);
-
         desired_black_bishops_bitboard.set_bit(Square::C8);
         desired_black_bishops_bitboard.set_bit(Square::F8);
 
         let mut desired_black_rooks_bitboard = Bitboard(0);
-
         desired_black_rooks_bitboard.set_bit(Square::A8);
         desired_black_rooks_bitboard.set_bit(Square::H8);
 
         let mut desired_black_queens_bitboard = Bitboard(0);
-
         desired_black_queens_bitboard.set_bit(Square::D8);
 
         let mut desired_black_king_bitboard = Bitboard(0);
-
         desired_black_king_bitboard.set_bit(Square::E8);
 
         let desired_side_to_move = Side::White;
@@ -1215,7 +1283,6 @@ mod tests {
     #[test]
     fn load_cmk_position() {
         let mut game = Game::initialise();
-
         let fen = vec![
             "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1",
             "b",
@@ -1224,11 +1291,9 @@ mod tests {
             "0",
             "9",
         ];
-
         game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
-
         desired_white_pawns_bitboard.set_bit(Square::A2);
         desired_white_pawns_bitboard.set_bit(Square::B2);
         desired_white_pawns_bitboard.set_bit(Square::C2);
@@ -1239,30 +1304,24 @@ mod tests {
         desired_white_pawns_bitboard.set_bit(Square::H3);
 
         let mut desired_white_knights_bitboard = Bitboard(0);
-
         desired_white_knights_bitboard.set_bit(Square::E2);
         desired_white_knights_bitboard.set_bit(Square::F3);
 
         let mut desired_white_bishops_bitboard = Bitboard(0);
-
         desired_white_bishops_bitboard.set_bit(Square::C1);
         desired_white_bishops_bitboard.set_bit(Square::G2);
 
         let mut desired_white_rooks_bitboard = Bitboard(0);
-
         desired_white_rooks_bitboard.set_bit(Square::A1);
         desired_white_rooks_bitboard.set_bit(Square::F1);
 
         let mut desired_white_queens_bitboard = Bitboard(0);
-
         desired_white_queens_bitboard.set_bit(Square::D1);
 
         let mut desired_white_king_bitboard = Bitboard(0);
-
         desired_white_king_bitboard.set_bit(Square::G1);
 
         let mut desired_black_pawns_bitboard = Bitboard(0);
-
         desired_black_pawns_bitboard.set_bit(Square::A7);
         desired_black_pawns_bitboard.set_bit(Square::B7);
         desired_black_pawns_bitboard.set_bit(Square::C7);
@@ -1273,26 +1332,21 @@ mod tests {
         desired_black_pawns_bitboard.set_bit(Square::H7);
 
         let mut desired_black_knights_bitboard = Bitboard(0);
-
         desired_black_knights_bitboard.set_bit(Square::C6);
         desired_black_knights_bitboard.set_bit(Square::F6);
 
         let mut desired_black_bishops_bitboard = Bitboard(0);
-
         desired_black_bishops_bitboard.set_bit(Square::C5);
         desired_black_bishops_bitboard.set_bit(Square::E6);
 
         let mut desired_black_rooks_bitboard = Bitboard(0);
-
         desired_black_rooks_bitboard.set_bit(Square::A8);
         desired_black_rooks_bitboard.set_bit(Square::F8);
 
         let mut desired_black_queens_bitboard = Bitboard(0);
-
         desired_black_queens_bitboard.set_bit(Square::D8);
 
         let mut desired_black_king_bitboard = Bitboard(0);
-
         desired_black_king_bitboard.set_bit(Square::G8);
 
         let desired_side_to_move = Side::Black;
@@ -1323,14 +1377,10 @@ mod tests {
     #[test]
     fn start_position_moves() {
         let mut game = Game::initialise();
-        let attack_tables = AttackTables::initialise();
-
         let fen = vec!["startpos"];
-
         game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
-
         desired_white_pawns_bitboard.set_bit(Square::A2);
         desired_white_pawns_bitboard.set_bit(Square::B2);
         desired_white_pawns_bitboard.set_bit(Square::C2);
@@ -1341,30 +1391,24 @@ mod tests {
         desired_white_pawns_bitboard.set_bit(Square::H2);
 
         let mut desired_white_knights_bitboard = Bitboard(0);
-
         desired_white_knights_bitboard.set_bit(Square::B1);
         desired_white_knights_bitboard.set_bit(Square::G1);
 
         let mut desired_white_bishops_bitboard = Bitboard(0);
-
         desired_white_bishops_bitboard.set_bit(Square::C1);
         desired_white_bishops_bitboard.set_bit(Square::F1);
 
         let mut desired_white_rooks_bitboard = Bitboard(0);
-
         desired_white_rooks_bitboard.set_bit(Square::A1);
         desired_white_rooks_bitboard.set_bit(Square::H1);
 
         let mut desired_white_queens_bitboard = Bitboard(0);
-
         desired_white_queens_bitboard.set_bit(Square::D1);
 
         let mut desired_white_king_bitboard = Bitboard(0);
-
         desired_white_king_bitboard.set_bit(Square::E1);
 
         let mut desired_black_pawns_bitboard = Bitboard(0);
-
         desired_black_pawns_bitboard.set_bit(Square::A7);
         desired_black_pawns_bitboard.set_bit(Square::B7);
         desired_black_pawns_bitboard.set_bit(Square::C7);
@@ -1375,26 +1419,21 @@ mod tests {
         desired_black_pawns_bitboard.set_bit(Square::H7);
 
         let mut desired_black_knights_bitboard = Bitboard(0);
-
         desired_black_knights_bitboard.set_bit(Square::B8);
         desired_black_knights_bitboard.set_bit(Square::G8);
 
         let mut desired_black_bishops_bitboard = Bitboard(0);
-
         desired_black_bishops_bitboard.set_bit(Square::C8);
         desired_black_bishops_bitboard.set_bit(Square::F8);
 
         let mut desired_black_rooks_bitboard = Bitboard(0);
-
         desired_black_rooks_bitboard.set_bit(Square::A8);
         desired_black_rooks_bitboard.set_bit(Square::H8);
 
         let mut desired_black_queens_bitboard = Bitboard(0);
-
         desired_black_queens_bitboard.set_bit(Square::D8);
 
         let mut desired_black_king_bitboard = Bitboard(0);
-
         desired_black_king_bitboard.set_bit(Square::E8);
 
         let desired_side_to_move = Side::White;
@@ -1421,10 +1460,10 @@ mod tests {
         assert_eq!(game.en_passant_square, desired_en_passant_square);
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
+        let attack_tables = AttackTables::initialise();
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E2, Square::E4, None);
         let mv = move_list.find_move(move_search).unwrap();
-
         game.make_move(mv, &attack_tables).unwrap();
 
         desired_white_pawns_bitboard.pop_bit(Square::E2);
@@ -1457,7 +1496,6 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::E7, Square::E5, None);
         let mv = move_list.find_move(move_search).unwrap();
-
         game.make_move(mv, &attack_tables).unwrap();
 
         desired_black_pawns_bitboard.pop_bit(Square::E7);
@@ -1490,7 +1528,6 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::G1, Square::F3, None);
         let mv = move_list.find_move(move_search).unwrap();
-
         game.make_move(mv, &attack_tables).unwrap();
 
         desired_white_knights_bitboard.pop_bit(Square::G1);
@@ -1524,8 +1561,6 @@ mod tests {
     #[test]
     fn tricky_position_moves() {
         let mut game = Game::initialise();
-        let attack_tables = AttackTables::initialise();
-
         let fen = vec![
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
             "w",
@@ -1534,11 +1569,9 @@ mod tests {
             "0",
             "1",
         ];
-
         game.load_fen(&fen).unwrap();
 
         let mut desired_white_pawns_bitboard = Bitboard(0);
-
         desired_white_pawns_bitboard.set_bit(Square::A2);
         desired_white_pawns_bitboard.set_bit(Square::B2);
         desired_white_pawns_bitboard.set_bit(Square::C2);
@@ -1549,30 +1582,24 @@ mod tests {
         desired_white_pawns_bitboard.set_bit(Square::H2);
 
         let mut desired_white_knights_bitboard = Bitboard(0);
-
         desired_white_knights_bitboard.set_bit(Square::C3);
         desired_white_knights_bitboard.set_bit(Square::E5);
 
         let mut desired_white_bishops_bitboard = Bitboard(0);
-
         desired_white_bishops_bitboard.set_bit(Square::D2);
         desired_white_bishops_bitboard.set_bit(Square::E2);
 
         let mut desired_white_rooks_bitboard = Bitboard(0);
-
         desired_white_rooks_bitboard.set_bit(Square::A1);
         desired_white_rooks_bitboard.set_bit(Square::H1);
 
         let mut desired_white_queens_bitboard = Bitboard(0);
-
         desired_white_queens_bitboard.set_bit(Square::F3);
 
         let mut desired_white_king_bitboard = Bitboard(0);
-
         desired_white_king_bitboard.set_bit(Square::E1);
 
         let mut desired_black_pawns_bitboard = Bitboard(0);
-
         desired_black_pawns_bitboard.set_bit(Square::A7);
         desired_black_pawns_bitboard.set_bit(Square::B4);
         desired_black_pawns_bitboard.set_bit(Square::C7);
@@ -1583,26 +1610,21 @@ mod tests {
         desired_black_pawns_bitboard.set_bit(Square::H3);
 
         let mut desired_black_knights_bitboard = Bitboard(0);
-
         desired_black_knights_bitboard.set_bit(Square::B6);
         desired_black_knights_bitboard.set_bit(Square::F6);
 
         let mut desired_black_bishops_bitboard = Bitboard(0);
-
         desired_black_bishops_bitboard.set_bit(Square::A6);
         desired_black_bishops_bitboard.set_bit(Square::G7);
 
         let mut desired_black_rooks_bitboard = Bitboard(0);
-
         desired_black_rooks_bitboard.set_bit(Square::A8);
         desired_black_rooks_bitboard.set_bit(Square::H8);
 
         let mut desired_black_queens_bitboard = Bitboard(0);
-
         desired_black_queens_bitboard.set_bit(Square::E7);
 
         let mut desired_black_king_bitboard = Bitboard(0);
-
         desired_black_king_bitboard.set_bit(Square::E8);
 
         let desired_side_to_move = Side::White;
@@ -1629,10 +1651,10 @@ mod tests {
         assert_eq!(game.en_passant_square, desired_en_passant_square);
         assert_eq!(game.halfmove_clock, desired_halfmove_clock);
 
+        let attack_tables = AttackTables::initialise();
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::D5, Square::E6, None);
         let mv = move_list.find_move(move_search).unwrap();
-
         game.make_move(mv, &attack_tables).unwrap();
 
         desired_white_pawns_bitboard.pop_bit(Square::D5);
@@ -1666,7 +1688,6 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::A6, Square::E2, None);
         let mv = move_list.find_move(move_search).unwrap();
-
         game.make_move(mv, &attack_tables).unwrap();
 
         desired_black_bishops_bitboard.pop_bit(Square::A6);
@@ -1700,7 +1721,6 @@ mod tests {
         let move_list = MoveList::generate_moves(&game, &attack_tables);
         let move_search = MoveSearch::new(Square::C3, Square::E2, None);
         let mv = move_list.find_move(move_search).unwrap();
-
         game.make_move(mv, &attack_tables).unwrap();
 
         desired_white_knights_bitboard.pop_bit(Square::C3);
@@ -1733,13 +1753,348 @@ mod tests {
     }
 
     #[test]
+    fn zobrist_key_start_position() {
+        let mut game = Game::initialise();
+        let fen = vec!["startpos"];
+        game.load_fen(&fen).unwrap();
+
+        assert_eq!(game.zobrist_key, 0x6ED5_7B11_8AE9_9580);
+    }
+
+    #[test]
+    fn zobrist_key_tricky_position() {
+        let mut game = Game::initialise();
+        let fen = vec![
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        assert_eq!(game.zobrist_key, 0xB6A3_E0EE_0FF9_BED8);
+    }
+
+    #[test]
+    fn zobrist_key_killer_position() {
+        let mut game = Game::initialise();
+        let fen = vec![
+            "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR",
+            "w",
+            "KQkq",
+            "e6",
+            "0",
+            "1",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        assert_eq!(game.zobrist_key, 0xD153_C557_50DD_8681);
+    }
+
+    #[test]
+    fn zobrist_key_cmk_position() {
+        let mut game = Game::initialise();
+        let fen = vec![
+            "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1",
+            "b",
+            "-",
+            "-",
+            "0",
+            "9",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        assert_eq!(game.zobrist_key, 0x4F75_A469_51F3_92D4);
+    }
+
+    #[test]
+    fn update_zobrist_key_quiet_move() {
+        let mut game = Game::initialise();
+        let fen = vec![
+            "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1",
+            "b",
+            "-",
+            "-",
+            "0",
+            "9",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        let attack_tables = AttackTables::initialise();
+        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_search = MoveSearch::new(Square::F8, Square::E8, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+    }
+
+    #[test]
+    fn update_zobrist_key_capture() {
+        let mut game = Game::initialise();
+        let fen = vec![
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        let attack_tables = AttackTables::initialise();
+        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_search = MoveSearch::new(Square::E2, Square::A6, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+    }
+
+    #[test]
+    fn update_zobrist_key_double_pawn_push() {
+        let mut game = Game::initialise();
+        let fen = vec!["startpos"];
+        game.load_fen(&fen).unwrap();
+
+        let attack_tables = AttackTables::initialise();
+        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_search = MoveSearch::new(Square::E2, Square::E4, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_search = MoveSearch::new(Square::E7, Square::E5, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+    }
+
+    #[test]
+    fn update_zobrist_key_en_passant() {
+        let mut game = Game::initialise();
+        let fen = vec![
+            "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR",
+            "w",
+            "KQkq",
+            "e6",
+            "0",
+            "1",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        let attack_tables = AttackTables::initialise();
+        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_search = MoveSearch::new(Square::F5, Square::E6, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+    }
+
+    #[test]
+    fn update_zobrist_key_castling_rights() {
+        let mut game = Game::initialise();
+        let fen = vec![
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        // short castle
+        let attack_tables = AttackTables::initialise();
+        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_search = MoveSearch::new(Square::E1, Square::G1, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        // long castle
+        game.load_fen(&fen).unwrap();
+
+        let move_search = MoveSearch::new(Square::E1, Square::C1, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        // king move
+        game.load_fen(&fen).unwrap();
+
+        let move_search = MoveSearch::new(Square::E1, Square::D1, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        // queenside rook move
+        game.load_fen(&fen).unwrap();
+
+        let move_search = MoveSearch::new(Square::A1, Square::B1, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        // kingside rook move
+        game.load_fen(&fen).unwrap();
+
+        let move_search = MoveSearch::new(Square::H1, Square::G1, None);
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        // capture queenside rook
+        let fen = vec![
+            "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR",
+            "w",
+            "KQkq",
+            "e6",
+            "0",
+            "1",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Queen));
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        // capture kingside rook
+        let fen = vec![
+            "rnbqkb1r/pP1p1p1p/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR",
+            "w",
+            "KQkq",
+            "e6",
+            "0",
+            "1",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_search = MoveSearch::new(Square::B7, Square::A8, Some(Piece::Queen));
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+    }
+
+    #[test]
+    fn update_zobrist_key_promotion() {
+        let mut game = Game::initialise();
+        let fen = vec![
+            "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR",
+            "w",
+            "KQkq",
+            "e6",
+            "0",
+            "1",
+        ];
+        game.load_fen(&fen).unwrap();
+
+        let attack_tables = AttackTables::initialise();
+        let move_list = MoveList::generate_moves(&game, &attack_tables);
+        let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Queen));
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        game.load_fen(&fen).unwrap();
+
+        let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Rook));
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        game.load_fen(&fen).unwrap();
+
+        let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Bishop));
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+
+        game.load_fen(&fen).unwrap();
+
+        let move_search = MoveSearch::new(Square::G7, Square::H8, Some(Piece::Knight));
+        let mv = move_list.find_move(move_search).unwrap();
+        game.make_move(mv, &attack_tables).unwrap();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+    }
+
+    #[test]
+    fn update_zobrist_key_null_move() {
+        let mut game = Game::initialise();
+        let fen = vec![
+            "rnbqkb1r/pp1p1pPp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR",
+            "w",
+            "KQkq",
+            "e6",
+            "0",
+            "1",
+        ];
+        game.load_fen(&fen).unwrap();
+        game.make_null_move();
+
+        let generated_key = zobrist_hashes::ZOBRIST_HASHES.generate_key(&game);
+
+        assert_eq!(game.zobrist_key, generated_key);
+    }
+    #[test]
     fn set_bit() {
         let mut bitboard1 = Bitboard(0);
-        let mut bitboard2 = Bitboard(0);
-        let mut bitboard3 = Bitboard(0);
-
         bitboard1.set_bit(Square::H2);
+        let mut bitboard2 = Bitboard(0);
         bitboard2.set_bit(Square::G6);
+        let mut bitboard3 = Bitboard(0);
         bitboard3.set_bit(Square::B4);
 
         assert_eq!(bitboard1.0, u64::pow(2, Square::H2 as u32));
@@ -1750,17 +2105,14 @@ mod tests {
     #[test]
     fn pop_bit() {
         let mut bitboard1 = Bitboard(0);
-        let mut bitboard2 = Bitboard(0);
-        let mut bitboard3 = Bitboard(0);
-
         bitboard1.set_bit(Square::G5);
         bitboard1.set_bit(Square::A8);
         bitboard1.pop_bit(Square::G5);
-
+        let mut bitboard2 = Bitboard(0);
         bitboard2.set_bit(Square::C1);
         bitboard2.set_bit(Square::A7);
         bitboard2.pop_bit(Square::C1);
-
+        let mut bitboard3 = Bitboard(0);
         bitboard3.set_bit(Square::C4);
         bitboard3.set_bit(Square::B8);
         bitboard3.pop_bit(Square::C4);
@@ -1773,12 +2125,10 @@ mod tests {
     #[test]
     fn pop_unset_bit() {
         let mut bitboard1 = Bitboard(0);
-        let mut bitboard2 = Bitboard(0);
-
         bitboard1.set_bit(Square::F1);
         bitboard1.pop_bit(Square::F1);
         bitboard1.pop_bit(Square::F1);
-
+        let mut bitboard2 = Bitboard(0);
         bitboard2.pop_bit(Square::G2);
 
         assert_eq!(bitboard1.0, 0);
