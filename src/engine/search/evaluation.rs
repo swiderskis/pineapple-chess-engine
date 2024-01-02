@@ -2,10 +2,10 @@ use super::Engine;
 use crate::engine::game::{Game, Piece, Side, Square};
 use std::ops::{Add, Neg, Sub};
 
-pub type Value = i16;
+pub type Value = i32;
 
-pub const MAX_EVALUATION: Evaluation = Evaluation(Value::MAX);
-pub const CHECKMATE_EVALUATION: Evaluation = Evaluation(Value::MAX - 1);
+pub const MAX_EVALUATION: Evaluation = Evaluation(50000);
+pub const CHECKMATE_EVALUATION: Evaluation = Evaluation(49000);
 pub const STALEMATE_EVALUATION: Evaluation = Evaluation(0);
 
 // Piece value obtained by indexing into array using Piece enum
